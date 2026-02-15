@@ -1,0 +1,12 @@
+# Build output
+quiz-system-built.html
+
+# Claude Code
+.claude/
+
+# VS Code
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
