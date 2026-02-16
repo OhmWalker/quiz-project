@@ -172,5 +172,3 @@ const BossFightPlugin = {
         window._mgTestMode = false;
     }
 };
-
-// ── WISSENSTURM PLUGIN ──────────────────────────────────────

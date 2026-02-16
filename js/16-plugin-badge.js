@@ -46,8 +46,6 @@ const BadgePlugin = {
         ueberschall:{id:'ueberschall',name:'Überschall',emoji:'💨',cat:'minigame',desc:'SpeedTap schnell',stat:'speedtapFast',thresholds:[3,10,30,100,300]},
         drachentoeter:{id:'drachentoeter',name:'Drachentöter',emoji:'🐉',cat:'minigame',desc:'Bosse besiegt',stat:'bossKills',thresholds:[1,5,15,50,150]},
         ueberlebender:{id:'ueberlebender',name:'Überlebender',emoji:'❤️',cat:'minigame',desc:'Boss-Kämpfe',stat:'bossAttempts',thresholds:[3,10,30,100,300]},
-        turmmeister:{id:'turmmeister',name:'Turmmeister',emoji:'🏗️',cat:'minigame',desc:'Turm gespielt',stat:'towerPlays',thresholds:[3,10,30,100,300]},
-        wolkenkratzer:{id:'wolkenkratzer',name:'Wolkenkratzer',emoji:'🏙️',cat:'minigame',desc:'Max. Turmhöhe',stat:'maxTowerHeight',thresholds:[5,10,15,20,30]},
         spieler:{id:'spieler',name:'Spieler',emoji:'🎲',cat:'minigame',desc:'Mini-Games gesamt',stat:'totalMiniGames',thresholds:[10,30,100,300,1000]},
         feuertaufe:{id:'feuertaufe',name:'Feuertaufe',emoji:'🔥',cat:'minigame',desc:'Erstes Mini-Game',stat:'totalMiniGames',thresholds:[1,1,1,1,1]}
     },
@@ -161,7 +159,7 @@ const BadgePlugin = {
         stats.ab_teamBonus = au.teamBonus || 0;
         stats.uniqueAbilities = Object.values(au).filter(v => v > 0).length;
         // Total mini-games
-        stats.totalMiniGames = (stats.spinnerPlays || 0) + (stats.speedtapPlays || 0) + (stats.bossAttempts || 0) + (stats.towerPlays || 0);
+        stats.totalMiniGames = (stats.spinnerPlays || 0) + (stats.speedtapPlays || 0) + (stats.bossAttempts || 0);
         return stats;
     },
 

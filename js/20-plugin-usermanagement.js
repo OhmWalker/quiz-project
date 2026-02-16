@@ -82,7 +82,6 @@ PluginRegistry.register('AbilityPlugin', AbilityPlugin, {category:'feature'});
 PluginRegistry.register('WheelPlugin', WheelPlugin, {category:'minigame'});
 PluginRegistry.register('SpeedTapPlugin', SpeedTapPlugin, {category:'minigame'});
 PluginRegistry.register('BossFightPlugin', BossFightPlugin, {category:'minigame'});
-PluginRegistry.register('WissensturmPlugin', WissensturmPlugin, {category:'minigame'});
 PluginRegistry.register('BadgePlugin', BadgePlugin, {category:'feature'});
 PluginRegistry.register('LeaderboardPlugin', LeaderboardPlugin, {category:'feature'});
 PluginRegistry.register('QuestionEditorPlugin', QuestionEditorPlugin, {category:'admin'});

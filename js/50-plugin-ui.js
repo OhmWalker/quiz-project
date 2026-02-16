@@ -11,7 +11,6 @@ const PLUGIN_DISPLAY_NAMES = {
     'WheelPlugin': { icon: '🎰', label: 'Glücksrad' },
     'SpeedTapPlugin': { icon: '🎯', label: 'Reaktionstest' },
     'BossFightPlugin': { icon: '⚔️', label: 'Boss-Fight' },
-    'WissensturmPlugin': { icon: '🏗️', label: 'Wissensturm' },
     'BadgePlugin': { icon: '🏆', label: 'Badge-System' },
     'LeaderboardPlugin': { icon: '📊', label: 'Bestenliste' },
     'QuestionEditorPlugin': { icon: '✏️', label: 'Fragen-Backend' },
@@ -32,13 +31,10 @@ const PLUGIN_CATEGORY_LABELS = {
 const PLUGIN_SETTINGS_MAP = {
     'WheelPlugin': 'spinner',
     'SpeedTapPlugin': 'speedTap',
-    'BossFightPlugin': 'bossFight',
-    'WissensturmPlugin': 'towerGame'
+    'BossFightPlugin': 'bossFight'
 };
 
-const PLUGIN_BUTTON_MAP = {
-    'WissensturmPlugin': ['towerGameBtn']
-};
+const PLUGIN_BUTTON_MAP = {};
 
 function renderPluginManager() {
     const container = document.getElementById('pluginManagerContent');
@@ -162,11 +158,6 @@ function applyPluginVisibility() {
     }
 }
 
-function updateGameModeButtons() {
-    const towerBtn = document.getElementById('towerGameBtn');
-    if (towerBtn) towerBtn.disabled = !currentUser || !PluginRegistry.isEnabled('WissensturmPlugin');
-}
-
 function applyMiniGameXP(xpAmount) {
     if (!currentUser || !xpAmount || xpAmount <= 0) return;
     if (window._mgTestMode) return; // Admin-Test: keine XP
@@ -179,18 +170,6 @@ function applyMiniGameXP(xpAmount) {
     renderUserSelect();
     if (PluginRegistry.isEnabled('BadgePlugin')) BadgePlugin.checkBadges(currentUser);
 }
-
-// State-Bridges für Legacy-Kompatibilität
-const spinnerState = WheelPlugin._state;
-const speedTapState = SpeedTapPlugin._state;
-const bossState = BossFightPlugin._state;
-const BOSS_TYPES = BossFightPlugin.BOSS_TYPES;
-const BOSS_ATTACK_ICONS = BossFightPlugin.ATTACK_ICONS;
-const towerState = WissensturmPlugin._state;
-
-// Timer-Stubs (Timer entfernt, aber Aufrufe existieren noch in Quiz-Logik)
-function stopQuestionTimer() {}
-function scheduleAutoAdvance() {}
 
 // Initialize on load
 init();

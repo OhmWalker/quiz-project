@@ -82,8 +82,7 @@ const CONFIG = {
     MINI_GAMES: {
         SPINNER_SEGMENTS: 8,
         SPEED_TAP_DEFAULT_ROUNDS: 5,
-        BOSS_DEFAULT_HP: 100,
-        TOWER_WIN_HEIGHT: 10
+        BOSS_DEFAULT_HP: 100
     },
     // UI
     UI: {

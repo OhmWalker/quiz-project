@@ -21,7 +21,6 @@ quiz-project/
     ├── 12-plugin-wheel.js         ← Glücksrad Mini-Game
     ├── 13-plugin-speedtap.js      ← Reaktionstest Mini-Game
     ├── 14-plugin-bossfight.js     ← Boss-Fight Mini-Game
-    ├── 15-plugin-wissensturm.js   ← Wissensturm Mini-Game
     ├── 16-plugin-badge.js         ← Badge/Achievement-System
     ├── 17-plugin-leaderboard.js   ← Bestenliste/Podium
     ├── 18-plugin-question-editor.js ← Fragen-Editor (Legacy)

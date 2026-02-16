@@ -20,19 +20,19 @@
     --incorrect: #E74C3C;
 
     /* White overlays */
-    --overlay-5: var(--overlay-5);
-    --overlay-8: var(--overlay-8);
-    --overlay-10: var(--overlay-10);
-    --overlay-12: var(--overlay-12);
-    --overlay-15: var(--overlay-15);
-    --overlay-20: var(--overlay-20);
-    --overlay-30: var(--overlay-30);
+    --overlay-5: rgba(255, 255, 255, 0.05);
+    --overlay-8: rgba(255, 255, 255, 0.08);
+    --overlay-10: rgba(255, 255, 255, 0.1);
+    --overlay-12: rgba(255, 255, 255, 0.12);
+    --overlay-15: rgba(255, 255, 255, 0.15);
+    --overlay-20: rgba(255, 255, 255, 0.2);
+    --overlay-30: rgba(255, 255, 255, 0.3);
 
     /* Black shadows */
-    --shadow-30: var(--shadow-30);
-    --shadow-40: var(--shadow-40);
-    --shadow-50: var(--shadow-50);
-    --shadow-70: var(--shadow-70);
+    --shadow-30: rgba(0, 0, 0, 0.3);
+    --shadow-40: rgba(0, 0, 0, 0.4);
+    --shadow-50: rgba(0, 0, 0, 0.5);
+    --shadow-70: rgba(0, 0, 0, 0.7);
 }
 
 

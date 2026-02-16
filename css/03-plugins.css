@@ -888,61 +888,6 @@
 }
 
 
-.tower-container {
-    text-align: center;
-}
-.tower-game-row {
-    display: flex;
-    justify-content: center;
-    align-items: flex-start;
-    gap: 6px;
-    flex-wrap: wrap;
-}
-.tower-canvas-wrap {
-    position: relative; max-width: 500px; flex: 0 1 500px;
-    background: linear-gradient(180deg, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.4) 100%);
-    border-radius: 20px; overflow: hidden;
-    border: 2px solid rgba(255,255,255,0.1);
-}
-.tower-canvas-wrap canvas { width: 100%; display: block; }
-.tower-side-panel {
-    flex: 0 1 340px;
-    min-width: 260px;
-}
-.tower-info {
-    display: flex; gap: 15px; justify-content: center; margin: 15px 0;
-    flex-wrap: wrap;
-}
-.tower-stat {
-    background: rgba(255,255,255,0.08); padding: 8px 16px;
-    border-radius: 8px; font-weight: 700; font-size: 0.95rem;
-}
-.tower-question-card {
-    background: rgba(255,255,255,0.08); border-radius: 15px;
-    padding: 20px; border: 2px solid rgba(255,255,255,0.15);
-    text-align: left;
-}
-
-
-.game-modes-row {
-    display: flex; gap: 12px; flex-wrap: wrap; margin-top: 0; margin-bottom: 15px;
-}
-.game-mode-btn {
-    flex: 1; min-width: 150px; padding: 14px 20px;
-    background: rgba(255,255,255,0.05); border: 2px solid rgba(255,255,255,0.15);
-    border-radius: 15px; color: var(--text); cursor: pointer;
-    transition: all 0.3s; font-family: 'Courier New', monospace;
-    text-align: center; font-size: 0.95rem;
-}
-.game-mode-btn:hover {
-    background: rgba(255,255,255,0.1); border-color: var(--accent);
-    transform: translateY(-2px);
-}
-.game-mode-btn:disabled { opacity: 0.4; pointer-events: none; }
-.game-mode-btn .game-mode-icon { font-size: 1.8rem; display: block; margin-bottom: 6px; }
-.game-mode-btn .game-mode-label { font-weight: 700; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; }
-
-
 .plugin-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; margin-top: 20px; }
 .plugin-card { background: rgba(255,255,255,0.05); border: 2px solid rgba(255,255,255,0.12); border-radius: 14px; padding: 18px; transition: all 0.3s; position: relative; }
 .plugin-card:hover { border-color: rgba(255,255,255,0.25); background: rgba(255,255,255,0.07); }

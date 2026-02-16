@@ -2029,20 +2029,6 @@ function importQuestionSet(event) {
 // Keyboard controls for quiz
 
 document.addEventListener('keydown', function(e) {
-    // Tower: Spacebar to place block
-    const towerScreen = document.getElementById('towerGameScreen');
-    if (towerScreen && towerScreen.classList.contains('active')) {
-        if (e.key === ' ' || e.code === 'Space') {
-            e.preventDefault();
-            call('WissensturmPlugin','placeBlock');
-            return;
-        }
-        if (e.key === 'Escape') {
-            e.preventDefault();
-            call('WissensturmPlugin','end');
-            return;
-        }
-    }
     // Quiz Screen Keyboard Handler
     const quizScreen = document.getElementById('quizScreen');
     if (quizScreen && quizScreen.classList.contains('active')) {
@@ -2110,7 +2096,6 @@ function updateMiniGameSettings() {
     mg.bossFight.hp = parseInt(document.getElementById('mgBossHP').value) || 100;
     mg.bossFight.lives = parseInt(document.getElementById('mgBossLives').value) || 3;
     mg.bossFight.winXP = parseInt(document.getElementById('mgBossWinXP').value) || 100;
-    mg.towerGame.enabled = document.getElementById('mgTowerEnabled').checked;
     mg.xpPerCorrect = parseInt(document.getElementById('mgGameXPPerCorrect').value) || 5;
 
     // Wenn der User im Settings-Dialog eine Checkbox ändert,
@@ -2160,7 +2145,6 @@ function populateMiniGameSettings() {
     el = document.getElementById('mgBossHP'); if (el) el.value = mg.bossFight.hp || CONFIG.MINI_GAMES.BOSS_DEFAULT_HP;
     el = document.getElementById('mgBossLives'); if (el) el.value = mg.bossFight.lives || 3;
     el = document.getElementById('mgBossWinXP'); if (el) el.value = mg.bossFight.winXP || 100;
-    el = document.getElementById('mgTowerEnabled'); if (el) el.checked = mg.towerGame.enabled !== false;
     el = document.getElementById('mgGameXPPerCorrect'); if (el) el.value = mg.xpPerCorrect || 5;
 }
 

@@ -22,7 +22,6 @@ const ClassicQuizPlugin = {
         const btn = document.getElementById('startQuizBtn');
         if (btn) { btn.style.opacity = '1'; btn.style.pointerEvents = 'auto'; }
         updateHeaderUserNames();
-        updateGameModeButtons();
         EventBus.emit(EventBus.EVENTS.USER_SELECTED, { user: currentUser });
     },
 

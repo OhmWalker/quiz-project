@@ -113,8 +113,6 @@
             <span>🏎️ <strong>Überschall</strong> – Speed-Tap Ø &lt;300ms</span>
             <span>🐉 <strong>Drachentöter</strong> – Bosse besiegt</span>
             <span>⚔️ <strong>Herausforderer</strong> – Boss-Fights gespielt</span>
-            <span>🏗️ <strong>Turmmeister</strong> – Wissensturm gespielt</span>
-            <span>🏙️ <strong>Wolkenkratzer</strong> – Turm-Rekord (Höhe)</span>
         </div>
         
         <h3>⚡ Fähigkeiten (10 Abilities)</h3>
@@ -141,8 +139,7 @@
         <h4>🎰 Glücksrad</h4><p>Wird automatisch nach einem Quiz angeboten, wenn genug Fragen richtig beantwortet wurden. Drehe das Rad für Bonus-XP – oder "Nochmal drehen" für eine zweite Chance. Auslöser und Höchstgewinn sind im Admin einstellbar.</p>
         <h4>⚡ Speed-Tap Reaktionstest</h4><p>Nach einer einstellbaren Anzahl von Quiz am selben Tag erscheint der Reaktionstest. Ein Ziel erscheint an zufälliger Position – so schnell wie möglich antippen! 5 Runden, und je schneller der Durchschnitt, desto mehr Bonus-XP. Unter 300ms = Top-Bonus.</p>
         <h4>⚔️ Boss-Fight</h4><p>Nach einer Serie starker Quiz-Ergebnisse (>80%) wird ein Boss-Fight freigeschaltet. 5 verschiedene Bosse mit eigenen Angriffen: Timer-Verkürzung, Antworten vernebeln, Antworten mischen. Besiege den Boss durch richtige Antworten – aber Vorsicht, falsche Antworten kosten Leben!</p>
-        <h4>🏗️ Wissensturm</h4><p>Beantworte eine Frage richtig, dann platziere per Timing einen Block auf deinem Turm. Der schwingende Block wird mit jedem Stockwerk schneller und schmaler. Falsche Antwort oder daneben = Game Over. Schlag deinen eigenen Rekord!</p>
-        
+
         <div style="text-align: center; margin-top: 25px;">
             <button class="btn" data-toggle-overlay="featuresOverlay" data-overlay-show="false">Verstanden!</button>
         </div>
@@ -229,7 +226,7 @@
         <table class="info-table-sm">
             <tr><td style="padding:6px;font-weight:700;color:#3498db;">Quiz-Modi</td><td style="padding:6px;">Classic Quiz*</td></tr>
             <tr><td style="padding:6px;font-weight:700;color:#2ecc71;">Features</td><td style="padding:6px;">Fähigkeiten, Badge-System, Bestenliste</td></tr>
-            <tr><td style="padding:6px;font-weight:700;color:#9b59b6;">Mini-Games</td><td style="padding:6px;">Glücksrad, Speed-Tap, Boss-Fight, Wissensturm</td></tr>
+            <tr><td style="padding:6px;font-weight:700;color:#9b59b6;">Mini-Games</td><td style="padding:6px;">Glücksrad, Speed-Tap, Boss-Fight</td></tr>
             <tr><td style="padding:6px;font-weight:700;color:#e74c3c;">Admin</td><td style="padding:6px;">Fragen-Manager*, Benutzerverwaltung*</td></tr>
         </table>
         <p><strong>* Pflicht-Plugins</strong> können nicht deaktiviert werden (Toggle ausgegraut). Die Plugin-Konfiguration wird automatisch in Export/Import und Master-Backup mitgespeichert.</p>
@@ -244,7 +241,6 @@
             <tr><td class="td-bold">🎰 Glücksrad</td><td>Nach Quiz bei X richtigen Antworten</td><td class="td-muted">minCorrect, maxXP</td></tr>
             <tr><td class="td-bold">⚡ Speed-Tap</td><td>Nach X Quiz/Tag, 5 Runden Reaktionstest</td><td class="td-muted">quizCount, rounds, bonusXP, btnText, btnImage</td></tr>
             <tr><td class="td-bold">⚔️ Boss-Fight</td><td>Nach X Quiz mit >80%</td><td class="td-muted">threshold, hp, lives, winXP</td></tr>
-            <tr><td class="td-bold">🏗️ Wissensturm</td><td>Block-Stapel-Modus (Startseite)</td><td class="td-muted">xpPerCorrect</td></tr>
         </table>
         <p><strong>Einstellungen:</strong> Alle Mini-Games können einzeln ein-/ausgeschaltet werden. Settings werden automatisch im Master-Backup (02_QUIZ-MASTER) unter <code class="code-tag">quizSettings.miniGames</code> gespeichert.</p>
         <p><strong>Speed-Tap Ziel-Bild:</strong> Das Bild, auf das Spieler klicken müssen, kann angepasst werden. Bild im <strong>medien/</strong>-Unterordner ablegen und im Admin den Pfad eingeben (z.B. <code class="code-tag">medien/target.png</code>). Der Pfad wird als relative Referenz in <code class="code-tag">quizSettings.miniGames.speedTap.btnImage</code> gespeichert und im Master-Backup (02_QUIZ-MASTER) exportiert. Dies folgt dem gleichen Prinzip wie Fragen-Medien: Pfade statt eingebettete Daten.</p>
@@ -275,12 +271,6 @@
             <div style="margin-top: 30px; display:flex; flex-direction:column; gap:12px;">
                 <div class="btn" id="startQuizBtn" style="width:100%;font-size:1.3rem;padding:20px;display:flex;align-items:center;cursor:pointer;opacity:0.5;pointer-events:none;justify-content:center;box-sizing:border-box;border:2px solid rgba(0,0,0,0.4);" data-action="startQuiz">
                     <span style="font-weight:700;">Quiz Starten</span>
-                </div>
-                <div class="game-modes-row" id="gameModeButtons">
-                    <button class="game-mode-btn" data-action="start" data-plugin="WissensturmPlugin" id="towerGameBtn" disabled>
-                        <span class="game-mode-icon">🏗️</span>
-                        <span class="game-mode-label">Wissensturm</span>
-                    </button>
                 </div>
                 <div style="display: flex; gap: 15px; flex-wrap: wrap;">
                     <button class="btn btn-secondary" data-action="showAdminLogin">⚙️ Admin-Bereich</button>
@@ -946,23 +936,6 @@
                         Boss-Fight aktiviert
                     </label>
                     
-                    <div class="sub-title">🗺️🏗️ Spielmodi (Wissensturm)</div>
-                    <div class="grid-2col">
-                        <div class="field-row">
-                        </div>
-                        <div class="field-row">
-                            <span class="field-label">XP pro richtige Antwort<span class="hint">alle Spielmodi</span></span>
-                            <input type="number" id="mgGameXPPerCorrect" min="1" max="50" value="5">
-                        </div>
-                    </div>
-                    <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:4px;">
-                        <label class="cb-row">
-                        </label>
-                        <label class="cb-row">
-                            <input type="checkbox" id="mgTowerEnabled" checked>
-                            Wissensturm
-                        </label>
-                    </div>
                     
                     <div class="section-actions">
                         <button class="btn-save" data-action="updateMiniGameSettings">🎮 Mini-Games speichern</button>
@@ -1574,36 +1547,6 @@
         </div>
     </div>
 </div>
-
-<!-- ═══ Wissensturm Screen ═══ -->
-<div id="towerGameScreen" class="screen">
-    <div class="card">
-        <div class="tower-container">
-            <h2 style="font-size: 2rem; margin-bottom: 5px;">🏗️ Wissensturm</h2>
-            <p style="opacity: 0.7; margin-bottom: 15px;">Beantworte Fragen und baue den höchsten Turm!</p>
-            <div class="tower-info">
-                <div class="tower-stat">🏗️ Höhe: <span id="towerHeight">0</span></div>
-                <div class="tower-stat">⭐ XP: <span id="towerXP">0</span></div>
-                <div class="tower-stat">🏆 Rekord: <span id="towerRecord">0</span></div>
-            </div>
-            <div class="tower-game-row">
-                <div class="tower-canvas-wrap">
-                    <canvas id="towerCanvas" width="500" height="400"></canvas>
-                </div>
-                <div class="tower-side-panel">
-                    <div class="tower-question-card" id="towerQuestionCard" style="display: none;">
-                        <div class="boss-question-text" id="towerQuestionText"></div>
-                        <div id="towerAnswerArea"></div>
-                    </div>
-                </div>
-            </div>
-            <div style="text-align: center; margin-top: 15px;">
-                <button class="btn" id="towerPlaceBtn" data-action="placeBlock" data-plugin="WissensturmPlugin" style="display: none; margin-bottom: 10px;">🏗️ Block platzieren! (Leertaste)</button>
-                <button class="btn btn-secondary" data-action="end" data-plugin="WissensturmPlugin">← Beenden</button>
-            </div>
-        </div>
-    </div>
-</div>
     <script src="js/01-constants.js"></script>
     <script src="js/02-toast-dialog.js"></script>
     <script src="js/03-eventbus.js"></script>
@@ -1616,7 +1559,6 @@
     <script src="js/12-plugin-wheel.js"></script>
     <script src="js/13-plugin-speedtap.js"></script>
     <script src="js/14-plugin-bossfight.js"></script>
-    <script src="js/15-plugin-wissensturm.js"></script>
     <script src="js/16-plugin-badge.js"></script>
     <script src="js/17-plugin-leaderboard.js"></script>
     <script src="js/18-plugin-question-editor.js"></script>

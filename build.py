@@ -63,7 +63,7 @@ with open(OUTPUT, "w", encoding="utf-8") as f:
     f.write(html)
 
 size_kb = os.path.getsize(OUTPUT) / 1024
-print(f"✅ Build complete: {OUTPUT}")
+print(f"[OK] Build complete: {OUTPUT}")
 print(f"   Size: {size_kb:.1f} KB")
 print(f"   CSS files: {len(css_files)}")
 print(f"   JS files:  {len(js_files)}")
