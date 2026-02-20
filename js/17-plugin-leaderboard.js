@@ -113,7 +113,7 @@ const LeaderboardPlugin = {
             const ageDays = (now - new Date(h.date).getTime()) / 86400000;
             if (ageDays > maxAge) return;
             const w = Math.pow(decay, ageDays);
-            qualitySum += (h.pct || 0) * w;
+            qualitySum += (h.score || 0) * w;
             qualityWeight += w;
         });
         const quality = qualityWeight > 0 ? qualitySum / qualityWeight : 0;

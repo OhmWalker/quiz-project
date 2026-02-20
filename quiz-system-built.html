@@ -5557,7 +5557,7 @@
                     if (new Date().getDay() === 1) bs.mondayQuizzes = (bs.mondayQuizzes || 0) + 1;
                     // History
                     if (!currentUser.history) currentUser.history = [];
-                    currentUser.history.push({ date: new Date().toISOString(), correct, total, xp: finalXP, pct });
+                    currentUser.history.push({ date: new Date().toISOString(), correct, total, xp: finalXP, score: pct });
                     // Streak
                     const today = new Date().toDateString();
                     if (!currentUser._lastStreakDate || currentUser._lastStreakDate !== today) {
@@ -6463,7 +6463,7 @@
                 // Improvements (better than last quiz)
                 let improvements = 0;
                 for (let i = 1; i < hist.length; i++) {
-                    if ((hist[i].pct || 0) > (hist[i-1].pct || 0)) improvements++;
+                    if ((hist[i].score || 0) > (hist[i-1].score || 0)) improvements++;
                 }
                 stats.improvements = improvements;
                 // Comebacks (quiz after 7+ day gap)
@@ -6978,7 +6978,7 @@
                     const ageDays = (now - new Date(h.date).getTime()) / 86400000;
                     if (ageDays > maxAge) return;
                     const w = Math.pow(decay, ageDays);
-                    qualitySum += (h.pct || 0) * w;
+                    qualitySum += (h.score || 0) * w;
                     qualityWeight += w;
                 });
                 const quality = qualityWeight > 0 ? qualitySum / qualityWeight : 0;
@@ -8420,7 +8420,7 @@
             confirmResetUserStats(id){
                 GameDialog.showConfirm('Stats zurücksetzen?','Alle Quiz-Statistiken werden gelöscht.',()=>{
                     const user=users.find(u=>u.id===id);if(!user)return;
-                    user.questionStats={};user.score=0;user.correctAnswers=0;user.totalAnswers=0;user.quizzesTaken=0;
+                    user.questionStats={};user.correctAnswers=0;user.totalAnswers=0;user.quizzesTaken=0;
                     Toast.show('Stats zurückgesetzt','success');if(adminState.viewingUserId===id)this.renderUserDetailContent(user);
                 });
             },
@@ -8666,15 +8666,13 @@
                 wrongAnswerXP: -2
             },
             leaderboard: {
-                qualityWeight: 40,
-                quantityWeight: 30,
-                activityWeight: 30,
+                qualityWeight: 50,
+                engagementWeight: 50,
                 decayRate: 0.99,
                 maxAgeDays: 90,
-                targetQuizzes: 15,
-                minQuizzes: 0,
-                inactivityPenalty: 2,
-                maxInactiveDays: 50
+                engagementBoost: 5,
+                engagementDecay: 0.95,
+                minQuizzes: 0
             },
             mediaDisplay: {
                 quizImageWidth: 80      // Prozent der Container-Breite (30-100)

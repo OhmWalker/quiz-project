@@ -377,7 +377,7 @@ const ClassicQuizPlugin = {
             if (new Date().getDay() === 1) bs.mondayQuizzes = (bs.mondayQuizzes || 0) + 1;
             // History
             if (!currentUser.history) currentUser.history = [];
-            currentUser.history.push({ date: new Date().toISOString(), correct, total, xp: finalXP, pct });
+            currentUser.history.push({ date: new Date().toISOString(), correct, total, xp: finalXP, score: pct });
             // Streak
             const today = new Date().toDateString();
             if (!currentUser._lastStreakDate || currentUser._lastStreakDate !== today) {

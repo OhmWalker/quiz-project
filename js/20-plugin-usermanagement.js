@@ -61,7 +61,7 @@ const UserManagementPlugin = {
     confirmResetUserStats(id){
         GameDialog.showConfirm('Stats zurücksetzen?','Alle Quiz-Statistiken werden gelöscht.',()=>{
             const user=users.find(u=>u.id===id);if(!user)return;
-            user.questionStats={};user.score=0;user.correctAnswers=0;user.totalAnswers=0;user.quizzesTaken=0;
+            user.questionStats={};user.correctAnswers=0;user.totalAnswers=0;user.quizzesTaken=0;
             Toast.show('Stats zurückgesetzt','success');if(adminState.viewingUserId===id)this.renderUserDetailContent(user);
         });
     },

@@ -123,7 +123,7 @@ const BadgePlugin = {
         // Improvements (better than last quiz)
         let improvements = 0;
         for (let i = 1; i < hist.length; i++) {
-            if ((hist[i].pct || 0) > (hist[i-1].pct || 0)) improvements++;
+            if ((hist[i].score || 0) > (hist[i-1].score || 0)) improvements++;
         }
         stats.improvements = improvements;
         // Comebacks (quiz after 7+ day gap)

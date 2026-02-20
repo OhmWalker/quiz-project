@@ -64,15 +64,13 @@ const SETTINGS_DEFAULTS = {
         wrongAnswerXP: -2
     },
     leaderboard: {
-        qualityWeight: 40,
-        quantityWeight: 30,
-        activityWeight: 30,
+        qualityWeight: 50,
+        engagementWeight: 50,
         decayRate: 0.99,
         maxAgeDays: 90,
-        targetQuizzes: 15,
-        minQuizzes: 0,
-        inactivityPenalty: 2,
-        maxInactiveDays: 50
+        engagementBoost: 5,
+        engagementDecay: 0.95,
+        minQuizzes: 0
     },
     mediaDisplay: {
         quizImageWidth: 80      // Prozent der Container-Breite (30-100)
