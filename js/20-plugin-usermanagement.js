@@ -21,7 +21,7 @@ const UserManagementPlugin = {
         const input=document.getElementById('newUserName');if(!input)return;
         const name=input.value.trim();if(!name){Toast.show('Name eingeben!','warning');return;}
         if(users.find(u=>u.name===name)){Toast.show('Name existiert bereits!','warning');return;}
-        users.push({id:Date.now(),name,score:0,correctAnswers:0,totalAnswers:0,quizzesTaken:0,xp:0,totalXP:0,level:1,streak:0,lastQuizDate:null,achievements:[],quizHistory:[],history:[],dailyQuizCount:0,questionStats:{},badgeStats:{}});
+        users.push({id:Date.now(),name,correctAnswers:0,totalAnswers:0,quizzesTaken:0,xp:0,totalXP:0,level:1,streak:0,lastQuizDate:null,achievements:[],quizHistory:[],history:[],dailyQuizCount:0,questionStats:{},badgeStats:{}});
         input.value='';this.updateUsersList();renderUserSelect();Toast.show('Benutzer erstellt!','success');
     },
     deleteUser(id){

@@ -29,15 +29,12 @@ const BadgePlugin = {
         veteran:{id:'veteran',name:'Veteran',emoji:'🏛️',cat:'leistung',desc:'Wochen aktiv',stat:'activeWeeks',thresholds:[2,8,26,52,104]},
         vielspieler:{id:'vielspieler',name:'Vielspieler',emoji:'🎮',cat:'leistung',desc:'Versch. Gruppen gespielt',stat:'groupsPlayed',thresholds:[2,4,6,8,10]},
         // Fähigkeiten-Badges (10)
-        jokermeister:{id:'jokermeister',name:'Joker-Meister',emoji:'🃏',cat:'faehigkeit',desc:'50:50 genutzt',stat:'ab_fifty50',thresholds:[3,10,30,100,300]},
+        jokermeister:{id:'jokermeister',name:'Joker-Meister',emoji:'🃏',cat:'faehigkeit',desc:'50:50 genutzt',stat:'ab_fiftyFifty',thresholds:[3,10,30,100,300]},
         telefonmeister:{id:'telefonmeister',name:'Telefonmeister',emoji:'📞',cat:'faehigkeit',desc:'Hinweis genutzt',stat:'ab_hint',thresholds:[3,10,30,100,300]},
         springer:{id:'springer',name:'Springer',emoji:'⏭️',cat:'faehigkeit',desc:'Skip genutzt',stat:'ab_skip',thresholds:[3,10,30,100,300]},
         comebackkid:{id:'comebackkid',name:'Comeback-Kid',emoji:'💖',cat:'faehigkeit',desc:'2. Chance genutzt',stat:'ab_secondChance',thresholds:[3,10,30,100,300]},
-        detektiv:{id:'detektiv',name:'Detektiv',emoji:'🔍',cat:'faehigkeit',desc:'Antwort enthüllt',stat:'ab_reveal',thresholds:[3,10,30,100,300]},
         xpbooster:{id:'xpbooster',name:'XP-Booster',emoji:'💰',cat:'faehigkeit',desc:'Doppel-XP genutzt',stat:'ab_doubleXP',thresholds:[3,10,30,100,300]},
         verteidiger:{id:'verteidiger',name:'Verteidiger',emoji:'🛡️',cat:'faehigkeit',desc:'Schild genutzt',stat:'ab_shield',thresholds:[3,10,30,100,300]},
-        tauscher:{id:'tauscher',name:'Tauscher',emoji:'🔀',cat:'faehigkeit',desc:'Frage getauscht',stat:'ab_swap',thresholds:[3,10,30,100,300]},
-        teamplayer:{id:'teamplayer',name:'Teamplayer',emoji:'🤝',cat:'faehigkeit',desc:'Team-Bonus',stat:'ab_teamBonus',thresholds:[3,10,30,100,300]},
         alleskoenner:{id:'alleskoenner',name:'Alleskönner',emoji:'🌈',cat:'faehigkeit',desc:'Versch. Fähigk. genutzt',stat:'uniqueAbilities',thresholds:[2,4,6,8,10]},
         // Mini-Game-Badges (10)
         glueckspilz:{id:'glueckspilz',name:'Glückspilz',emoji:'🍀',cat:'minigame',desc:'Spinner gespielt',stat:'spinnerPlays',thresholds:[3,10,30,100,300]},
@@ -148,15 +145,12 @@ const BadgePlugin = {
         stats.groupsPlayed = groups.size;
         // Ability stats
         const au = bs.abilitiesUsed || {};
-        stats.ab_fifty50 = au.fifty50 || 0;
+        stats.ab_fiftyFifty = au.fiftyFifty || 0;
         stats.ab_hint = au.hint || 0;
         stats.ab_skip = au.skip || 0;
         stats.ab_secondChance = au.secondChance || 0;
-        stats.ab_reveal = au.reveal || 0;
         stats.ab_doubleXP = au.doubleXP || 0;
         stats.ab_shield = au.shield || 0;
-        stats.ab_swap = au.swap || 0;
-        stats.ab_teamBonus = au.teamBonus || 0;
         stats.uniqueAbilities = Object.values(au).filter(v => v > 0).length;
         // Total mini-games
         stats.totalMiniGames = (stats.spinnerPlays || 0) + (stats.speedtapPlays || 0) + (stats.bossAttempts || 0);

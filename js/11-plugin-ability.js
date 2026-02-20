@@ -27,6 +27,11 @@ const AbilityPlugin = {
     enable() {},
     disable() {},
 
+    getCharges(key) {
+        if (!currentUser || !currentUser.abilities || !currentUser.abilities[key]) return 0;
+        return currentUser.abilities[key].charges || 0;
+    },
+
     initAbilities(user) {
         if (!user) return;
         if (!user.abilities) user.abilities = {};
