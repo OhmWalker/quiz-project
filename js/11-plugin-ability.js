@@ -5,12 +5,14 @@
 const AbilityPlugin = {
     name: 'AbilityPlugin',
     DEFS: {
-        fiftyFifty:   { icon:'🎯', name:'50/50', desc:'Entfernt 2 falsche Antworten', earnPer:3, earnStat:'_fifty50Sessions', passive:false },
+        fiftyFifty:   { icon:'🎯', name:'50/50', desc:'Entfernt 2 falsche Antworten (Burst: 2 Quizze/h)', earnPer:1, earnStat:'_fifty50Sessions', passive:false },
         skip:         { icon:'⏭️', name:'Überspringen', desc:'Frage überspringen ohne Strafe', earnPer:10, earnStat:'totalQuizzes', passive:false },
         hint:         { icon:'💡', name:'Hinweis', desc:'Zeigt den Hinweistext an', earnPer:20, earnStat:'uniqueQuestions', passive:false },
         doubleXP:     { icon:'✨', name:'Doppel-XP', desc:'Doppelte XP für richtige Antwort', earnPer:1, earnStat:'perfectQuizzes', passive:false },
         shield:       { icon:'🛡️', name:'Schild', desc:'Schützt vor XP-Verlust bei falscher Antwort', earnPer:7, earnStat:'currentStreak', passive:true },
         secondChance: { icon:'🔄', name:'2. Chance', desc:'Bei falscher Antwort erneut versuchen', earnPer:3, earnStat:'currentStreak', passive:true },
+        swap:         { icon:'🎲', name:'Tausch', desc:'Aktuelle Frage durch eine andere ersetzen', earnPer:4, earnStat:'activeDays3', passive:false },
+        teamBonus:    { icon:'👥', name:'Team', desc:'3× XP für dich und einen Mitspieler', earnPer:3, earnStat:'_phoneJokerUsed', passive:false },
         phoneJoker:   { icon:'📞', name:'Telefon', desc:'Sende Frage an anderen Spieler (5× XP bei richtig)', earnPer:5, earnStat:'highAverageQuizzes', passive:false }
     },
 
@@ -48,17 +50,30 @@ const AbilityPlugin = {
 
     getStatValues(user) {
         const bs = user.badgeStats || {};
-        const now = Date.now();
-        const recentHistory = (user.history || []).filter(h => now - new Date(h.date).getTime() < 3600000);
+        const hist = (user.history || []).slice().sort((a, b) => new Date(a.date) - new Date(b.date));
+        // Burst-Sessions: 2+ Quizze innerhalb 1h ab Beginn des ersten Quiz der Gruppe
+        let burstSessions = 0, i = 0;
+        while (i < hist.length) {
+            const sessionStart = new Date(hist[i].date).getTime();
+            let j = i + 1;
+            while (j < hist.length && new Date(hist[j].date).getTime() - sessionStart < 3600000) j++;
+            burstSessions += Math.floor((j - i) / 2);
+            i = (j > i + 1) ? j : i + 1;
+        }
+        // activeDays3: Tage mit 3+ Quizzen
+        const dayCounts = {};
+        hist.forEach(h => { const d = new Date(h.date).toDateString(); dayCounts[d] = (dayCounts[d] || 0) + 1; });
+        const activeDays3 = Object.values(dayCounts).filter(c => c >= 3).length;
         return {
-            _fifty50Sessions: recentHistory.length,
+            _fifty50Sessions: burstSessions,
+            activeDays3: activeDays3,
+            _phoneJokerUsed: (bs.abilitiesUsed && bs.abilitiesUsed.phoneJoker) || 0,
             highAverageQuizzes: bs.highAverageQuizzes || 0,
             totalQuizzes: bs.totalQuizzes || 0,
             currentStreak: bs.currentStreak || 0,
             uniqueQuestions: bs.uniqueQuestions || Object.keys(user.questionStats || {}).length,
             perfectQuizzes: bs.perfectQuizzes || 0,
-            marathonDays: bs.marathonDays || 0,
-            timerQuizzes: bs.timerQuizzes || 0
+            marathonDays: bs.marathonDays || 0
         };
     },
 
@@ -130,7 +145,6 @@ const AbilityPlugin = {
         const def = this.DEFS[key];
         if (!def) return;
         ab.charges--;
-        ab.used = (ab.used || 0) + 1;
         abilityUsedThisQuestion[key] = true;
         AppState.abilities.usedThisQuestion[key] = true;
         this._applyEffect(key);
@@ -194,10 +208,83 @@ const AbilityPlugin = {
                 AppState.abilities.secondChanceArmed = true;
                 Toast.show('🔄 2. Chance aktiviert! Bei falscher Antwort nochmal versuchen.', 'info');
                 break;
+            case 'swap':
+                this._useSwap();
+                return;
+            case 'teamBonus':
+                this._useTeamBonus();
+                return;
             case 'phoneJoker':
                 this._usePhoneJoker(q);
                 return;
         }
+    },
+
+    _useSwap() {
+        // Finde eine andere aktive Frage die noch nicht im Quiz vorkommt
+        const usedIds = new Set(currentQuizQuestions.map(q => q.questionId));
+        const available = questions.filter(q => q.active !== false && !usedIds.has(q.questionId));
+        if (available.length === 0) {
+            Toast.show('Keine anderen Fragen verfügbar!', 'warning');
+            // Refund
+            const ab = currentUser.abilities.swap;
+            if (ab) { ab.charges++; }
+            abilityUsedThisQuestion.swap = false;
+            this.renderAbilityBar();
+            return;
+        }
+        shuffleArray(available);
+        currentQuizQuestions[currentQuestionIndex] = available[0];
+        Toast.show('🎲 Frage getauscht!', 'info');
+        ClassicQuizPlugin.showQuestion();
+    },
+
+    _useTeamBonus() {
+        const others = users.filter(u => u.name !== currentUser.name);
+        if (others.length === 0) {
+            Toast.show('Keine anderen Spieler vorhanden.', 'warning');
+            const ab = currentUser.abilities.teamBonus;
+            if (ab) { ab.charges++; }
+            abilityUsedThisQuestion.teamBonus = false;
+            this.renderAbilityBar();
+            return;
+        }
+        // Spieler-Auswahl Dialog
+        const overlay = GameDialog._ensureOverlay();
+        const playerBtns = others.map(u =>
+            `<button class="btn" style="width:100%;margin-bottom:8px;padding:12px;" data-player="${sanitizeHTML(u.name)}">${sanitizeHTML(u.name)}</button>`
+        ).join('');
+        overlay.innerHTML = `
+            <div style="background:var(--glass-bg,rgba(30,30,50,0.95));border:1px solid rgba(255,255,255,0.15);border-radius:16px;padding:30px;max-width:400px;width:90%;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,0.5);">
+                <div style="font-size:3rem;margin-bottom:10px;">👥</div>
+                <h3 style="color:#f1c40f;margin:0 0 10px;">Team-Bonus</h3>
+                <p style="color:#ddd;margin:0 0 20px;line-height:1.5;">3× XP für dich und einen Mitspieler!<br><small>Wähle deinen Teampartner:</small></p>
+                <div id="teamBonusPlayerList">${playerBtns}</div>
+                <button id="teamBonusCancel" class="btn btn-secondary" style="margin-top:8px;min-width:100px;">Abbrechen</button>
+            </div>`;
+        overlay.style.display = 'flex';
+        const self = this;
+        document.getElementById('teamBonusCancel').onclick = function() {
+            GameDialog._close();
+            const ab = currentUser.abilities.teamBonus;
+            if (ab) { ab.charges++; }
+            abilityUsedThisQuestion.teamBonus = false;
+            self.renderAbilityBar();
+        };
+        document.querySelectorAll('#teamBonusPlayerList button').forEach(btn => {
+            btn.onclick = function() {
+                const targetName = this.dataset.player;
+                const target = users.find(u => u.name === targetName);
+                if (!target) return;
+                GameDialog._close();
+                // 3× XP für aktuellen Spieler aktivieren
+                currentUser.teamBonusActive = true;
+                // Bonus für Mitspieler vormerken (wird beim nächsten Laden angewendet)
+                target.pendingTeamBonus = (target.pendingTeamBonus || 0) + 50;
+                Toast.show(`👥 Team-Bonus aktiviert!\n3× XP für dich, +50 Bonus-XP für ${target.name}!`, 'success', 5000);
+                self.renderAbilityBar();
+            };
+        });
     },
 
     _usePhoneJoker(question) {
@@ -206,7 +293,7 @@ const AbilityPlugin = {
             Toast.show('Keine anderen Spieler vorhanden.', 'warning');
             // Refund: charges were already decremented in useAbility
             const ab = currentUser.abilities.phoneJoker;
-            if (ab) { ab.charges++; ab.used = Math.max(0, (ab.used || 0) - 1); }
+            if (ab) { ab.charges++; }
             abilityUsedThisQuestion.phoneJoker = false;
             this.renderAbilityBar();
             return;
@@ -231,7 +318,7 @@ const AbilityPlugin = {
             GameDialog._close();
             // Refund
             const ab = currentUser.abilities.phoneJoker;
-            if (ab) { ab.charges++; ab.used = Math.max(0, (ab.used || 0) - 1); }
+            if (ab) { ab.charges++; }
             abilityUsedThisQuestion.phoneJoker = false;
             self.renderAbilityBar();
         };

@@ -5741,12 +5741,14 @@
         const AbilityPlugin = {
             name: 'AbilityPlugin',
             DEFS: {
-                fiftyFifty:   { icon:'🎯', name:'50/50', desc:'Entfernt 2 falsche Antworten', earnPer:3, earnStat:'_fifty50Sessions', passive:false },
+                fiftyFifty:   { icon:'🎯', name:'50/50', desc:'Entfernt 2 falsche Antworten (Burst: 2 Quizze/h)', earnPer:1, earnStat:'_fifty50Sessions', passive:false },
                 skip:         { icon:'⏭️', name:'Überspringen', desc:'Frage überspringen ohne Strafe', earnPer:10, earnStat:'totalQuizzes', passive:false },
                 hint:         { icon:'💡', name:'Hinweis', desc:'Zeigt den Hinweistext an', earnPer:20, earnStat:'uniqueQuestions', passive:false },
                 doubleXP:     { icon:'✨', name:'Doppel-XP', desc:'Doppelte XP für richtige Antwort', earnPer:1, earnStat:'perfectQuizzes', passive:false },
                 shield:       { icon:'🛡️', name:'Schild', desc:'Schützt vor XP-Verlust bei falscher Antwort', earnPer:7, earnStat:'currentStreak', passive:true },
                 secondChance: { icon:'🔄', name:'2. Chance', desc:'Bei falscher Antwort erneut versuchen', earnPer:3, earnStat:'currentStreak', passive:true },
+                swap:         { icon:'🎲', name:'Tausch', desc:'Aktuelle Frage durch eine andere ersetzen', earnPer:4, earnStat:'activeDays3', passive:false },
+                teamBonus:    { icon:'👥', name:'Team', desc:'3× XP für dich und einen Mitspieler', earnPer:3, earnStat:'_phoneJokerUsed', passive:false },
                 phoneJoker:   { icon:'📞', name:'Telefon', desc:'Sende Frage an anderen Spieler (5× XP bei richtig)', earnPer:5, earnStat:'highAverageQuizzes', passive:false }
             },
 
@@ -5784,17 +5786,30 @@
 
             getStatValues(user) {
                 const bs = user.badgeStats || {};
-                const now = Date.now();
-                const recentHistory = (user.history || []).filter(h => now - new Date(h.date).getTime() < 3600000);
+                const hist = (user.history || []).slice().sort((a, b) => new Date(a.date) - new Date(b.date));
+                // Burst-Sessions: 2+ Quizze innerhalb 1h ab Beginn des ersten Quiz der Gruppe
+                let burstSessions = 0, i = 0;
+                while (i < hist.length) {
+                    const sessionStart = new Date(hist[i].date).getTime();
+                    let j = i + 1;
+                    while (j < hist.length && new Date(hist[j].date).getTime() - sessionStart < 3600000) j++;
+                    burstSessions += Math.floor((j - i) / 2);
+                    i = (j > i + 1) ? j : i + 1;
+                }
+                // activeDays3: Tage mit 3+ Quizzen
+                const dayCounts = {};
+                hist.forEach(h => { const d = new Date(h.date).toDateString(); dayCounts[d] = (dayCounts[d] || 0) + 1; });
+                const activeDays3 = Object.values(dayCounts).filter(c => c >= 3).length;
                 return {
-                    _fifty50Sessions: recentHistory.length,
+                    _fifty50Sessions: burstSessions,
+                    activeDays3: activeDays3,
+                    _phoneJokerUsed: (bs.abilitiesUsed && bs.abilitiesUsed.phoneJoker) || 0,
                     highAverageQuizzes: bs.highAverageQuizzes || 0,
                     totalQuizzes: bs.totalQuizzes || 0,
                     currentStreak: bs.currentStreak || 0,
                     uniqueQuestions: bs.uniqueQuestions || Object.keys(user.questionStats || {}).length,
                     perfectQuizzes: bs.perfectQuizzes || 0,
-                    marathonDays: bs.marathonDays || 0,
-                    timerQuizzes: bs.timerQuizzes || 0
+                    marathonDays: bs.marathonDays || 0
                 };
             },
 
@@ -5866,7 +5881,6 @@
                 const def = this.DEFS[key];
                 if (!def) return;
                 ab.charges--;
-                ab.used = (ab.used || 0) + 1;
                 abilityUsedThisQuestion[key] = true;
                 AppState.abilities.usedThisQuestion[key] = true;
                 this._applyEffect(key);
@@ -5930,10 +5944,83 @@
                         AppState.abilities.secondChanceArmed = true;
                         Toast.show('🔄 2. Chance aktiviert! Bei falscher Antwort nochmal versuchen.', 'info');
                         break;
+                    case 'swap':
+                        this._useSwap();
+                        return;
+                    case 'teamBonus':
+                        this._useTeamBonus();
+                        return;
                     case 'phoneJoker':
                         this._usePhoneJoker(q);
                         return;
                 }
+            },
+
+            _useSwap() {
+                // Finde eine andere aktive Frage die noch nicht im Quiz vorkommt
+                const usedIds = new Set(currentQuizQuestions.map(q => q.questionId));
+                const available = questions.filter(q => q.active !== false && !usedIds.has(q.questionId));
+                if (available.length === 0) {
+                    Toast.show('Keine anderen Fragen verfügbar!', 'warning');
+                    // Refund
+                    const ab = currentUser.abilities.swap;
+                    if (ab) { ab.charges++; }
+                    abilityUsedThisQuestion.swap = false;
+                    this.renderAbilityBar();
+                    return;
+                }
+                shuffleArray(available);
+                currentQuizQuestions[currentQuestionIndex] = available[0];
+                Toast.show('🎲 Frage getauscht!', 'info');
+                ClassicQuizPlugin.showQuestion();
+            },
+
+            _useTeamBonus() {
+                const others = users.filter(u => u.name !== currentUser.name);
+                if (others.length === 0) {
+                    Toast.show('Keine anderen Spieler vorhanden.', 'warning');
+                    const ab = currentUser.abilities.teamBonus;
+                    if (ab) { ab.charges++; }
+                    abilityUsedThisQuestion.teamBonus = false;
+                    this.renderAbilityBar();
+                    return;
+                }
+                // Spieler-Auswahl Dialog
+                const overlay = GameDialog._ensureOverlay();
+                const playerBtns = others.map(u =>
+                    `<button class="btn" style="width:100%;margin-bottom:8px;padding:12px;" data-player="${sanitizeHTML(u.name)}">${sanitizeHTML(u.name)}</button>`
+                ).join('');
+                overlay.innerHTML = `
+                    <div style="background:var(--glass-bg,rgba(30,30,50,0.95));border:1px solid rgba(255,255,255,0.15);border-radius:16px;padding:30px;max-width:400px;width:90%;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,0.5);">
+                        <div style="font-size:3rem;margin-bottom:10px;">👥</div>
+                        <h3 style="color:#f1c40f;margin:0 0 10px;">Team-Bonus</h3>
+                        <p style="color:#ddd;margin:0 0 20px;line-height:1.5;">3× XP für dich und einen Mitspieler!<br><small>Wähle deinen Teampartner:</small></p>
+                        <div id="teamBonusPlayerList">${playerBtns}</div>
+                        <button id="teamBonusCancel" class="btn btn-secondary" style="margin-top:8px;min-width:100px;">Abbrechen</button>
+                    </div>`;
+                overlay.style.display = 'flex';
+                const self = this;
+                document.getElementById('teamBonusCancel').onclick = function() {
+                    GameDialog._close();
+                    const ab = currentUser.abilities.teamBonus;
+                    if (ab) { ab.charges++; }
+                    abilityUsedThisQuestion.teamBonus = false;
+                    self.renderAbilityBar();
+                };
+                document.querySelectorAll('#teamBonusPlayerList button').forEach(btn => {
+                    btn.onclick = function() {
+                        const targetName = this.dataset.player;
+                        const target = users.find(u => u.name === targetName);
+                        if (!target) return;
+                        GameDialog._close();
+                        // 3× XP für aktuellen Spieler aktivieren
+                        currentUser.teamBonusActive = true;
+                        // Bonus für Mitspieler vormerken (wird beim nächsten Laden angewendet)
+                        target.pendingTeamBonus = (target.pendingTeamBonus || 0) + 50;
+                        Toast.show(`👥 Team-Bonus aktiviert!\n3× XP für dich, +50 Bonus-XP für ${target.name}!`, 'success', 5000);
+                        self.renderAbilityBar();
+                    };
+                });
             },
 
             _usePhoneJoker(question) {
@@ -5942,7 +6029,7 @@
                     Toast.show('Keine anderen Spieler vorhanden.', 'warning');
                     // Refund: charges were already decremented in useAbility
                     const ab = currentUser.abilities.phoneJoker;
-                    if (ab) { ab.charges++; ab.used = Math.max(0, (ab.used || 0) - 1); }
+                    if (ab) { ab.charges++; }
                     abilityUsedThisQuestion.phoneJoker = false;
                     this.renderAbilityBar();
                     return;
@@ -5967,7 +6054,7 @@
                     GameDialog._close();
                     // Refund
                     const ab = currentUser.abilities.phoneJoker;
-                    if (ab) { ab.charges++; ab.used = Math.max(0, (ab.used || 0) - 1); }
+                    if (ab) { ab.charges++; }
                     abilityUsedThisQuestion.phoneJoker = false;
                     self.renderAbilityBar();
                 };
@@ -9173,8 +9260,7 @@
                 masterData = {
                     version: CONFIG.FILE.VERSION,
                     lastBackup: null,
-                    settings: quizSettings,
-                    playerBackups: {}
+                    settings: quizSettings
                 };
             }
 
@@ -9282,26 +9368,6 @@
             Object.values(playersByName).forEach(pf => {
                 users.push(pf.data);
             });
-
-            // Falls Spieler im Master-Backup aber keine eigene Datei haben
-            if (masterData.playerBackups) {
-                Object.entries(masterData.playerBackups).forEach(function(entry) {
-                    let name = entry[0], backup = entry[1];
-                    if (!users.find(function(u){ return u.name === name; })) {
-                        if (backup.data) {
-                            users.push(backup.data);
-                        } else {
-                            users.push({
-                                id: Date.now() + Math.floor(Math.random()*1000),
-                                name: name, score: 0, correctAnswers: 0, totalAnswers: 0,
-                                quizzesTaken: 0, xp: backup.xp || 0, level: backup.level || 1,
-                                streak: 0, lastQuizDate: null,
-                                achievements: [], quizHistory: [], badgeStats: {}
-                            });
-                        }
-                    }
-                });
-            }
 
             // Cross-Reference: Phone-Joker System (3 Phasen)
             const jokerExpiryMs = CONFIG.TIMER.GHOST_CLEANUP_MONTHS * 30 * 24 * 60 * 60 * 1000;
@@ -9484,12 +9550,6 @@
             // 1. Spieler-Datei speichern
             saveCurrentPlayer();
 
-            // 2. Master-Backup nach kurzer Verzögerung
-            setTimeout(() => {
-                if (confirm('Möchten Sie auch das Master-Backup aktualisieren?\n\n(Enthält alle Spieler als Sicherung)')) {
-                    saveMasterBackup();
-                }
-            }, 500);
         }
 
 
@@ -9500,18 +9560,8 @@
                 settings: quizSettings,
                 badges: quizSettings.badges || null,
                 pluginConfig: PluginRegistry.getConfig(),
-                questionSources: loadedQuestionFiles.map(function(f){ return f.name; }),
-                playerBackups: {}
+                questionSources: loadedQuestionFiles.map(function(f){ return f.name; })
             };
-
-            // Nur Spieler-Referenzen (volle Daten in 04_operator-Dateien)
-            users.forEach(function(user) {
-                masterData.playerBackups[user.name] = {
-                    lastSeen: new Date().toISOString(),
-                    level: user.level || 1,
-                    xp: user.xp || 0
-                };
-            });
 
             // Format: 02_quiz-master_YYYY-MM-DD_HHMM-SS.json
             const now = new Date();
@@ -9534,7 +9584,7 @@
             URL.revokeObjectURL(url);
 
             const encInfo = quizSettings.encryptPlayerData ? ' (Base64-kodiert)' : '';
-            Toast.show('Master-Backup gespeichert als:\n' + fileName + encInfo + '\n\n' + users.length + ' Spieler als Backup enthalten.\nFragen werden separat in 03_questions-Dateien gespeichert.\n\nBitte speichern Sie die Datei im Quiz-Ordner!', 'success');
+            Toast.show('Master-Datei gespeichert als:\n' + fileName + encInfo + '\n\nEnthält Settings und Plugin-Konfiguration.\nFragen werden separat in 03_questions-Dateien gespeichert.\n\nBitte speichern Sie die Datei im Quiz-Ordner!', 'success');
         }
 
 
@@ -9714,16 +9764,6 @@
                 id++;
             });
 
-            // Player-Backups erstellen
-            let playerBackups = {};
-            users.forEach(function(user) {
-                playerBackups[user.name] = {
-                    lastSeen: new Date().toISOString(),
-                    level: 1,
-                    xp: 0
-                };
-            });
-
             // Standard Master-Daten (OHNE Fragen!)
             const masterData = {
                 version: CONFIG.FILE.VERSION,
@@ -9738,8 +9778,7 @@
                     xpSystem: { ...SETTINGS_DEFAULTS.xpSystem }
                 },
                 badges: null,
-                questionSources: ['03_questions_Allgemeinwissen_' + new Date().toISOString().slice(0,10) + '.json'],
-                playerBackups: playerBackups
+                questionSources: ['03_questions_Allgemeinwissen_' + new Date().toISOString().slice(0,10) + '.json']
             };
 
             // Fragen-Datei erstellen (03_questions_...)
@@ -9866,25 +9905,15 @@
                         users = importedData.users;
                     }
 
-                    // Master-Backup erstellen OHNE Fragen
+                    // Master-Datei erstellen OHNE Fragen
                     const masterData = {
                         version: CONFIG.FILE.VERSION,
                         lastBackup: new Date().toISOString(),
                         importedFrom: file.name,
                         settings: quizSettings,
                         badges: quizSettings.badges || null,
-                        questionSources: ['03_questions_Import_' + new Date().toISOString().slice(0,10) + '.json'],
-                        playerBackups: {}
+                        questionSources: ['03_questions_Import_' + new Date().toISOString().slice(0,10) + '.json']
                     };
-
-                    // Spieler-Referenzen
-                    users.forEach(function(user) {
-                        masterData.playerBackups[user.name] = {
-                            lastSeen: new Date().toISOString(),
-                            level: user.level || 1,
-                            xp: user.xp || 0
-                        };
-                    });
 
                     // Master-Datei herunterladen
                     const dataStr = JSON.stringify(masterData, null, 2);

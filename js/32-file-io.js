@@ -109,8 +109,7 @@ async function loadFromFolderInput(event) {
         masterData = {
             version: CONFIG.FILE.VERSION,
             lastBackup: null,
-            settings: quizSettings,
-            playerBackups: {}
+            settings: quizSettings
         };
     }
 
@@ -218,26 +217,6 @@ async function loadFromFolderInput(event) {
     Object.values(playersByName).forEach(pf => {
         users.push(pf.data);
     });
-
-    // Falls Spieler im Master-Backup aber keine eigene Datei haben
-    if (masterData.playerBackups) {
-        Object.entries(masterData.playerBackups).forEach(function(entry) {
-            let name = entry[0], backup = entry[1];
-            if (!users.find(function(u){ return u.name === name; })) {
-                if (backup.data) {
-                    users.push(backup.data);
-                } else {
-                    users.push({
-                        id: Date.now() + Math.floor(Math.random()*1000),
-                        name: name, score: 0, correctAnswers: 0, totalAnswers: 0,
-                        quizzesTaken: 0, xp: backup.xp || 0, level: backup.level || 1,
-                        streak: 0, lastQuizDate: null,
-                        achievements: [], quizHistory: [], badgeStats: {}
-                    });
-                }
-            }
-        });
-    }
 
     // Cross-Reference: Phone-Joker System (3 Phasen)
     const jokerExpiryMs = CONFIG.TIMER.GHOST_CLEANUP_MONTHS * 30 * 24 * 60 * 60 * 1000;
@@ -420,12 +399,6 @@ function saveMultiPlayerData() {
     // 1. Spieler-Datei speichern
     saveCurrentPlayer();
 
-    // 2. Master-Backup nach kurzer Verzögerung
-    setTimeout(() => {
-        if (confirm('Möchten Sie auch das Master-Backup aktualisieren?\n\n(Enthält alle Spieler als Sicherung)')) {
-            saveMasterBackup();
-        }
-    }, 500);
 }
 
 
@@ -436,18 +409,8 @@ function saveMasterBackup() {
         settings: quizSettings,
         badges: quizSettings.badges || null,
         pluginConfig: PluginRegistry.getConfig(),
-        questionSources: loadedQuestionFiles.map(function(f){ return f.name; }),
-        playerBackups: {}
+        questionSources: loadedQuestionFiles.map(function(f){ return f.name; })
     };
-
-    // Nur Spieler-Referenzen (volle Daten in 04_operator-Dateien)
-    users.forEach(function(user) {
-        masterData.playerBackups[user.name] = {
-            lastSeen: new Date().toISOString(),
-            level: user.level || 1,
-            xp: user.xp || 0
-        };
-    });
 
     // Format: 02_quiz-master_YYYY-MM-DD_HHMM-SS.json
     const now = new Date();
@@ -470,7 +433,7 @@ function saveMasterBackup() {
     URL.revokeObjectURL(url);
 
     const encInfo = quizSettings.encryptPlayerData ? ' (Base64-kodiert)' : '';
-    Toast.show('Master-Backup gespeichert als:\n' + fileName + encInfo + '\n\n' + users.length + ' Spieler als Backup enthalten.\nFragen werden separat in 03_questions-Dateien gespeichert.\n\nBitte speichern Sie die Datei im Quiz-Ordner!', 'success');
+    Toast.show('Master-Datei gespeichert als:\n' + fileName + encInfo + '\n\nEnthält Settings und Plugin-Konfiguration.\nFragen werden separat in 03_questions-Dateien gespeichert.\n\nBitte speichern Sie die Datei im Quiz-Ordner!', 'success');
 }
 
 
@@ -650,16 +613,6 @@ function createNewMultiplayerFiles() {
         id++;
     });
 
-    // Player-Backups erstellen
-    let playerBackups = {};
-    users.forEach(function(user) {
-        playerBackups[user.name] = {
-            lastSeen: new Date().toISOString(),
-            level: 1,
-            xp: 0
-        };
-    });
-
     // Standard Master-Daten (OHNE Fragen!)
     const masterData = {
         version: CONFIG.FILE.VERSION,
@@ -674,8 +627,7 @@ function createNewMultiplayerFiles() {
             xpSystem: { ...SETTINGS_DEFAULTS.xpSystem }
         },
         badges: null,
-        questionSources: ['03_questions_Allgemeinwissen_' + new Date().toISOString().slice(0,10) + '.json'],
-        playerBackups: playerBackups
+        questionSources: ['03_questions_Allgemeinwissen_' + new Date().toISOString().slice(0,10) + '.json']
     };
 
     // Fragen-Datei erstellen (03_questions_...)
@@ -802,25 +754,15 @@ function importLegacyFile(event) {
                 users = importedData.users;
             }
 
-            // Master-Backup erstellen OHNE Fragen
+            // Master-Datei erstellen OHNE Fragen
             const masterData = {
                 version: CONFIG.FILE.VERSION,
                 lastBackup: new Date().toISOString(),
                 importedFrom: file.name,
                 settings: quizSettings,
                 badges: quizSettings.badges || null,
-                questionSources: ['03_questions_Import_' + new Date().toISOString().slice(0,10) + '.json'],
-                playerBackups: {}
+                questionSources: ['03_questions_Import_' + new Date().toISOString().slice(0,10) + '.json']
             };
-
-            // Spieler-Referenzen
-            users.forEach(function(user) {
-                masterData.playerBackups[user.name] = {
-                    lastSeen: new Date().toISOString(),
-                    level: user.level || 1,
-                    xp: user.xp || 0
-                };
-            });
 
             // Master-Datei herunterladen
             const dataStr = JSON.stringify(masterData, null, 2);
