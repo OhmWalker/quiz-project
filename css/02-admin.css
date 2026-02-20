@@ -557,10 +557,11 @@
 
 .runner-up-center {
     display: flex;
-    align-items: center;
+    flex-direction: column;
     justify-content: center;
-    gap: 15px;
+    gap: 2px;
     flex: 1;
+    min-width: 0;
 }
 
 .runner-up-details {
@@ -575,12 +576,8 @@
 }
 
 .runner-up-score {
-    font-size: 0.95rem;
     font-weight: 800;
     color: var(--accent);
-    background: var(--shadow-50);
-    padding: 4px 12px;
-    border-radius: 15px;
     white-space: nowrap;
 }
 

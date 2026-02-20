@@ -593,24 +593,20 @@
                 <div class="section-block">
                     <div class="section-title">🏆 Bestenlisten-System</div>
                     <div class="info-box" style="margin-top:0;margin-bottom:10px;">
-                        <strong>Score-Formel:</strong> (Qualität × Gew.) + (Quantität × Gew.) + (Aktivität × Gew.)
+                        <strong>Score-Formel:</strong> (Qualität × Gew.) + (Engagement × Gew.)
                     </div>
                     <div class="sub-title">Gewichtungen (= 100%)</div>
-                    <div class="grid-3col">
+                    <div class="grid-2col">
                         <div class="field-row">
                             <span class="field-label">Qualität %</span>
-                            <input type="number" id="leaderboardQualityWeight" min="0" max="100" value="40">
+                            <input type="number" id="leaderboardQualityWeight" min="0" max="100" value="50">
                         </div>
                         <div class="field-row">
-                            <span class="field-label">Quantität %</span>
-                            <input type="number" id="leaderboardQuantityWeight" min="0" max="100" value="30">
-                        </div>
-                        <div class="field-row">
-                            <span class="field-label">Aktivität %</span>
-                            <input type="number" id="leaderboardActivityWeight" min="0" max="100" value="30">
+                            <span class="field-label">Engagement %</span>
+                            <input type="number" id="leaderboardEngagementWeight" min="0" max="100" value="50">
                         </div>
                     </div>
-                    <div class="sub-title">Zeitverfall & Quantität</div>
+                    <div class="sub-title">Qualität</div>
                     <div class="grid-2col">
                         <div class="field-row">
                             <span class="field-label">Verfall/Tag<span class="hint">0.99 = 1%/Tag</span></span>
@@ -620,24 +616,20 @@
                             <span class="field-label">Max. Alter (Tage)</span>
                             <input type="number" id="leaderboardMaxAgeDays" min="7" max="365" value="90">
                         </div>
+                    </div>
+                    <div class="sub-title">Engagement</div>
+                    <div class="grid-2col">
                         <div class="field-row">
-                            <span class="field-label">Ziel-Quiz<span class="hint">für 100% Score</span></span>
-                            <input type="number" id="leaderboardTargetQuizzes" min="1" max="50" value="15">
+                            <span class="field-label">Punkte/Quiz<span class="hint">Boost pro Quiz</span></span>
+                            <input type="number" id="leaderboardEngagementBoost" min="1" max="20" value="5">
+                        </div>
+                        <div class="field-row">
+                            <span class="field-label">Verfall/Tag<span class="hint">0.95 = 5%/Tag</span></span>
+                            <input type="number" id="leaderboardEngagementDecay" min="0.8" max="0.99" step="0.01" value="0.95">
                         </div>
                         <div class="field-row">
                             <span class="field-label">Min. Quiz f. Liste</span>
                             <input type="number" id="leaderboardMinQuizzes" min="0" max="20" value="0">
-                        </div>
-                    </div>
-                    <div class="sub-title">Aktivität</div>
-                    <div class="grid-2col">
-                        <div class="field-row">
-                            <span class="field-label">Punkte-Verlust/Tag</span>
-                            <input type="number" id="leaderboardInactivityPenalty" min="1" max="20" value="2">
-                        </div>
-                        <div class="field-row">
-                            <span class="field-label">Max. inaktive Tage</span>
-                            <input type="number" id="leaderboardMaxInactiveDays" min="5" max="100" value="50">
                         </div>
                     </div>
                     <div class="section-actions">

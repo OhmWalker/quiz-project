@@ -358,7 +358,6 @@ const ClassicQuizPlugin = {
             currentUser.correctAnswers = (currentUser.correctAnswers || 0) + correct;
             currentUser.totalAnswers = (currentUser.totalAnswers || 0) + total;
             currentUser.quizzesTaken = (currentUser.quizzesTaken || 0) + 1;
-            currentUser.score = currentUser.totalAnswers > 0 ? Math.round((currentUser.correctAnswers / currentUser.totalAnswers) * 100) : 0;
             const lvl = calculateLevel(currentUser.totalXP);
             currentUser.level = lvl.level;
             incrementDailyQuizCount(currentUser);

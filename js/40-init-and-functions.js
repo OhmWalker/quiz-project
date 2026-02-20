@@ -1248,7 +1248,7 @@ function updateXPSettings() {
 function updateLeaderboardSettings() { LeaderboardPlugin.updateSettings(); }
 function updateLeaderboardPreview() { LeaderboardPlugin.updatePreview(); }
 
-// LeaderboardPlugin.calculateScore() und LeaderboardPlugin.getQuizzesThisMonth() direkt verwenden
+// LeaderboardPlugin.calculateScore() direkt verwenden
 
 function uploadAvatar(levelKey, event, preset) { UserManagementPlugin.uploadAvatar(levelKey, event, preset); }
 

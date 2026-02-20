@@ -43,7 +43,6 @@ const UserManagementPlugin = {
             <div class="card" style="padding:15px;text-align:center;"><div style="font-size:2rem;">${lvl.level}</div><div style="opacity:0.7;">Level</div></div>
             <div class="card" style="padding:15px;text-align:center;"><div style="font-size:2rem;">${user.totalXP||0}</div><div style="opacity:0.7;">XP</div></div>
             <div class="card" style="padding:15px;text-align:center;"><div style="font-size:2rem;">${user.quizzesTaken||0}</div><div style="opacity:0.7;">Quizze</div></div>
-            <div class="card" style="padding:15px;text-align:center;"><div style="font-size:2rem;">${user.score||0}%</div><div style="opacity:0.7;">Quote</div></div>
         </div>`;
     },
     renderSuperAdminEditForm(){return'';},
