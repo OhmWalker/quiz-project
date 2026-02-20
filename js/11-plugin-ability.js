@@ -5,13 +5,13 @@
 const AbilityPlugin = {
     name: 'AbilityPlugin',
     DEFS: {
-        fiftyFifty: { icon:'🎯', name:'50/50', desc:'Entfernt 2 falsche Antworten', earnPer:3, passive:false },
-        skip:       { icon:'⏭️', name:'Überspringen', desc:'Frage überspringen ohne Strafe', earnPer:5, passive:false },
-        hint:       { icon:'💡', name:'Hinweis', desc:'Zeigt den Hinweistext an', earnPer:4, passive:false },
-        doubleXP:   { icon:'✨', name:'Doppel-XP', desc:'Doppelte XP für richtige Antwort', earnPer:6, passive:false },
-        shield:     { icon:'🛡️', name:'Schild', desc:'Schützt vor XP-Verlust bei falscher Antwort', earnPer:7, passive:true },
-        secondChance:{ icon:'🔄', name:'2. Chance', desc:'Bei falscher Antwort erneut versuchen', earnPer:8, passive:true },
-        phoneJoker: { icon:'📞', name:'Telefon', desc:'Sende Frage an anderen Spieler (5× XP bei richtig)', earnPer:5, passive:false }
+        fiftyFifty:   { icon:'🎯', name:'50/50', desc:'Entfernt 2 falsche Antworten', earnPer:3, earnStat:'_fifty50Sessions', passive:false },
+        skip:         { icon:'⏭️', name:'Überspringen', desc:'Frage überspringen ohne Strafe', earnPer:10, earnStat:'totalQuizzes', passive:false },
+        hint:         { icon:'💡', name:'Hinweis', desc:'Zeigt den Hinweistext an', earnPer:20, earnStat:'uniqueQuestions', passive:false },
+        doubleXP:     { icon:'✨', name:'Doppel-XP', desc:'Doppelte XP für richtige Antwort', earnPer:1, earnStat:'perfectQuizzes', passive:false },
+        shield:       { icon:'🛡️', name:'Schild', desc:'Schützt vor XP-Verlust bei falscher Antwort', earnPer:7, earnStat:'currentStreak', passive:true },
+        secondChance: { icon:'🔄', name:'2. Chance', desc:'Bei falscher Antwort erneut versuchen', earnPer:3, earnStat:'currentStreak', passive:true },
+        phoneJoker:   { icon:'📞', name:'Telefon', desc:'Sende Frage an anderen Spieler (5× XP bei richtig)', earnPer:5, earnStat:'highAverageQuizzes', passive:false }
     },
 
     init() {
@@ -46,16 +46,52 @@ const AbilityPlugin = {
         });
     },
 
+    getStatValues(user) {
+        const bs = user.badgeStats || {};
+        const now = Date.now();
+        const recentHistory = (user.history || []).filter(h => now - new Date(h.date).getTime() < 3600000);
+        return {
+            _fifty50Sessions: recentHistory.length,
+            highAverageQuizzes: bs.highAverageQuizzes || 0,
+            totalQuizzes: bs.totalQuizzes || 0,
+            currentStreak: bs.currentStreak || 0,
+            uniqueQuestions: bs.uniqueQuestions || Object.keys(user.questionStats || {}).length,
+            perfectQuizzes: bs.perfectQuizzes || 0,
+            marathonDays: bs.marathonDays || 0,
+            timerQuizzes: bs.timerQuizzes || 0
+        };
+    },
+
     checkAbilityUnlocks(user) {
         if (!user) return;
         this.initAbilities(user);
-        const totalCorrect = user.correctAnswers || 0;
+        if (!user.chargesEarned) user.chargesEarned = {};
+        const ab = user.abilities;
+        const statValues = this.getStatValues(user);
+
+        // Migration: wenn chargesEarned leer aber Charges/Used vorhanden → Watermark setzen
+        const needsMigration = Object.keys(user.chargesEarned).length === 0 &&
+            Object.values(ab).some(a => (a.charges || 0) > 0 || (a.used || 0) > 0);
+
         Object.entries(this.DEFS).forEach(([key, def]) => {
-            const needed = def.earnPer || 5;
-            const newCharges = Math.floor(totalCorrect / needed);
-            const used = user.abilities[key].used || 0;
-            user.abilities[key].charges = Math.max(0, newCharges - used);
-            user.abilities[key].unlocked = newCharges > 0;
+            if (!ab[key]) ab[key] = { charges: 0, unlocked: false };
+            const statVal = statValues[def.earnStat] || 0;
+            const totalEarned = Math.floor(statVal / (def.earnPer || 5));
+
+            if (needsMigration) {
+                // Bestehende Charges bewahren: Watermark = max(stat-basiert, aktuell+used)
+                user.chargesEarned[key] = Math.max(totalEarned, (ab[key].charges || 0) + (ab[key].used || 0));
+            }
+
+            const previouslyEarned = user.chargesEarned[key] || 0;
+            const newCharges = totalEarned - previouslyEarned;
+
+            if (newCharges > 0) {
+                ab[key].charges = (ab[key].charges || 0) + newCharges;
+                user.chargesEarned[key] = totalEarned;
+            }
+
+            ab[key].unlocked = totalEarned > 0 || ab[key].unlocked || (ab[key].charges || 0) > 0;
         });
     },
 

@@ -390,6 +390,7 @@ const ClassicQuizPlugin = {
             bs.totalXP = currentUser.totalXP;
             bs.level = currentUser.level;
             if (pct === 100) bs.perfectQuizzes = (bs.perfectQuizzes || 0) + 1;
+            if (pct >= 80) bs.highAverageQuizzes = (bs.highAverageQuizzes || 0) + 1;
             const hour = new Date().getHours();
             if (hour < 8) bs.earlyQuizzes = (bs.earlyQuizzes || 0) + 1;
             if (hour >= 22) bs.lateQuizzes = (bs.lateQuizzes || 0) + 1;

@@ -245,17 +245,17 @@ const BadgePlugin = {
         if (!user || !PluginRegistry.isEnabled('AbilityPlugin')) return '';
         const defs = AbilityPlugin.DEFS;
         if (!defs) return '';
-        const totalCorrect = user.correctAnswers || 0;
+        const statValues = AbilityPlugin.getStatValues ? AbilityPlugin.getStatValues(user) : {};
         let html = '<div class="badge-sidebar-section"><div class="badge-sidebar-title">🎯 Fähigkeiten</div>';
         Object.keys(defs).forEach(key => {
             const def = defs[key];
             const charges = AbilityPlugin.getCharges ? AbilityPlugin.getCharges(key) : 0;
             const earnPer = def.earnPer || 5;
-            const totalEarned = Math.floor(totalCorrect / earnPer);
-            const unlocked = totalEarned > 0;
-            const progressToNext = totalCorrect % earnPer;
+            const statVal = statValues[def.earnStat] || 0;
+            const totalEarned = Math.floor(statVal / earnPer);
+            const unlocked = totalEarned > 0 || charges > 0;
+            const progressToNext = statVal % earnPer;
             const progressPct = Math.round((progressToNext / earnPer) * 100);
-            const used = (user.abilities && user.abilities[key]) ? (user.abilities[key].used || 0) : 0;
             html += `<div class="ability-sidebar-item ${unlocked ? 'unlocked' : ''}">
                 <div class="ab-progress" style="width:${progressPct}%"></div>
                 <span class="ab-icon">${def.icon}</span>
@@ -263,7 +263,7 @@ const BadgePlugin = {
                 <span class="ab-charges ${charges === 0 ? 'empty' : ''}">${charges}×</span>
             </div>`;
         });
-        html += '<div style="font-size:0.55rem;opacity:0.4;text-align:center;margin-top:4px;">Richtige Antworten schalten Ladungen frei</div>';
+        html += '<div style="font-size:0.55rem;opacity:0.4;text-align:center;margin-top:4px;">Stats schalten Ladungen frei</div>';
         return html + '</div>';
     },
 
