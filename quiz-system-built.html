@@ -1999,6 +1999,14 @@
             flex-direction: column;
         }
 
+        .badge-icon-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            justify-content: center;
+            padding: 4px 0;
+        }
+
         #badgeListLeft .badge-sidebar-section {
             grid-column: 1 / -1;
         }
@@ -2015,7 +2023,7 @@
         .ability-sidebar-item {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 15px;
             padding: 5px 8px;
             border-radius: 10px;
             background: rgba(255,255,255,0.03);
@@ -2152,6 +2160,9 @@
         }
 
         .badge-sidebar-section {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
             grid-column: 1 / -1;
             font-size: 0.65rem;
             text-align: center;
@@ -6570,7 +6581,7 @@
 
             renderBadgeItems(badges, stats) {
                 if (!badges || badges.length === 0) return '';
-                return '<div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;padding:4px 0;">' +
+                return '<div class="badge-icon-grid">' +
                     badges.filter(b => b.active !== false).map(b => {
                     const val = stats[b.stat] || 0;
                     const tier = this.getBadgeTier(val, b.thresholds, b.inverted);
@@ -6590,7 +6601,7 @@
                 if (!user || !PluginRegistry.isEnabled('AbilityPlugin')) return '';
                 const defs = AbilityPlugin.DEFS;
                 if (!defs) return '';
-                let html = '<div class="badge-sidebar-section"><div class="badge-sidebar-title">🎯 Fähigkeiten-Status</div>';
+                let html = '<div class="badge-sidebar-section"><div class="badge-sidebar-title">🎯 Fähigkeiten</div>';
                 Object.keys(defs).forEach(key => {
                     const ab = defs[key];
                     const charges = AbilityPlugin.getCharges ? AbilityPlugin.getCharges(key) : 0;

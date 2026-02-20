@@ -229,7 +229,7 @@ const BadgePlugin = {
 
     renderBadgeItems(badges, stats) {
         if (!badges || badges.length === 0) return '';
-        return '<div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;padding:4px 0;">' +
+        return '<div class="badge-icon-grid">' +
             badges.filter(b => b.active !== false).map(b => {
             const val = stats[b.stat] || 0;
             const tier = this.getBadgeTier(val, b.thresholds, b.inverted);
@@ -249,7 +249,7 @@ const BadgePlugin = {
         if (!user || !PluginRegistry.isEnabled('AbilityPlugin')) return '';
         const defs = AbilityPlugin.DEFS;
         if (!defs) return '';
-        let html = '<div class="badge-sidebar-section"><div class="badge-sidebar-title">🎯 Fähigkeiten-Status</div>';
+        let html = '<div class="badge-sidebar-section"><div class="badge-sidebar-title">🎯 Fähigkeiten</div>';
         Object.keys(defs).forEach(key => {
             const ab = defs[key];
             const charges = AbilityPlugin.getCharges ? AbilityPlugin.getCharges(key) : 0;
