@@ -69,6 +69,7 @@ const ClassicQuizPlugin = {
         const count = Math.min(quizSettings.questionsPerQuiz || CONFIG.QUIZ.DEFAULT_QUESTIONS_PER_QUIZ, active.length);
         currentQuizQuestions = this.selectQuestionsForUser(currentUser, count);
         shuffleArray(currentQuizQuestions);
+        this._insertPendingPhoneJokers();
         currentQuestionIndex = 0;
         userAnswers = [];
         this._quizXP = 0;
@@ -310,10 +311,29 @@ const ClassicQuizPlugin = {
             if (isCorrect) { qs.correct++; qs.consecutiveCorrect = (qs.consecutiveCorrect || 0) + 1; }
             else { qs.consecutiveCorrect = 0; }
         }
+        // Resolve phone joker
+        this._resolvePhoneJoker(q, isCorrect);
         // Show buttons
         document.getElementById('nextBtn').style.display = '';
         if (q.explanation) document.getElementById('explainBtn').style.display = '';
         EventBus.emit(EventBus.EVENTS.QUIZ_ANSWER, { questionId: q.questionId, correct: isCorrect, xp: xpGain });
+    },
+
+    _resolvePhoneJoker(question, wasCorrect) {
+        if (!question._isPhoneJoker) return;
+        // Mark as resolved on currentUser's pendingPhoneJoker (stays as receipt)
+        if (currentUser.pendingPhoneJoker) {
+            currentUser.pendingPhoneJoker.forEach(j => {
+                if (j.from === question._jokerFrom && j.questionId === question.questionId && !j.resolved) {
+                    j.resolved = true;
+                    j.correct = wasCorrect;
+                    j.resolvedDate = new Date().toISOString();
+                }
+            });
+        }
+        if (wasCorrect) {
+            Toast.show(`📞 ${question._jokerFrom} bekommt beim nächsten Laden 5× XP Bonus!`, 'success', 4000);
+        }
     },
 
     showExplanation() {
@@ -462,6 +482,33 @@ const ClassicQuizPlugin = {
         renderUserSelect();
         showScreen('startScreen');
         EventBus.emit(EventBus.EVENTS.QUIZ_RESTARTED, {});
+    },
+
+    _insertPendingPhoneJokers() {
+        if (!currentUser || !currentUser.pendingPhoneJoker || currentUser.pendingPhoneJoker.length === 0) return;
+        // Cleanup: remove expired jokers (older than 90 days) or inactive questions
+        const ninetyDaysAgo = Date.now() - (90 * 24 * 60 * 60 * 1000);
+        currentUser.pendingPhoneJoker = currentUser.pendingPhoneJoker.filter(j => {
+            if (j.date && new Date(j.date).getTime() < ninetyDaysAgo) return false;
+            return questions.some(qq => qq.questionId === j.questionId && qq.active !== false);
+        });
+        // Build joker questions (only unresolved)
+        const jokerQuestions = [];
+        currentUser.pendingPhoneJoker.filter(j => !j.resolved).forEach(joker => {
+            const q = questions.find(qq => qq.questionId === joker.questionId);
+            if (q) {
+                const jq = JSON.parse(JSON.stringify(q));
+                jq._isPhoneJoker = true;
+                jq._jokerFrom = joker.from;
+                jq._jokerDate = joker.date;
+                jokerQuestions.push(jq);
+            }
+        });
+        if (jokerQuestions.length > 0) {
+            // Insert at beginning so they come first
+            currentQuizQuestions = jokerQuestions.concat(currentQuizQuestions);
+            Toast.show(`📞 ${jokerQuestions.length} Telefon-Joker-Frage${jokerQuestions.length > 1 ? 'n' : ''} eingefügt!`, 'info', 4000);
+        }
     },
 
     abandonQuiz() {

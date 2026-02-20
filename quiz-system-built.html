@@ -2283,12 +2283,26 @@
         }
 
 
+        @media (max-width: 1700px) {
+            .badge-sidebar-left {
+                right: auto;
+                left: 4px;
+                width: 180px;
+                font-size: 0.6rem;
+            }
+            .badge-sidebar-right {
+                left: auto;
+                right: 4px;
+                width: 180px;
+                font-size: 0.6rem;
+            }
+        }
         @media (max-width: 1200px) {
             .badge-sidebar {
-                display: none !important;
+                display: none;
             }
             .sidebar-toggle-tab {
-                display: none !important;
+                display: none;
             }
         }
 
@@ -5249,6 +5263,7 @@
                 const count = Math.min(quizSettings.questionsPerQuiz || CONFIG.QUIZ.DEFAULT_QUESTIONS_PER_QUIZ, active.length);
                 currentQuizQuestions = this.selectQuestionsForUser(currentUser, count);
                 shuffleArray(currentQuizQuestions);
+                this._insertPendingPhoneJokers();
                 currentQuestionIndex = 0;
                 userAnswers = [];
                 this._quizXP = 0;
@@ -5490,10 +5505,29 @@
                     if (isCorrect) { qs.correct++; qs.consecutiveCorrect = (qs.consecutiveCorrect || 0) + 1; }
                     else { qs.consecutiveCorrect = 0; }
                 }
+                // Resolve phone joker
+                this._resolvePhoneJoker(q, isCorrect);
                 // Show buttons
                 document.getElementById('nextBtn').style.display = '';
                 if (q.explanation) document.getElementById('explainBtn').style.display = '';
                 EventBus.emit(EventBus.EVENTS.QUIZ_ANSWER, { questionId: q.questionId, correct: isCorrect, xp: xpGain });
+            },
+
+            _resolvePhoneJoker(question, wasCorrect) {
+                if (!question._isPhoneJoker) return;
+                // Mark as resolved on currentUser's pendingPhoneJoker (stays as receipt)
+                if (currentUser.pendingPhoneJoker) {
+                    currentUser.pendingPhoneJoker.forEach(j => {
+                        if (j.from === question._jokerFrom && j.questionId === question.questionId && !j.resolved) {
+                            j.resolved = true;
+                            j.correct = wasCorrect;
+                            j.resolvedDate = new Date().toISOString();
+                        }
+                    });
+                }
+                if (wasCorrect) {
+                    Toast.show(`📞 ${question._jokerFrom} bekommt beim nächsten Laden 5× XP Bonus!`, 'success', 4000);
+                }
             },
 
             showExplanation() {
@@ -5644,6 +5678,33 @@
                 EventBus.emit(EventBus.EVENTS.QUIZ_RESTARTED, {});
             },
 
+            _insertPendingPhoneJokers() {
+                if (!currentUser || !currentUser.pendingPhoneJoker || currentUser.pendingPhoneJoker.length === 0) return;
+                // Cleanup: remove expired jokers (older than 90 days) or inactive questions
+                const ninetyDaysAgo = Date.now() - (90 * 24 * 60 * 60 * 1000);
+                currentUser.pendingPhoneJoker = currentUser.pendingPhoneJoker.filter(j => {
+                    if (j.date && new Date(j.date).getTime() < ninetyDaysAgo) return false;
+                    return questions.some(qq => qq.questionId === j.questionId && qq.active !== false);
+                });
+                // Build joker questions (only unresolved)
+                const jokerQuestions = [];
+                currentUser.pendingPhoneJoker.filter(j => !j.resolved).forEach(joker => {
+                    const q = questions.find(qq => qq.questionId === joker.questionId);
+                    if (q) {
+                        const jq = JSON.parse(JSON.stringify(q));
+                        jq._isPhoneJoker = true;
+                        jq._jokerFrom = joker.from;
+                        jq._jokerDate = joker.date;
+                        jokerQuestions.push(jq);
+                    }
+                });
+                if (jokerQuestions.length > 0) {
+                    // Insert at beginning so they come first
+                    currentQuizQuestions = jokerQuestions.concat(currentQuizQuestions);
+                    Toast.show(`📞 ${jokerQuestions.length} Telefon-Joker-Frage${jokerQuestions.length > 1 ? 'n' : ''} eingefügt!`, 'info', 4000);
+                }
+            },
+
             abandonQuiz() {
                 if (!this._answered && currentQuestionIndex === 0 && userAnswers.length === 0) {
                     showScreen('startScreen');
@@ -5684,7 +5745,8 @@
                 hint:       { icon:'💡', name:'Hinweis', desc:'Zeigt den Hinweistext an', earnPer:4, passive:false },
                 doubleXP:   { icon:'✨', name:'Doppel-XP', desc:'Doppelte XP für richtige Antwort', earnPer:6, passive:false },
                 shield:     { icon:'🛡️', name:'Schild', desc:'Schützt vor XP-Verlust bei falscher Antwort', earnPer:7, passive:true },
-                secondChance:{ icon:'🔄', name:'2. Chance', desc:'Bei falscher Antwort erneut versuchen', earnPer:8, passive:true }
+                secondChance:{ icon:'🔄', name:'2. Chance', desc:'Bei falscher Antwort erneut versuchen', earnPer:8, passive:true },
+                phoneJoker: { icon:'📞', name:'Telefon', desc:'Sende Frage an anderen Spieler (5× XP bei richtig)', earnPer:5, passive:false }
             },
 
             init() {
@@ -5693,6 +5755,9 @@
                     this.checkAbilityUnlocks(data.user);
                     this.checkPendingJokers(data.user);
                     this.checkPendingTeamBonus(data.user);
+                }, 'AbilityPlugin');
+                EventBus.on(EventBus.EVENTS.QUIZ_COMPLETED, () => {
+                    if (currentUser) this.checkAbilityUnlocks(currentUser);
                 }, 'AbilityPlugin');
                 EventBus.on(EventBus.EVENTS.QUIZ_QUESTION, () => {
                     this.renderAbilityBar();
@@ -5709,6 +5774,8 @@
             initAbilities(user) {
                 if (!user) return;
                 if (!user.abilities) user.abilities = {};
+                if (!user.badgeStats) user.badgeStats = {};
+                if (!user.badgeStats.abilitiesUsed) user.badgeStats.abilitiesUsed = {};
                 Object.keys(this.DEFS).forEach(key => {
                     if (user.abilities[key] === undefined) user.abilities[key] = { charges: 0, unlocked: false };
                 });
@@ -5826,7 +5893,73 @@
                         AppState.abilities.secondChanceArmed = true;
                         Toast.show('🔄 2. Chance aktiviert! Bei falscher Antwort nochmal versuchen.', 'info');
                         break;
+                    case 'phoneJoker':
+                        this._usePhoneJoker(q);
+                        return;
                 }
+            },
+
+            _usePhoneJoker(question) {
+                const others = users.filter(u => u.name !== currentUser.name);
+                if (others.length === 0) {
+                    Toast.show('Keine anderen Spieler vorhanden.', 'warning');
+                    // Refund: charges were already decremented in useAbility
+                    const ab = currentUser.abilities.phoneJoker;
+                    if (ab) { ab.charges++; ab.used = Math.max(0, (ab.used || 0) - 1); }
+                    abilityUsedThisQuestion.phoneJoker = false;
+                    this.renderAbilityBar();
+                    return;
+                }
+                // Player selection dialog via GameDialog overlay
+                const overlay = GameDialog._ensureOverlay();
+                const playerBtns = others.map(u =>
+                    `<button class="btn" style="width:100%;margin-bottom:8px;padding:12px;" data-player="${sanitizeHTML(u.name)}">${sanitizeHTML(u.name)}</button>`
+                ).join('');
+                overlay.innerHTML = `
+                    <div style="background:var(--glass-bg,rgba(30,30,50,0.95));border:1px solid rgba(255,255,255,0.15);border-radius:16px;padding:30px;max-width:400px;width:90%;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,0.5);">
+                        <div style="font-size:3rem;margin-bottom:10px;">📞</div>
+                        <h3 style="color:#f1c40f;margin:0 0 10px;">Telefon-Joker</h3>
+                        <p style="color:#ddd;margin:0 0 20px;line-height:1.5;">Wen möchtest du um Hilfe bitten?<br><small>Der Spieler bekommt die Frage beim nächsten Quiz. Bei richtig: 5× XP für euch beide!</small></p>
+                        <div id="phoneJokerPlayerList">${playerBtns}</div>
+                        <button id="phoneJokerCancel" class="btn btn-secondary" style="margin-top:8px;min-width:100px;">Abbrechen</button>
+                    </div>`;
+                overlay.style.display = 'flex';
+                const self = this;
+                // Cancel button
+                document.getElementById('phoneJokerCancel').onclick = function() {
+                    GameDialog._close();
+                    // Refund
+                    const ab = currentUser.abilities.phoneJoker;
+                    if (ab) { ab.charges++; ab.used = Math.max(0, (ab.used || 0) - 1); }
+                    abilityUsedThisQuestion.phoneJoker = false;
+                    self.renderAbilityBar();
+                };
+                // Player buttons
+                document.querySelectorAll('#phoneJokerPlayerList button').forEach(btn => {
+                    btn.onclick = function() {
+                        const targetName = this.dataset.player;
+                        const target = users.find(u => u.name === targetName);
+                        if (!target) return;
+                        GameDialog._close();
+                        // Save to sender
+                        if (!currentUser.sentPhoneJokers) currentUser.sentPhoneJokers = [];
+                        currentUser.sentPhoneJokers.push({
+                            from: currentUser.name, targetName: target.name,
+                            questionId: question.questionId, questionText: question.text,
+                            date: new Date().toISOString(), resolved: false
+                        });
+                        // Save to target
+                        if (!target.pendingPhoneJoker) target.pendingPhoneJoker = [];
+                        target.pendingPhoneJoker.push({
+                            from: currentUser.name, questionId: question.questionId,
+                            questionText: question.text, date: new Date().toISOString()
+                        });
+                        Toast.show(`📞 ${target.name} bekommt die Frage beim nächsten Quiz!\nBei richtig: 5× XP Bonus für euch beide!`, 'success', 5000);
+                        // Skip question
+                        userAnswers.push({ questionId: question.questionId, correct: false, xp: 0, skipped: true, phoneJokerTo: target.name });
+                        ClassicQuizPlugin.nextQuestion();
+                    };
+                });
             },
 
             dismissHint() {
@@ -5835,9 +5968,19 @@
             },
 
             checkPendingJokers(user) {
-                if (!user || !user.pendingPhoneJoker || user.pendingPhoneJoker.length === 0) return;
-                const jokers = user.pendingPhoneJoker;
-                jokers.forEach(j => {
+                if (!user) return;
+                // Apply pending joker bonus (set by cross-reference on import)
+                if (user.pendingJokerBonus && user.pendingJokerBonus > 0) {
+                    const bonus = user.pendingJokerBonus;
+                    Toast.show(`📞 Telefon-Joker Bonus: +${bonus} XP!`, 'success', 5000);
+                    user.totalXP = (user.totalXP || 0) + bonus;
+                    user.pendingJokerBonus = 0;
+                    const lvl = calculateLevel(user.totalXP);
+                    user.level = lvl.level;
+                }
+                // Show pending (unresolved) joker notifications
+                if (!user.pendingPhoneJoker || user.pendingPhoneJoker.length === 0) return;
+                user.pendingPhoneJoker.filter(j => !j.resolved).forEach(j => {
                     Toast.show(`📞 Telefon-Joker von ${j.from}:\n"${j.questionText}"`, 'info', 8000);
                 });
             },
@@ -6375,7 +6518,7 @@
                 vielspieler:{id:'vielspieler',name:'Vielspieler',emoji:'🎮',cat:'leistung',desc:'Versch. Gruppen gespielt',stat:'groupsPlayed',thresholds:[2,4,6,8,10]},
                 // Fähigkeiten-Badges (10)
                 jokermeister:{id:'jokermeister',name:'Joker-Meister',emoji:'🃏',cat:'faehigkeit',desc:'50:50 genutzt',stat:'ab_fiftyFifty',thresholds:[3,10,30,100,300]},
-                telefonmeister:{id:'telefonmeister',name:'Telefonmeister',emoji:'📞',cat:'faehigkeit',desc:'Hinweis genutzt',stat:'ab_hint',thresholds:[3,10,30,100,300]},
+                telefonmeister:{id:'telefonmeister',name:'Telefonmeister',emoji:'📞',cat:'faehigkeit',desc:'Telefon-Joker genutzt',stat:'ab_phoneJoker',thresholds:[3,10,30,100,300]},
                 springer:{id:'springer',name:'Springer',emoji:'⏭️',cat:'faehigkeit',desc:'Skip genutzt',stat:'ab_skip',thresholds:[3,10,30,100,300]},
                 comebackkid:{id:'comebackkid',name:'Comeback-Kid',emoji:'💖',cat:'faehigkeit',desc:'2. Chance genutzt',stat:'ab_secondChance',thresholds:[3,10,30,100,300]},
                 xpbooster:{id:'xpbooster',name:'XP-Booster',emoji:'💰',cat:'faehigkeit',desc:'Doppel-XP genutzt',stat:'ab_doubleXP',thresholds:[3,10,30,100,300]},
@@ -6485,7 +6628,8 @@
                 // Groups played
                 const groups = new Set();
                 (questions || []).forEach(q => {
-                    if (qs[q.id] && (qs[q.id].asked || 0) > 0) groups.add(q.group || 'Standard');
+                    const qid = q.questionId || q.id;
+                    if (qs[qid] && (qs[qid].asked || 0) > 0) groups.add(q.group || q._fileGroup || 'Standard');
                 });
                 stats.groupsPlayed = groups.size;
                 // Ability stats
@@ -6496,6 +6640,7 @@
                 stats.ab_secondChance = au.secondChance || 0;
                 stats.ab_doubleXP = au.doubleXP || 0;
                 stats.ab_shield = au.shield || 0;
+                stats.ab_phoneJoker = au.phoneJoker || 0;
                 stats.uniqueAbilities = Object.values(au).filter(v => v > 0).length;
                 // Total mini-games
                 stats.totalMiniGames = (stats.spinnerPlays || 0) + (stats.speedtapPlays || 0) + (stats.bossAttempts || 0);
@@ -6549,19 +6694,19 @@
                     '<div class="badge-sidebar-section"><div class="badge-sidebar-title">⚡ Fähigkeiten</div>' +
                     this.renderBadgeItems(rightBadges, stats) +
                     '</div>' + this.renderAbilitySidebar(user);
-                // Show sidebars
+                // Show sidebars (explicit 'flex' to override CSS media queries)
                 const sl = document.getElementById('badgeSidebarLeft');
                 const sr = document.getElementById('badgeSidebarRight');
-                if (sl) sl.style.display = '';
-                if (sr) sr.style.display = '';
+                if (sl) sl.style.display = 'flex';
+                if (sr) sr.style.display = 'flex';
                 // Restore collapsed state
                 if (this._sidebarState.left.collapsed) {
                     if (sl) sl.style.display = 'none';
-                    document.getElementById('sidebarToggleLeft').style.display = '';
+                    document.getElementById('sidebarToggleLeft').style.display = 'block';
                 }
                 if (this._sidebarState.right.collapsed) {
                     if (sr) sr.style.display = 'none';
-                    document.getElementById('sidebarToggleRight').style.display = '';
+                    document.getElementById('sidebarToggleRight').style.display = 'block';
                 }
                 this.restoreSidebarPositions();
             },
@@ -6588,17 +6733,25 @@
                 if (!user || !PluginRegistry.isEnabled('AbilityPlugin')) return '';
                 const defs = AbilityPlugin.DEFS;
                 if (!defs) return '';
+                const totalCorrect = user.correctAnswers || 0;
                 let html = '<div class="badge-sidebar-section"><div class="badge-sidebar-title">🎯 Fähigkeiten</div>';
                 Object.keys(defs).forEach(key => {
-                    const ab = defs[key];
+                    const def = defs[key];
                     const charges = AbilityPlugin.getCharges ? AbilityPlugin.getCharges(key) : 0;
-                    const maxCharges = ab.maxCharges || 3;
-                    html += `<div class="ability-sidebar-item">
-                        <span class="ab-icon">${ab.icon}</span>
-                        <span class="ab-name">${ab.name}</span>
-                        <span class="ab-charges">${charges}/${maxCharges}</span>
+                    const earnPer = def.earnPer || 5;
+                    const totalEarned = Math.floor(totalCorrect / earnPer);
+                    const unlocked = totalEarned > 0;
+                    const progressToNext = totalCorrect % earnPer;
+                    const progressPct = Math.round((progressToNext / earnPer) * 100);
+                    const used = (user.abilities && user.abilities[key]) ? (user.abilities[key].used || 0) : 0;
+                    html += `<div class="ability-sidebar-item ${unlocked ? 'unlocked' : ''}">
+                        <div class="ab-progress" style="width:${progressPct}%"></div>
+                        <span class="ab-icon">${def.icon}</span>
+                        <span class="ab-name">${def.name}</span>
+                        <span class="ab-charges ${charges === 0 ? 'empty' : ''}">${charges}×</span>
                     </div>`;
                 });
+                html += '<div style="font-size:0.55rem;opacity:0.4;text-align:center;margin-top:4px;">Richtige Antworten schalten Ladungen frei</div>';
                 return html + '</div>';
             },
 
@@ -6657,9 +6810,9 @@
                 const toggle = document.getElementById(toggleId);
                 if (state.collapsed) {
                     if (sidebar) sidebar.style.display = 'none';
-                    if (toggle) toggle.style.display = '';
+                    if (toggle) toggle.style.display = 'block';
                 } else {
-                    if (sidebar) sidebar.style.display = '';
+                    if (sidebar) sidebar.style.display = 'flex';
                     if (toggle) toggle.style.display = 'none';
                 }
             },
@@ -9113,23 +9266,52 @@
                 });
             }
 
-            // Cross-Reference: sentPhoneJokers → pendingPhoneJoker
+            // Cross-Reference: Phone-Joker System (3 Phasen)
             const jokerExpiryMs = CONFIG.TIMER.GHOST_CLEANUP_MONTHS * 30 * 24 * 60 * 60 * 1000;
             const jokerExpiryThreshold = Date.now() - jokerExpiryMs;
+
+            // Phase 1: Resolved Joker verarbeiten → Sender-Bonus berechnen
+            // B hat eine Joker-Frage beantwortet (resolved:true auf B.pendingPhoneJoker).
+            // Jetzt A's sentPhoneJokers als resolved markieren + Bonus auf A schreiben.
+            users.forEach(function(target) {
+                if (!target.pendingPhoneJoker) return;
+                target.pendingPhoneJoker.forEach(function(entry) {
+                    if (!entry.resolved) return;
+                    var sender = users.find(function(u){ return u.name === entry.from; });
+                    if (!sender || !sender.sentPhoneJokers) return;
+                    var sentEntry = sender.sentPhoneJokers.find(function(s) {
+                        return s.questionId === entry.questionId && s.targetName === target.name && !s.resolved;
+                    });
+                    if (!sentEntry) return; // bereits verarbeitet
+                    // Sender's sent-Eintrag als resolved markieren (wird in Phase 2 aufgeräumt)
+                    sentEntry.resolved = true;
+                    // Bonus nur einmal anwenden (bonusApplied verhindert Doppel-Bonus)
+                    if (!entry.bonusApplied && entry.correct) {
+                        var xpSettings = quizSettings.xpSystem || {};
+                        var bonusXP = (xpSettings.correctAnswerXP || 10) * 5;
+                        if (!sender.pendingJokerBonus) sender.pendingJokerBonus = 0;
+                        sender.pendingJokerBonus += bonusXP;
+                    }
+                    entry.bonusApplied = true;
+                });
+            });
+
+            // Phase 2: sentPhoneJokers aufräumen + pending aus sent erzeugen
             users.forEach(function(sender) {
                 if (!sender.sentPhoneJokers || sender.sentPhoneJokers.length === 0) return;
-                // Ghost-Joker Cleanup: abgelaufene + resolved entfernen
+                // Ghost-Joker Cleanup: resolved, abgelaufene, inaktive Fragen entfernen
                 sender.sentPhoneJokers = sender.sentPhoneJokers.filter(function(joker) {
                     if (joker.resolved) return false;
                     if (joker.date && new Date(joker.date).getTime() < jokerExpiryThreshold) return false;
-                    const qExists = questions.some(function(qq){ return qq.questionId === joker.questionId && qq.active !== false; });
+                    var qExists = questions.some(function(qq){ return qq.questionId === joker.questionId && qq.active !== false; });
                     return qExists;
                 });
+                // Pending-Einträge erzeugen für offene sent-Einträge
                 sender.sentPhoneJokers.forEach(function(joker) {
-                    const target = users.find(function(u){ return u.name === joker.targetName; });
+                    var target = users.find(function(u){ return u.name === joker.targetName; });
                     if (target) {
                         if (!target.pendingPhoneJoker) target.pendingPhoneJoker = [];
-                        const exists = target.pendingPhoneJoker.some(function(p) {
+                        var exists = target.pendingPhoneJoker.some(function(p) {
                             return p.from === joker.from && p.questionId === joker.questionId;
                         });
                         if (!exists) {
@@ -9139,6 +9321,24 @@
                             });
                         }
                     }
+                });
+            });
+
+            // Phase 3: Verwaiste resolved-Einträge aufräumen
+            // Wenn der Sender keinen passenden sent-Eintrag mehr hat (schon gespeichert),
+            // kann der resolved-Eintrag beim Empfänger entfernt werden.
+            users.forEach(function(target) {
+                if (!target.pendingPhoneJoker) return;
+                target.pendingPhoneJoker = target.pendingPhoneJoker.filter(function(entry) {
+                    if (!entry.resolved) return true; // offene behalten
+                    // Abgelaufene resolved-Einträge entfernen
+                    if (entry.date && new Date(entry.date).getTime() < jokerExpiryThreshold) return false;
+                    // Wenn Sender keinen passenden sent-Eintrag mehr hat → Quittung entfernen
+                    var sender = users.find(function(u){ return u.name === entry.from; });
+                    if (!sender || !sender.sentPhoneJokers) return false;
+                    return sender.sentPhoneJokers.some(function(s) {
+                        return s.questionId === entry.questionId && s.targetName === target.name;
+                    });
                 });
             });
 

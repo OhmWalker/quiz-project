@@ -315,12 +315,26 @@
 }
 
 
+@media (max-width: 1700px) {
+    .badge-sidebar-left {
+        right: auto;
+        left: 4px;
+        width: 180px;
+        font-size: 0.6rem;
+    }
+    .badge-sidebar-right {
+        left: auto;
+        right: 4px;
+        width: 180px;
+        font-size: 0.6rem;
+    }
+}
 @media (max-width: 1200px) {
     .badge-sidebar {
-        display: none !important;
+        display: none;
     }
     .sidebar-toggle-tab {
-        display: none !important;
+        display: none;
     }
 }
 

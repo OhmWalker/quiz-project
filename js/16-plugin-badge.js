@@ -30,7 +30,7 @@ const BadgePlugin = {
         vielspieler:{id:'vielspieler',name:'Vielspieler',emoji:'🎮',cat:'leistung',desc:'Versch. Gruppen gespielt',stat:'groupsPlayed',thresholds:[2,4,6,8,10]},
         // Fähigkeiten-Badges (10)
         jokermeister:{id:'jokermeister',name:'Joker-Meister',emoji:'🃏',cat:'faehigkeit',desc:'50:50 genutzt',stat:'ab_fiftyFifty',thresholds:[3,10,30,100,300]},
-        telefonmeister:{id:'telefonmeister',name:'Telefonmeister',emoji:'📞',cat:'faehigkeit',desc:'Hinweis genutzt',stat:'ab_hint',thresholds:[3,10,30,100,300]},
+        telefonmeister:{id:'telefonmeister',name:'Telefonmeister',emoji:'📞',cat:'faehigkeit',desc:'Telefon-Joker genutzt',stat:'ab_phoneJoker',thresholds:[3,10,30,100,300]},
         springer:{id:'springer',name:'Springer',emoji:'⏭️',cat:'faehigkeit',desc:'Skip genutzt',stat:'ab_skip',thresholds:[3,10,30,100,300]},
         comebackkid:{id:'comebackkid',name:'Comeback-Kid',emoji:'💖',cat:'faehigkeit',desc:'2. Chance genutzt',stat:'ab_secondChance',thresholds:[3,10,30,100,300]},
         xpbooster:{id:'xpbooster',name:'XP-Booster',emoji:'💰',cat:'faehigkeit',desc:'Doppel-XP genutzt',stat:'ab_doubleXP',thresholds:[3,10,30,100,300]},
@@ -140,7 +140,8 @@ const BadgePlugin = {
         // Groups played
         const groups = new Set();
         (questions || []).forEach(q => {
-            if (qs[q.id] && (qs[q.id].asked || 0) > 0) groups.add(q.group || 'Standard');
+            const qid = q.questionId || q.id;
+            if (qs[qid] && (qs[qid].asked || 0) > 0) groups.add(q.group || q._fileGroup || 'Standard');
         });
         stats.groupsPlayed = groups.size;
         // Ability stats
@@ -151,6 +152,7 @@ const BadgePlugin = {
         stats.ab_secondChance = au.secondChance || 0;
         stats.ab_doubleXP = au.doubleXP || 0;
         stats.ab_shield = au.shield || 0;
+        stats.ab_phoneJoker = au.phoneJoker || 0;
         stats.uniqueAbilities = Object.values(au).filter(v => v > 0).length;
         // Total mini-games
         stats.totalMiniGames = (stats.spinnerPlays || 0) + (stats.speedtapPlays || 0) + (stats.bossAttempts || 0);
@@ -204,19 +206,19 @@ const BadgePlugin = {
             '<div class="badge-sidebar-section"><div class="badge-sidebar-title">⚡ Fähigkeiten</div>' +
             this.renderBadgeItems(rightBadges, stats) +
             '</div>' + this.renderAbilitySidebar(user);
-        // Show sidebars
+        // Show sidebars (explicit 'flex' to override CSS media queries)
         const sl = document.getElementById('badgeSidebarLeft');
         const sr = document.getElementById('badgeSidebarRight');
-        if (sl) sl.style.display = '';
-        if (sr) sr.style.display = '';
+        if (sl) sl.style.display = 'flex';
+        if (sr) sr.style.display = 'flex';
         // Restore collapsed state
         if (this._sidebarState.left.collapsed) {
             if (sl) sl.style.display = 'none';
-            document.getElementById('sidebarToggleLeft').style.display = '';
+            document.getElementById('sidebarToggleLeft').style.display = 'block';
         }
         if (this._sidebarState.right.collapsed) {
             if (sr) sr.style.display = 'none';
-            document.getElementById('sidebarToggleRight').style.display = '';
+            document.getElementById('sidebarToggleRight').style.display = 'block';
         }
         this.restoreSidebarPositions();
     },
@@ -243,17 +245,25 @@ const BadgePlugin = {
         if (!user || !PluginRegistry.isEnabled('AbilityPlugin')) return '';
         const defs = AbilityPlugin.DEFS;
         if (!defs) return '';
+        const totalCorrect = user.correctAnswers || 0;
         let html = '<div class="badge-sidebar-section"><div class="badge-sidebar-title">🎯 Fähigkeiten</div>';
         Object.keys(defs).forEach(key => {
-            const ab = defs[key];
+            const def = defs[key];
             const charges = AbilityPlugin.getCharges ? AbilityPlugin.getCharges(key) : 0;
-            const maxCharges = ab.maxCharges || 3;
-            html += `<div class="ability-sidebar-item">
-                <span class="ab-icon">${ab.icon}</span>
-                <span class="ab-name">${ab.name}</span>
-                <span class="ab-charges">${charges}/${maxCharges}</span>
+            const earnPer = def.earnPer || 5;
+            const totalEarned = Math.floor(totalCorrect / earnPer);
+            const unlocked = totalEarned > 0;
+            const progressToNext = totalCorrect % earnPer;
+            const progressPct = Math.round((progressToNext / earnPer) * 100);
+            const used = (user.abilities && user.abilities[key]) ? (user.abilities[key].used || 0) : 0;
+            html += `<div class="ability-sidebar-item ${unlocked ? 'unlocked' : ''}">
+                <div class="ab-progress" style="width:${progressPct}%"></div>
+                <span class="ab-icon">${def.icon}</span>
+                <span class="ab-name">${def.name}</span>
+                <span class="ab-charges ${charges === 0 ? 'empty' : ''}">${charges}×</span>
             </div>`;
         });
+        html += '<div style="font-size:0.55rem;opacity:0.4;text-align:center;margin-top:4px;">Richtige Antworten schalten Ladungen frei</div>';
         return html + '</div>';
     },
 
@@ -312,9 +322,9 @@ const BadgePlugin = {
         const toggle = document.getElementById(toggleId);
         if (state.collapsed) {
             if (sidebar) sidebar.style.display = 'none';
-            if (toggle) toggle.style.display = '';
+            if (toggle) toggle.style.display = 'block';
         } else {
-            if (sidebar) sidebar.style.display = '';
+            if (sidebar) sidebar.style.display = 'flex';
             if (toggle) toggle.style.display = 'none';
         }
     },

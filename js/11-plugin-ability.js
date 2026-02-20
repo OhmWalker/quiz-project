@@ -10,7 +10,8 @@ const AbilityPlugin = {
         hint:       { icon:'💡', name:'Hinweis', desc:'Zeigt den Hinweistext an', earnPer:4, passive:false },
         doubleXP:   { icon:'✨', name:'Doppel-XP', desc:'Doppelte XP für richtige Antwort', earnPer:6, passive:false },
         shield:     { icon:'🛡️', name:'Schild', desc:'Schützt vor XP-Verlust bei falscher Antwort', earnPer:7, passive:true },
-        secondChance:{ icon:'🔄', name:'2. Chance', desc:'Bei falscher Antwort erneut versuchen', earnPer:8, passive:true }
+        secondChance:{ icon:'🔄', name:'2. Chance', desc:'Bei falscher Antwort erneut versuchen', earnPer:8, passive:true },
+        phoneJoker: { icon:'📞', name:'Telefon', desc:'Sende Frage an anderen Spieler (5× XP bei richtig)', earnPer:5, passive:false }
     },
 
     init() {
@@ -19,6 +20,9 @@ const AbilityPlugin = {
             this.checkAbilityUnlocks(data.user);
             this.checkPendingJokers(data.user);
             this.checkPendingTeamBonus(data.user);
+        }, 'AbilityPlugin');
+        EventBus.on(EventBus.EVENTS.QUIZ_COMPLETED, () => {
+            if (currentUser) this.checkAbilityUnlocks(currentUser);
         }, 'AbilityPlugin');
         EventBus.on(EventBus.EVENTS.QUIZ_QUESTION, () => {
             this.renderAbilityBar();
@@ -35,6 +39,8 @@ const AbilityPlugin = {
     initAbilities(user) {
         if (!user) return;
         if (!user.abilities) user.abilities = {};
+        if (!user.badgeStats) user.badgeStats = {};
+        if (!user.badgeStats.abilitiesUsed) user.badgeStats.abilitiesUsed = {};
         Object.keys(this.DEFS).forEach(key => {
             if (user.abilities[key] === undefined) user.abilities[key] = { charges: 0, unlocked: false };
         });
@@ -152,7 +158,73 @@ const AbilityPlugin = {
                 AppState.abilities.secondChanceArmed = true;
                 Toast.show('🔄 2. Chance aktiviert! Bei falscher Antwort nochmal versuchen.', 'info');
                 break;
+            case 'phoneJoker':
+                this._usePhoneJoker(q);
+                return;
         }
+    },
+
+    _usePhoneJoker(question) {
+        const others = users.filter(u => u.name !== currentUser.name);
+        if (others.length === 0) {
+            Toast.show('Keine anderen Spieler vorhanden.', 'warning');
+            // Refund: charges were already decremented in useAbility
+            const ab = currentUser.abilities.phoneJoker;
+            if (ab) { ab.charges++; ab.used = Math.max(0, (ab.used || 0) - 1); }
+            abilityUsedThisQuestion.phoneJoker = false;
+            this.renderAbilityBar();
+            return;
+        }
+        // Player selection dialog via GameDialog overlay
+        const overlay = GameDialog._ensureOverlay();
+        const playerBtns = others.map(u =>
+            `<button class="btn" style="width:100%;margin-bottom:8px;padding:12px;" data-player="${sanitizeHTML(u.name)}">${sanitizeHTML(u.name)}</button>`
+        ).join('');
+        overlay.innerHTML = `
+            <div style="background:var(--glass-bg,rgba(30,30,50,0.95));border:1px solid rgba(255,255,255,0.15);border-radius:16px;padding:30px;max-width:400px;width:90%;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,0.5);">
+                <div style="font-size:3rem;margin-bottom:10px;">📞</div>
+                <h3 style="color:#f1c40f;margin:0 0 10px;">Telefon-Joker</h3>
+                <p style="color:#ddd;margin:0 0 20px;line-height:1.5;">Wen möchtest du um Hilfe bitten?<br><small>Der Spieler bekommt die Frage beim nächsten Quiz. Bei richtig: 5× XP für euch beide!</small></p>
+                <div id="phoneJokerPlayerList">${playerBtns}</div>
+                <button id="phoneJokerCancel" class="btn btn-secondary" style="margin-top:8px;min-width:100px;">Abbrechen</button>
+            </div>`;
+        overlay.style.display = 'flex';
+        const self = this;
+        // Cancel button
+        document.getElementById('phoneJokerCancel').onclick = function() {
+            GameDialog._close();
+            // Refund
+            const ab = currentUser.abilities.phoneJoker;
+            if (ab) { ab.charges++; ab.used = Math.max(0, (ab.used || 0) - 1); }
+            abilityUsedThisQuestion.phoneJoker = false;
+            self.renderAbilityBar();
+        };
+        // Player buttons
+        document.querySelectorAll('#phoneJokerPlayerList button').forEach(btn => {
+            btn.onclick = function() {
+                const targetName = this.dataset.player;
+                const target = users.find(u => u.name === targetName);
+                if (!target) return;
+                GameDialog._close();
+                // Save to sender
+                if (!currentUser.sentPhoneJokers) currentUser.sentPhoneJokers = [];
+                currentUser.sentPhoneJokers.push({
+                    from: currentUser.name, targetName: target.name,
+                    questionId: question.questionId, questionText: question.text,
+                    date: new Date().toISOString(), resolved: false
+                });
+                // Save to target
+                if (!target.pendingPhoneJoker) target.pendingPhoneJoker = [];
+                target.pendingPhoneJoker.push({
+                    from: currentUser.name, questionId: question.questionId,
+                    questionText: question.text, date: new Date().toISOString()
+                });
+                Toast.show(`📞 ${target.name} bekommt die Frage beim nächsten Quiz!\nBei richtig: 5× XP Bonus für euch beide!`, 'success', 5000);
+                // Skip question
+                userAnswers.push({ questionId: question.questionId, correct: false, xp: 0, skipped: true, phoneJokerTo: target.name });
+                ClassicQuizPlugin.nextQuestion();
+            };
+        });
     },
 
     dismissHint() {
@@ -161,9 +233,19 @@ const AbilityPlugin = {
     },
 
     checkPendingJokers(user) {
-        if (!user || !user.pendingPhoneJoker || user.pendingPhoneJoker.length === 0) return;
-        const jokers = user.pendingPhoneJoker;
-        jokers.forEach(j => {
+        if (!user) return;
+        // Apply pending joker bonus (set by cross-reference on import)
+        if (user.pendingJokerBonus && user.pendingJokerBonus > 0) {
+            const bonus = user.pendingJokerBonus;
+            Toast.show(`📞 Telefon-Joker Bonus: +${bonus} XP!`, 'success', 5000);
+            user.totalXP = (user.totalXP || 0) + bonus;
+            user.pendingJokerBonus = 0;
+            const lvl = calculateLevel(user.totalXP);
+            user.level = lvl.level;
+        }
+        // Show pending (unresolved) joker notifications
+        if (!user.pendingPhoneJoker || user.pendingPhoneJoker.length === 0) return;
+        user.pendingPhoneJoker.filter(j => !j.resolved).forEach(j => {
             Toast.show(`📞 Telefon-Joker von ${j.from}:\n"${j.questionText}"`, 'info', 8000);
         });
     },

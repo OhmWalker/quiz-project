@@ -239,23 +239,52 @@ async function loadFromFolderInput(event) {
         });
     }
 
-    // Cross-Reference: sentPhoneJokers → pendingPhoneJoker
+    // Cross-Reference: Phone-Joker System (3 Phasen)
     const jokerExpiryMs = CONFIG.TIMER.GHOST_CLEANUP_MONTHS * 30 * 24 * 60 * 60 * 1000;
     const jokerExpiryThreshold = Date.now() - jokerExpiryMs;
+
+    // Phase 1: Resolved Joker verarbeiten → Sender-Bonus berechnen
+    // B hat eine Joker-Frage beantwortet (resolved:true auf B.pendingPhoneJoker).
+    // Jetzt A's sentPhoneJokers als resolved markieren + Bonus auf A schreiben.
+    users.forEach(function(target) {
+        if (!target.pendingPhoneJoker) return;
+        target.pendingPhoneJoker.forEach(function(entry) {
+            if (!entry.resolved) return;
+            var sender = users.find(function(u){ return u.name === entry.from; });
+            if (!sender || !sender.sentPhoneJokers) return;
+            var sentEntry = sender.sentPhoneJokers.find(function(s) {
+                return s.questionId === entry.questionId && s.targetName === target.name && !s.resolved;
+            });
+            if (!sentEntry) return; // bereits verarbeitet
+            // Sender's sent-Eintrag als resolved markieren (wird in Phase 2 aufgeräumt)
+            sentEntry.resolved = true;
+            // Bonus nur einmal anwenden (bonusApplied verhindert Doppel-Bonus)
+            if (!entry.bonusApplied && entry.correct) {
+                var xpSettings = quizSettings.xpSystem || {};
+                var bonusXP = (xpSettings.correctAnswerXP || 10) * 5;
+                if (!sender.pendingJokerBonus) sender.pendingJokerBonus = 0;
+                sender.pendingJokerBonus += bonusXP;
+            }
+            entry.bonusApplied = true;
+        });
+    });
+
+    // Phase 2: sentPhoneJokers aufräumen + pending aus sent erzeugen
     users.forEach(function(sender) {
         if (!sender.sentPhoneJokers || sender.sentPhoneJokers.length === 0) return;
-        // Ghost-Joker Cleanup: abgelaufene + resolved entfernen
+        // Ghost-Joker Cleanup: resolved, abgelaufene, inaktive Fragen entfernen
         sender.sentPhoneJokers = sender.sentPhoneJokers.filter(function(joker) {
             if (joker.resolved) return false;
             if (joker.date && new Date(joker.date).getTime() < jokerExpiryThreshold) return false;
-            const qExists = questions.some(function(qq){ return qq.questionId === joker.questionId && qq.active !== false; });
+            var qExists = questions.some(function(qq){ return qq.questionId === joker.questionId && qq.active !== false; });
             return qExists;
         });
+        // Pending-Einträge erzeugen für offene sent-Einträge
         sender.sentPhoneJokers.forEach(function(joker) {
-            const target = users.find(function(u){ return u.name === joker.targetName; });
+            var target = users.find(function(u){ return u.name === joker.targetName; });
             if (target) {
                 if (!target.pendingPhoneJoker) target.pendingPhoneJoker = [];
-                const exists = target.pendingPhoneJoker.some(function(p) {
+                var exists = target.pendingPhoneJoker.some(function(p) {
                     return p.from === joker.from && p.questionId === joker.questionId;
                 });
                 if (!exists) {
@@ -265,6 +294,24 @@ async function loadFromFolderInput(event) {
                     });
                 }
             }
+        });
+    });
+
+    // Phase 3: Verwaiste resolved-Einträge aufräumen
+    // Wenn der Sender keinen passenden sent-Eintrag mehr hat (schon gespeichert),
+    // kann der resolved-Eintrag beim Empfänger entfernt werden.
+    users.forEach(function(target) {
+        if (!target.pendingPhoneJoker) return;
+        target.pendingPhoneJoker = target.pendingPhoneJoker.filter(function(entry) {
+            if (!entry.resolved) return true; // offene behalten
+            // Abgelaufene resolved-Einträge entfernen
+            if (entry.date && new Date(entry.date).getTime() < jokerExpiryThreshold) return false;
+            // Wenn Sender keinen passenden sent-Eintrag mehr hat → Quittung entfernen
+            var sender = users.find(function(u){ return u.name === entry.from; });
+            if (!sender || !sender.sentPhoneJokers) return false;
+            return sender.sentPhoneJokers.some(function(s) {
+                return s.questionId === entry.questionId && s.targetName === target.name;
+            });
         });
     });
 
