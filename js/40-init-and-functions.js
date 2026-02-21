@@ -683,18 +683,6 @@ function updateQuizImageWidth(event, element) {
     applyQuizImageWidth();
 }
 
-function setImagemapMode(mode) {
-    imagemapEditorMode = mode;
-    imagemapPolyFinalized = false;
-    renderImagemapEditor();
-}
-
-function updateImagemapRadius(event, element) {
-    imagemapEditorRadius = parseFloat(element.value);
-    document.getElementById('imagemapRadiusVal').textContent = element.value;
-    renderImagemapEditor();
-}
-
 function toggleEncryptPlayerData() {
     var el = document.getElementById('encryptToggle');
     quizSettings.encryptPlayerData = el.checked;

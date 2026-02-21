@@ -241,6 +241,17 @@ const BadgePlugin = {
         }).join('') + '</div>';
     },
 
+    _abilityStatLabels: {
+        _fifty50Sessions: 'Burst-Sessions (2+ Quizze/h)',
+        totalQuizzes: 'Quizze gespielt',
+        uniqueQuestions: 'Verschiedene Fragen',
+        perfectQuizzes: 'Perfekte Quizze (100%)',
+        currentStreak: 'Tage Streak',
+        activeDays3: 'Tage mit 3+ Quizzen',
+        _phoneJokerUsed: 'Telefon-Joker genutzt',
+        highAverageQuizzes: 'Quizze mit ≥80%'
+    },
+
     renderAbilitySidebar(user) {
         if (!user || !PluginRegistry.isEnabled('AbilityPlugin')) return '';
         const defs = AbilityPlugin.DEFS;
@@ -256,7 +267,9 @@ const BadgePlugin = {
             const unlocked = totalEarned > 0 || charges > 0;
             const progressToNext = statVal % earnPer;
             const progressPct = Math.round((progressToNext / earnPer) * 100);
-            html += `<div class="ability-sidebar-item ${unlocked ? 'unlocked' : ''}">
+            const statLabel = this._abilityStatLabels[def.earnStat] || def.earnStat;
+            const tooltip = `${def.name}: ${def.desc}\nFortschritt: ${progressToNext}/${earnPer} ${statLabel}\nGesamt: ${statVal} ${statLabel} → ${totalEarned} Ladungen`;
+            html += `<div class="ability-sidebar-item ${unlocked ? 'unlocked' : ''}" title="${tooltip}">
                 <div class="ab-progress" style="width:${progressPct}%"></div>
                 <span class="ab-icon">${def.icon}</span>
                 <span class="ab-name">${def.name}</span>

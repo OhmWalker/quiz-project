@@ -1431,7 +1431,7 @@ const Fragen2Plugin = {
     checkImagemapHit(cx, cy, targets) {
         if (!targets || !Array.isArray(targets)) return false;
         for (const t of targets) {
-            if (t.type === 'polygon' && t.points) {
+            if (t.mode === 'polygon' && t.points) {
                 if (this.pointInPolygon(cx, cy, t.points)) return true;
                 var d = this.distToPolygon(cx, cy, t.points);
                 if (d < (t.tolerance || 5)) return true;
