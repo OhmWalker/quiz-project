@@ -7144,8 +7144,7 @@
             render() {
                 const container = document.getElementById('fragen2Content');
                 if (!container) return;
-        
-                const self = this;
+
                 const allQ = questions || [];
                 const totalQ = allQ.length;
                 const activeQ = allQ.filter(function(q) { return q.active !== false; }).length;
@@ -7224,10 +7223,6 @@
         
                 container.innerHTML = html;
                 this._renderList();
-                // Init imagemap canvas if needed
-                if (this._showNewForm && this._newFormType === 'imagemap' && this._imImageSrc) {
-                    setTimeout(function() { self._imInitCanvas('new'); }, 50);
-                }
             },
     
             _resetFilters() {
@@ -7485,13 +7480,16 @@
                 h += '<label style="font-size:0.85rem;font-weight:600;margin-bottom:4px;display:block;">Fragetext</label>';
                 h += '<textarea id="f2EditText_' + q.id + '" rows="3" style="width:100%;padding:10px;background:rgba(255,255,255,0.1);border:2px solid rgba(255,255,255,0.2);border-radius:8px;color:var(--text);font-size:0.95rem;resize:vertical;box-sizing:border-box;">' + sanitizeHTML(q.text || '') + '</textarea>';
         
-                h += '<div style="display:flex;gap:10px;margin-top:10px;align-items:center;">';
+                h += '<div style="display:flex;gap:10px;margin-top:10px;align-items:center;flex-wrap:wrap;">';
                 h += '<label style="font-size:0.85rem;font-weight:600;white-space:nowrap;">📁 Gruppe:</label>';
-                h += '<select id="f2EditGroup_' + q.id + '" style="flex:1;padding:6px 10px;background:rgba(255,255,255,0.1);border:2px solid rgba(255,255,255,0.2);border-radius:8px;color:var(--text);">';
+                h += '<select id="f2EditGroup_' + q.id + '" onchange="var inp=document.getElementById(\'f2EditGroupInput_' + q.id + '\');if(this.value===\'__new__\'){inp.style.display=\'block\';inp.focus();}else{inp.style.display=\'none\';}" style="flex:1;padding:6px 10px;background:rgba(255,255,255,0.1);border:2px solid rgba(255,255,255,0.2);border-radius:8px;color:var(--text);">';
                 groups.forEach(function(g) {
                     h += '<option value="' + sanitizeHTML(g.name) + '"' + (g.name === curGroup ? ' selected' : '') + '>' + sanitizeHTML(g.name) + '</option>';
                 });
-                h += '</select></div>';
+                h += '<option value="__new__">➕ Neue Gruppe...</option>';
+                h += '</select>';
+                h += '<input type="text" id="f2EditGroupInput_' + q.id + '" placeholder="Neuer Gruppenname..." style="display:none;flex-basis:100%;padding:6px 10px;background:rgba(255,255,255,0.1);border:2px solid rgba(255,255,255,0.2);border-radius:8px;color:var(--text);font-size:0.85rem;margin-top:4px;">';
+                h += '</div>';
         
                 if (qType === 'multiple-choice') {
                     h += '<label style="font-size:0.85rem;font-weight:600;margin:12px 0 6px;display:block;">Antworten</label>';
@@ -7605,7 +7603,14 @@
         
                 q.text = newText.value.trim();
                 var groupSel = document.getElementById('f2EditGroup_' + qId);
-                if (groupSel) q._fileGroup = groupSel.value;
+                if (groupSel) {
+                    var gVal = groupSel.value;
+                    if (gVal === '__new__') {
+                        var customEl = document.getElementById('f2EditGroupInput_' + qId);
+                        gVal = customEl && customEl.value.trim() ? customEl.value.trim() : q._fileGroup;
+                    }
+                    q._fileGroup = gVal;
+                }
                 var explEl = document.getElementById('f2EditExpl_' + qId);
                 if (explEl) q.explanation = explEl.value.trim() || null;
                 // Explanation media
@@ -7683,10 +7688,6 @@
                 this._showNewForm = !this._showNewForm;
                 if (!this._showNewForm) this._imReset();
                 this.render();
-                if (this._showNewForm && this._newFormType === 'imagemap') {
-                    var self = this;
-                    setTimeout(function() { self._imInitCanvas('new'); }, 100);
-                }
             },
     
             _renderNewForm(groups) {
@@ -7703,15 +7704,18 @@
                 h += '<label style="font-size:0.85rem;font-weight:600;margin-bottom:4px;display:block;">Fragetext</label>';
                 h += '<textarea id="f2NewText" rows="3" placeholder="Die Frage eingeben..." style="width:100%;padding:10px;background:rgba(255,255,255,0.1);border:2px solid rgba(255,255,255,0.2);border-radius:8px;color:var(--text);font-size:0.95rem;resize:vertical;box-sizing:border-box;"></textarea>';
         
-                h += '<div style="display:flex;gap:10px;margin-top:10px;align-items:center;">';
+                h += '<div style="display:flex;gap:10px;margin-top:10px;align-items:center;flex-wrap:wrap;">';
                 h += '<label style="font-size:0.85rem;font-weight:600;white-space:nowrap;">📁 Gruppe:</label>';
-                h += '<select id="f2NewGroup" style="flex:1;padding:6px 10px;background:rgba(255,255,255,0.1);border:2px solid rgba(255,255,255,0.2);border-radius:8px;color:var(--text);">';
+                h += '<select id="f2NewGroup" onchange="var inp=document.getElementById(\'f2NewGroupInput\');if(this.value===\'__new__\'){inp.style.display=\'block\';inp.focus();}else{inp.style.display=\'none\';}" style="flex:1;padding:6px 10px;background:rgba(255,255,255,0.1);border:2px solid rgba(255,255,255,0.2);border-radius:8px;color:var(--text);">';
                 if (!groups || groups.length === 0) {
                     h += '<option value="Manuell">Manuell</option>';
                 } else {
                     groups.forEach(function(g) { h += '<option value="' + sanitizeHTML(g.name) + '">' + sanitizeHTML(g.name) + '</option>'; });
                 }
-                h += '</select></div>';
+                h += '<option value="__new__">➕ Neue Gruppe...</option>';
+                h += '</select>';
+                h += '<input type="text" id="f2NewGroupInput" placeholder="Neuer Gruppenname..." style="display:none;flex-basis:100%;padding:6px 10px;background:rgba(255,255,255,0.1);border:2px solid rgba(255,255,255,0.2);border-radius:8px;color:var(--text);font-size:0.85rem;margin-top:4px;">';
+                h += '</div>';
         
                 var ansCount = (typeof CONFIG !== 'undefined' && CONFIG.QUIZ && CONFIG.QUIZ.DEFAULT_ANSWER_COUNT) ? CONFIG.QUIZ.DEFAULT_ANSWER_COUNT : 4;
         
@@ -7798,6 +7802,10 @@
                 var text = textEl.value.trim();
                 var groupEl = document.getElementById('f2NewGroup');
                 var group = groupEl ? groupEl.value : 'Manuell';
+                if (group === '__new__') {
+                    var customEl = document.getElementById('f2NewGroupInput');
+                    group = customEl && customEl.value.trim() ? customEl.value.trim() : 'Manuell';
+                }
                 var explEl = document.getElementById('f2NewExpl');
                 var explanation = explEl && explEl.value.trim() ? explEl.value.trim() : null;
                 var explMediaEl = document.getElementById('f2NewExplMedia');
@@ -8289,21 +8297,16 @@
                 }
         
                 // Zone speichern + Liste
-                h += '<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">';
+                h += '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">';
                 h += '<button class="btn btn-small" onclick="Fragen2Plugin._imAddZone()" style="background:linear-gradient(135deg,#e67e22,#f39c12);">＋ Zone speichern</button>';
-                if (this._imZones.length > 0) {
-                    h += '<span style="font-size:0.82rem;opacity:0.7;">Gespeicherte Zonen: ';
-                    this._imZones.forEach(function(z, i) {
-                        h += '<span style="background:rgba(46,204,113,0.15);padding:2px 8px;border-radius:4px;margin:0 2px;">' + (i + 1) + ' (' + z.mode + ') <span style="cursor:pointer;color:#e74c3c;" onclick="Fragen2Plugin._imZones.splice(' + i + ',1);Fragen2Plugin._imRedraw()">✕</span></span>';
-                    });
-                    h += '</span>';
-                }
+                h += '<span style="font-size:0.82rem;opacity:0.5;">' + this._imZones.length + ' Zonen</span>';
                 h += '</div>';
+                h += '<div id="f2ImZoneInfo_' + prefix + '" style="margin-bottom:8px;"></div>';
         
                 // Canvas / Bild-Bereich
                 h += '<div id="f2ImgArea_' + prefix + '" style="position:relative;border:2px dashed rgba(155,89,182,0.4);border-radius:12px;overflow:hidden;cursor:crosshair;min-height:100px;">';
                 if (this._imImageSrc) {
-                    h += '<img id="f2ImgEl_' + prefix + '" src="' + this._imImageSrc + '" style="width:100%;display:block;user-select:none;" onerror="this.parentElement.innerHTML=\'<p style=padding:30px;text-align:center;opacity:0.5>Bild konnte nicht geladen werden</p>\'">';
+                    h += '<img id="f2ImgEl_' + prefix + '" src="' + this._imImageSrc + '" onclick="Fragen2Plugin._imClick(event)" style="width:100%;display:block;user-select:none;cursor:crosshair;" onerror="this.parentElement.innerHTML=\'<p style=padding:30px;text-align:center;opacity:0.5>Bild konnte nicht geladen werden</p>\'">';
                 } else {
                     h += '<p style="padding:40px;text-align:center;opacity:0.4;">Bild laden um Zielzonen zu definieren</p>';
                 }
@@ -8313,29 +8316,22 @@
                 return h;
             },
     
-            _imInitCanvas(prefix) {
-                var self = this;
-                var area = document.getElementById('f2ImgArea_' + prefix);
-                if (!area) return;
-                // Alten Listener entfernen, um Leak zu vermeiden
-                if (this._imClickHandler) {
-                    area.removeEventListener('click', this._imClickHandler);
+            _imClick(event) {
+                if (this._imDragIdx >= 0) return;
+                var img = event.target;
+                if (!img || img.tagName !== 'IMG') return;
+                var rect = img.getBoundingClientRect();
+                var x = ((event.clientX - rect.left) / rect.width) * 100;
+                var y = ((event.clientY - rect.top) / rect.height) * 100;
+                if (this._imMode === 'circle') {
+                    this._imPoints = [{ x: x, y: y }];
+                } else {
+                    if (!this._imPolyFinalized) this._imPoints.push({ x: x, y: y });
                 }
-                this._imClickHandler = function(e) {
-                    if (self._imDragIdx >= 0) return;
-                    var img = area.querySelector('img');
-                    if (!img) return;
-                    var rect = img.getBoundingClientRect();
-                    var x = ((e.clientX - rect.left) / rect.width) * 100;
-                    var y = ((e.clientY - rect.top) / rect.height) * 100;
-                    if (self._imMode === 'circle') {
-                        self._imPoints = [{ x: x, y: y }];
-                    } else {
-                        if (!self._imPolyFinalized) self._imPoints.push({ x: x, y: y });
-                    }
-                    self._imRedraw();
-                };
-                area.addEventListener('click', this._imClickHandler);
+                this._imRedraw();
+            },
+
+            _imInitCanvas(prefix) {
                 this._imRedraw();
             },
     
@@ -8344,9 +8340,6 @@
                 if (!pathEl || !pathEl.value.trim()) { Toast.show('Bitte Bildpfad eingeben!', 'warning'); return; }
                 this._imImageSrc = pathEl.value.trim();
                 this.render();
-                var self = this;
-                var prefix = this._editingId ? 'edit_' + this._editingId : 'new';
-                setTimeout(function() { self._imInitCanvas(prefix); }, 100);
             },
     
             _imLoadFile(event) {
@@ -8362,8 +8355,6 @@
                         pathEl.value = 'medien/' + file.name;
                     }
                     self.render();
-                    var prefix = self._editingId ? 'edit_' + self._editingId : 'new';
-                    setTimeout(function() { self._imInitCanvas(prefix); }, 100);
                 };
                 reader.readAsDataURL(file);
             },
@@ -8372,59 +8363,64 @@
                 var prefix = this._editingId ? 'edit_' + this._editingId : 'new';
                 var area = document.getElementById('f2ImgArea_' + prefix);
                 if (!area) return;
-        
+
+                var self = this;
+
                 // Remove old overlays
                 area.querySelectorAll('.f2-im-overlay').forEach(function(el) { el.remove(); });
-        
-                var self = this;
-        
-                // Draw saved zones (green, semi-transparent)
+
+                // Single SVG overlay covering entire image area
+                var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                svg.setAttribute('viewBox', '0 0 100 100');
+                svg.setAttribute('preserveAspectRatio', 'none');
+                svg.setAttribute('class', 'f2-im-overlay');
+                svg.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;z-index:20;';
+
+                var svgContent = '';
+
+                // Draw saved zones (green)
                 this._imZones.forEach(function(zone) {
                     if (zone.mode === 'circle') {
-                        var c = document.createElement('div');
-                        c.className = 'f2-im-overlay';
-                        c.style.cssText = 'position:absolute;border:2px solid rgba(46,204,113,0.7);background:rgba(46,204,113,0.15);border-radius:50%;pointer-events:none;transform:translate(-50%,-50%);z-index:15;';
-                        c.style.left = zone.x + '%'; c.style.top = zone.y + '%';
-                        c.style.width = (zone.radius * 2) + '%'; c.style.height = (zone.radius * 2) + '%';
-                        area.appendChild(c);
+                        svgContent += '<circle cx="' + zone.x + '" cy="' + zone.y + '" r="' + zone.radius + '" fill="rgba(46,204,113,0.15)" stroke="rgba(46,204,113,0.8)" stroke-width="0.4"/>';
                     } else if (zone.mode === 'polygon' && zone.points && zone.points.length >= 3) {
-                        var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-                        svg.setAttribute('viewBox', '0 0 100 100');
-                        svg.setAttribute('preserveAspectRatio', 'none');
-                        svg.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;z-index:14;';
-                        svg.className = 'f2-im-overlay';
-                        var pts = zone.points.map(function(p) { return p.x + ' ' + p.y; }).join(' ');
-                        svg.innerHTML = '<polygon points="' + pts + '" fill="rgba(46,204,113,0.2)" stroke="rgba(46,204,113,0.7)" stroke-width="0.5"/>';
-                        area.appendChild(svg);
+                        var pts = zone.points.map(function(p) { return p.x + ',' + p.y; }).join(' ');
+                        svgContent += '<polygon points="' + pts + '" fill="rgba(46,204,113,0.2)" stroke="rgba(46,204,113,0.8)" stroke-width="0.4"/>';
                     }
                 });
-        
-                // Draw current working points
+
+                // Draw current working shape (red)
                 if (this._imMode === 'circle' && this._imPoints.length > 0) {
                     var p = this._imPoints[0];
-                    // Radius circle
-                    var rd = document.createElement('div');
-                    rd.className = 'f2-im-overlay';
-                    rd.style.cssText = 'position:absolute;border:2px dashed rgba(231,76,60,0.8);background:rgba(231,76,60,0.15);border-radius:50%;pointer-events:none;transform:translate(-50%,-50%);z-index:16;';
-                    rd.style.left = p.x + '%'; rd.style.top = p.y + '%';
-                    rd.style.width = (this._imRadius * 2) + '%'; rd.style.height = (this._imRadius * 2) + '%';
-                    area.appendChild(rd);
-                    // Center point
-                    var pt = document.createElement('div');
-                    pt.className = 'f2-im-overlay';
-                    pt.style.cssText = 'position:absolute;width:12px;height:12px;background:#e74c3c;border:2px solid #fff;border-radius:50%;transform:translate(-50%,-50%);z-index:20;pointer-events:none;';
-                    pt.style.left = p.x + '%'; pt.style.top = p.y + '%';
-                    area.appendChild(pt);
+                    svgContent += '<circle cx="' + p.x + '" cy="' + p.y + '" r="' + this._imRadius + '" fill="rgba(231,76,60,0.15)" stroke="rgba(231,76,60,0.8)" stroke-width="0.4" stroke-dasharray="1,0.5"/>';
+                    svgContent += '<circle cx="' + p.x + '" cy="' + p.y + '" r="1" fill="#e74c3c" stroke="#fff" stroke-width="0.3"/>';
                 } else if (this._imMode === 'polygon' && this._imPoints.length > 0) {
-                    // Points
+                    // Lines / polygon fill
+                    if (this._imPoints.length > 1) {
+                        var pts = this._imPoints.map(function(p) { return p.x + ',' + p.y; }).join(' ');
+                        if (this._imPolyFinalized) {
+                            svgContent += '<polygon points="' + pts + '" fill="rgba(231,76,60,0.15)" stroke="rgba(231,76,60,0.8)" stroke-width="0.4"/>';
+                        } else {
+                            svgContent += '<polyline points="' + pts + '" fill="none" stroke="rgba(231,76,60,0.8)" stroke-width="0.4" stroke-dasharray="1,0.5"/>';
+                        }
+                    }
+                    // Points with numbers
                     this._imPoints.forEach(function(p, i) {
-                        var pt = document.createElement('div');
-                        pt.className = 'f2-im-overlay';
-                        pt.style.cssText = 'position:absolute;width:14px;height:14px;background:#e74c3c;border:2px solid #fff;border-radius:50%;transform:translate(-50%,-50%);z-index:20;cursor:move;font-size:0.55rem;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;';
-                        pt.style.left = p.x + '%'; pt.style.top = p.y + '%';
-                        pt.textContent = (i + 1);
-                        // Drag support
-                        pt.addEventListener('mousedown', function(ev) {
+                        svgContent += '<circle cx="' + p.x + '" cy="' + p.y + '" r="1.2" fill="#e74c3c" stroke="#fff" stroke-width="0.25"/>';
+                        svgContent += '<text x="' + p.x + '" y="' + (p.y + 0.4) + '" text-anchor="middle" dominant-baseline="central" font-size="1.4" fill="#fff" font-weight="900" style="pointer-events:none;">' + (i + 1) + '</text>';
+                    });
+                }
+
+                svg.innerHTML = svgContent;
+                area.appendChild(svg);
+
+                // Polygon drag handles (need real DOM elements for mouse events)
+                if (this._imMode === 'polygon' && this._imPoints.length > 0) {
+                    this._imPoints.forEach(function(p, i) {
+                        var handle = document.createElement('div');
+                        handle.className = 'f2-im-overlay';
+                        handle.style.cssText = 'position:absolute;width:18px;height:18px;background:transparent;border-radius:50%;transform:translate(-50%,-50%);z-index:25;cursor:move;';
+                        handle.style.left = p.x + '%'; handle.style.top = p.y + '%';
+                        handle.addEventListener('mousedown', function(ev) {
                             ev.stopPropagation();
                             self._imDragIdx = i;
                             function onMove(me) {
@@ -8439,22 +8435,26 @@
                             document.addEventListener('mousemove', onMove);
                             document.addEventListener('mouseup', onUp);
                         });
-                        area.appendChild(pt);
+                        area.appendChild(handle);
                     });
-                    // Lines / polygon
-                    if (this._imPoints.length > 1) {
-                        var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-                        svg.setAttribute('viewBox', '0 0 100 100');
-                        svg.setAttribute('preserveAspectRatio', 'none');
-                        svg.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;z-index:14;';
-                        svg.className = 'f2-im-overlay';
-                        var pts = this._imPoints.map(function(p) { return p.x + ' ' + p.y; }).join(' ');
-                        if (this._imPolyFinalized) {
-                            svg.innerHTML = '<polygon points="' + pts + '" fill="rgba(231,76,60,0.15)" stroke="rgba(231,76,60,0.8)" stroke-width="0.4"/>';
-                        } else {
-                            svg.innerHTML = '<polyline points="' + pts + '" fill="none" stroke="rgba(231,76,60,0.8)" stroke-width="0.3" stroke-dasharray="1,0.5"/>';
-                        }
-                        area.appendChild(svg);
+                }
+
+                // Update zone counter live
+                var counterEl = document.getElementById('f2ImZoneInfo_' + prefix);
+                if (counterEl) {
+                    if (this._imZones.length > 0) {
+                        var info = '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">';
+                        this._imZones.forEach(function(z, i) {
+                            var label = (i + 1) + '. ' + (z.mode === 'circle' ? 'Kreis' : 'Polygon');
+                            info += '<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(46,204,113,0.15);border:1px solid rgba(46,204,113,0.3);padding:4px 10px;border-radius:6px;font-size:0.82rem;">';
+                            info += '<span style="color:var(--correct);">' + label + '</span>';
+                            info += '<span onclick="Fragen2Plugin._imZones.splice(' + i + ',1);Fragen2Plugin._imRedraw()" style="cursor:pointer;color:#e74c3c;font-weight:700;margin-left:4px;" title="Zone löschen">✕</span>';
+                            info += '</span>';
+                        });
+                        info += '</div>';
+                        counterEl.innerHTML = info;
+                    } else {
+                        counterEl.innerHTML = '';
                     }
                 }
             },
