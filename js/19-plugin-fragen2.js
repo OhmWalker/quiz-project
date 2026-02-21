@@ -402,9 +402,85 @@ const Fragen2Plugin = {
             h += this._renderImEditor('edit_' + q.id, q);
         }
         
-        h += '<label style="font-size:0.85rem;font-weight:600;margin:12px 0 4px;display:block;">Erklärung (optional)</label>';
-        h += '<input type="text" id="f2EditExpl_' + q.id + '" value="' + sanitizeHTML(q.explanation || '') + '" placeholder="Wird nach der Antwort angezeigt..." style="width:100%;padding:8px;background:rgba(255,255,255,0.08);border:2px solid rgba(255,255,255,0.15);border-radius:8px;color:var(--text);font-size:0.85rem;box-sizing:border-box;">';
-        
+        // Collapsible media path field for MC and FT questions
+        if (qType === 'multiple-choice' || qType === 'text') {
+            var existingPath = (q.media && q.media.path) ? q.media.path : '';
+            var existingData = (q.media && q.media.data) ? true : false;
+            var hasMediaData = existingPath || existingData;
+            h += '<div style="margin-top:12px;border:1px solid rgba(255,255,255,0.1);border-radius:8px;overflow:hidden;">';
+            h += '<div onclick="var c=this.nextElementSibling;var a=this.querySelector(\'.f2-collapse-arrow\');if(c.style.display===\'none\'){c.style.display=\'block\';a.textContent=\'▾\'}else{c.style.display=\'none\';a.textContent=\'▸\'}" style="padding:8px 12px;cursor:pointer;display:flex;align-items:center;gap:6px;background:rgba(255,255,255,0.03);user-select:none;">';
+            h += '<span class="f2-collapse-arrow" style="font-size:0.75rem;opacity:0.5;width:12px;">' + (hasMediaData ? '▾' : '▸') + '</span>';
+            h += '<span style="font-size:0.85rem;font-weight:600;">🖼️ Bild (optional)</span>';
+            if (hasMediaData) h += '<span style="font-size:0.7rem;opacity:0.4;margin-left:auto;">Daten vorhanden</span>';
+            h += '</div>';
+            h += '<div style="padding:10px 12px;display:' + (hasMediaData ? 'block' : 'none') + ';">';
+            h += '<div style="display:flex;gap:8px;align-items:center;">';
+            h += '<input type="text" id="f2EditMedia_' + q.id + '" value="' + sanitizeHTML(existingPath) + '" placeholder="z.B. medien/Bundesländer/bayern.jpg" oninput="Fragen2Plugin._liveMediaPreview(\'f2EditMedia_' + q.id + '\',\'f2EditMediaPrev_' + q.id + '\')" style="flex:1;padding:8px;background:rgba(255,255,255,0.1);border:2px solid rgba(255,255,255,0.2);border-radius:8px;color:var(--text);font-size:0.85rem;box-sizing:border-box;">';
+            h += '<input type="file" id="f2EditMediaBrowse_' + q.id + '" accept="image/*" style="display:none;" onchange="Fragen2Plugin._handleMediaBrowse(event,\'f2EditMedia_' + q.id + '\')">';
+            h += '<button type="button" class="btn btn-secondary btn-small" onclick="document.getElementById(\'f2EditMediaBrowse_' + q.id + '\').click()" style="white-space:nowrap;padding:6px 12px;font-size:0.8rem;">📂 Durchsuchen</button>';
+            if (hasMediaData) {
+                h += '<button type="button" class="btn btn-secondary btn-small" onclick="document.getElementById(\'f2EditMedia_' + q.id + '\').value=\'\';Fragen2Plugin._editMediaCleared=' + q.id + ';document.getElementById(\'f2EditMediaPrev_' + q.id + '\').innerHTML=\'\';" style="padding:6px 8px;font-size:0.8rem;" title="Bild entfernen">✕</button>';
+            }
+            h += '</div>';
+            if (existingData && !existingPath) {
+                h += '<div style="font-size:0.75rem;opacity:0.5;margin-top:3px;">💾 Aktuell: Base64 eingebettet. Pfad eingeben um zu wechseln.</div>';
+            }
+            h += '<div style="font-size:0.72rem;opacity:0.4;margin-top:3px;">Unterordner manuell eingeben — Browser kann Unterordner nicht erkennen</div>';
+            h += '<div id="f2EditMediaPrev_' + q.id + '" style="margin-top:6px;">';
+            if (q.media) {
+                var prevSrc = typeof getMediaSource === 'function' ? getMediaSource(q.media) : null;
+                if (prevSrc) {
+                    h += '<img src="' + prevSrc + '" style="max-width:200px;max-height:120px;border-radius:8px;border:2px solid rgba(255,255,255,0.15);object-fit:contain;" onerror="this.parentNode.innerHTML=\'<span style=color:#e74c3c;font-size:0.8rem;>❌ Bild nicht gefunden</span>\'">';
+                }
+            }
+            h += '</div>';
+            h += '</div></div>';
+        }
+
+        // Collapsible explanation section - auto-open if data exists
+        var hasExplData = q.explanation || (q.explanationMedia && q.explanationMedia.path);
+        h += '<div style="margin-top:12px;border:1px solid rgba(255,255,255,0.1);border-radius:8px;overflow:hidden;">';
+        h += '<div onclick="var c=this.nextElementSibling;var a=this.querySelector(\'.f2-collapse-arrow\');if(c.style.display===\'none\'){c.style.display=\'block\';a.textContent=\'▾\'}else{c.style.display=\'none\';a.textContent=\'▸\'}" style="padding:8px 12px;cursor:pointer;display:flex;align-items:center;gap:6px;background:rgba(255,255,255,0.03);user-select:none;">';
+        h += '<span class="f2-collapse-arrow" style="font-size:0.75rem;opacity:0.5;width:12px;">' + (hasExplData ? '▾' : '▸') + '</span>';
+        h += '<span style="font-size:0.85rem;font-weight:600;">📖 Erklärung (optional)</span>';
+        if (hasExplData) h += '<span style="font-size:0.7rem;opacity:0.4;margin-left:auto;">Daten vorhanden</span>';
+        h += '</div>';
+        h += '<div style="padding:10px 12px;display:' + (hasExplData ? 'block' : 'none') + ';">';
+        h += '<input type="text" id="f2EditExpl_' + q.id + '" value="' + sanitizeHTML(q.explanation || '') + '" placeholder="Wird nach falscher Antwort angezeigt..." style="width:100%;padding:8px;background:rgba(255,255,255,0.08);border:2px solid rgba(255,255,255,0.15);border-radius:8px;color:var(--text);font-size:0.85rem;box-sizing:border-box;">';
+        var explMediaPath = (q.explanationMedia && q.explanationMedia.path) ? q.explanationMedia.path : '';
+        h += '<div style="display:flex;gap:8px;align-items:center;margin-top:4px;">';
+        h += '<input type="text" id="f2EditExplMedia_' + q.id + '" value="' + sanitizeHTML(explMediaPath) + '" placeholder="Bild zur Erklärung (z.B. medien/erkl_001.jpg)" oninput="Fragen2Plugin._liveMediaPreview(\'f2EditExplMedia_' + q.id + '\',\'f2EditExplMediaPrev_' + q.id + '\')" style="flex:1;padding:6px 8px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:6px;color:var(--text);font-size:0.8rem;box-sizing:border-box;">';
+        h += '<input type="file" id="f2EditExplMediaBrowse_' + q.id + '" accept="image/*" style="display:none;" onchange="Fragen2Plugin._handleMediaBrowse(event,\'f2EditExplMedia_' + q.id + '\')">';
+        h += '<button type="button" class="btn btn-secondary btn-small" onclick="document.getElementById(\'f2EditExplMediaBrowse_' + q.id + '\').click()" style="padding:4px 8px;font-size:0.75rem;">📂</button>';
+        if (explMediaPath) h += '<button type="button" class="btn btn-secondary btn-small" onclick="document.getElementById(\'f2EditExplMedia_' + q.id + '\').value=\'\';document.getElementById(\'f2EditExplMediaPrev_' + q.id + '\').innerHTML=\'\';" style="padding:4px 6px;font-size:0.75rem;" title="Bild entfernen">✕</button>';
+        h += '</div>';
+        h += '<div id="f2EditExplMediaPrev_' + q.id + '" style="margin-top:4px;">';
+        if (explMediaPath) h += '<img src="' + explMediaPath + '" style="max-width:150px;max-height:80px;border-radius:6px;object-fit:contain;" onerror="this.style.display=\'none\'">';
+        h += '</div>';
+        h += '</div></div>';
+
+        // Collapsible hint section - auto-open if data exists
+        var hasHintData = q.hint || (q.hintMedia && q.hintMedia.path);
+        h += '<div style="margin-top:6px;border:1px solid rgba(255,255,255,0.1);border-radius:8px;overflow:hidden;">';
+        h += '<div onclick="var c=this.nextElementSibling;var a=this.querySelector(\'.f2-collapse-arrow\');if(c.style.display===\'none\'){c.style.display=\'block\';a.textContent=\'▾\'}else{c.style.display=\'none\';a.textContent=\'▸\'}" style="padding:8px 12px;cursor:pointer;display:flex;align-items:center;gap:6px;background:rgba(255,255,255,0.03);user-select:none;">';
+        h += '<span class="f2-collapse-arrow" style="font-size:0.75rem;opacity:0.5;width:12px;">' + (hasHintData ? '▾' : '▸') + '</span>';
+        h += '<span style="font-size:0.85rem;font-weight:600;">💡 Hinweis (optional)</span>';
+        if (hasHintData) h += '<span style="font-size:0.7rem;opacity:0.4;margin-left:auto;">Daten vorhanden</span>';
+        h += '</div>';
+        h += '<div style="padding:10px 12px;display:' + (hasHintData ? 'block' : 'none') + ';">';
+        h += '<input type="text" id="f2EditHint_' + q.id + '" value="' + sanitizeHTML(q.hint || '') + '" placeholder="Wird bei Hinweis-Fähigkeit angezeigt..." style="width:100%;padding:8px;background:rgba(255,255,255,0.08);border:2px solid rgba(255,255,255,0.15);border-radius:8px;color:var(--text);font-size:0.85rem;box-sizing:border-box;">';
+        var hintMediaPath = (q.hintMedia && q.hintMedia.path) ? q.hintMedia.path : '';
+        h += '<div style="display:flex;gap:8px;align-items:center;margin-top:4px;">';
+        h += '<input type="text" id="f2EditHintMedia_' + q.id + '" value="' + sanitizeHTML(hintMediaPath) + '" placeholder="Bild zum Hinweis (z.B. medien/hint_001.jpg)" oninput="Fragen2Plugin._liveMediaPreview(\'f2EditHintMedia_' + q.id + '\',\'f2EditHintMediaPrev_' + q.id + '\')" style="flex:1;padding:6px 8px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:6px;color:var(--text);font-size:0.8rem;box-sizing:border-box;">';
+        h += '<input type="file" id="f2EditHintMediaBrowse_' + q.id + '" accept="image/*" style="display:none;" onchange="Fragen2Plugin._handleMediaBrowse(event,\'f2EditHintMedia_' + q.id + '\')">';
+        h += '<button type="button" class="btn btn-secondary btn-small" onclick="document.getElementById(\'f2EditHintMediaBrowse_' + q.id + '\').click()" style="padding:4px 8px;font-size:0.75rem;">📂</button>';
+        if (hintMediaPath) h += '<button type="button" class="btn btn-secondary btn-small" onclick="document.getElementById(\'f2EditHintMedia_' + q.id + '\').value=\'\';document.getElementById(\'f2EditHintMediaPrev_' + q.id + '\').innerHTML=\'\';" style="padding:4px 6px;font-size:0.75rem;" title="Bild entfernen">✕</button>';
+        h += '</div>';
+        h += '<div id="f2EditHintMediaPrev_' + q.id + '" style="margin-top:4px;">';
+        if (hintMediaPath) h += '<img src="' + hintMediaPath + '" style="max-width:150px;max-height:80px;border-radius:6px;object-fit:contain;" onerror="this.style.display=\'none\'">';
+        h += '</div>';
+        h += '</div></div>';
+
         h += '<div style="display:flex;gap:8px;margin-top:14px;">';
         h += '<button class="btn" onclick="Fragen2Plugin._saveEdit(' + q.id + ')" style="padding:10px 24px;">💾 Speichern</button>';
         h += '<button class="btn btn-secondary" onclick="Fragen2Plugin._cancelEdit()">Abbrechen</button>';
@@ -423,7 +499,24 @@ const Fragen2Plugin = {
         if (groupSel) q._fileGroup = groupSel.value;
         var explEl = document.getElementById('f2EditExpl_' + qId);
         if (explEl) q.explanation = explEl.value.trim() || null;
-        
+        // Explanation media
+        var explMediaEl = document.getElementById('f2EditExplMedia_' + qId);
+        if (explMediaEl) {
+            var explMediaVal = explMediaEl.value.trim();
+            if (explMediaVal) q.explanationMedia = { type: 'image', path: explMediaVal };
+            else if (!explMediaVal && q.explanationMedia && q.explanationMedia.path) q.explanationMedia = null;
+        }
+        // Hint
+        var hintEl = document.getElementById('f2EditHint_' + qId);
+        if (hintEl) q.hint = hintEl.value.trim() || null;
+        // Hint media
+        var hintMediaEl = document.getElementById('f2EditHintMedia_' + qId);
+        if (hintMediaEl) {
+            var hintMediaVal = hintMediaEl.value.trim();
+            if (hintMediaVal) q.hintMedia = { type: 'image', path: hintMediaVal };
+            else if (!hintMediaVal && q.hintMedia && q.hintMedia.path) q.hintMedia = null;
+        }
+
         var qType = q.type || 'multiple-choice';
         if (qType === 'multiple-choice' && q.answers) {
             var hasCorrect = false;
@@ -455,7 +548,20 @@ const Fragen2Plugin = {
                 q.media = { type: 'image', data: this._imImageSrc };
             }
         }
-        
+        // Save media for MC and FT questions
+        if (qType === 'multiple-choice' || qType === 'text') {
+            var mediaPathEl = document.getElementById('f2EditMedia_' + qId);
+            if (mediaPathEl) {
+                var mediaVal = mediaPathEl.value.trim();
+                if (mediaVal) {
+                    q.media = { type: 'image', path: mediaVal };
+                } else if (this._editMediaCleared === qId) {
+                    q.media = null;
+                    this._editMediaCleared = null;
+                }
+            }
+        }
+
         this._editingId = null;
         this._renderList();
         Toast.show('Frage #' + (q.displayNumber || '?') + ' gespeichert!', 'success');
@@ -518,9 +624,56 @@ const Fragen2Plugin = {
             h += this._renderImEditor('new');
         }
         
-        h += '<label style="font-size:0.85rem;font-weight:600;margin:12px 0 4px;display:block;">Erklärung (optional)</label>';
-        h += '<input type="text" id="f2NewExpl" placeholder="Wird nach der Antwort angezeigt..." style="width:100%;padding:8px;background:rgba(255,255,255,0.08);border:2px solid rgba(255,255,255,0.15);border-radius:8px;color:var(--text);font-size:0.85rem;box-sizing:border-box;">';
-        
+        // Collapsible media path field for MC and FT
+        if (ft === 'multiple-choice' || ft === 'text') {
+            h += '<div style="margin-top:12px;border:1px solid rgba(255,255,255,0.1);border-radius:8px;overflow:hidden;">';
+            h += '<div onclick="var c=this.nextElementSibling;var a=this.querySelector(\'.f2-collapse-arrow\');if(c.style.display===\'none\'){c.style.display=\'block\';a.textContent=\'▾\'}else{c.style.display=\'none\';a.textContent=\'▸\'}" style="padding:8px 12px;cursor:pointer;display:flex;align-items:center;gap:6px;background:rgba(255,255,255,0.03);user-select:none;">';
+            h += '<span class="f2-collapse-arrow" style="font-size:0.75rem;opacity:0.5;width:12px;">▸</span>';
+            h += '<span style="font-size:0.85rem;font-weight:600;">🖼️ Bild (optional)</span>';
+            h += '</div>';
+            h += '<div style="padding:10px 12px;display:none;">';
+            h += '<div style="display:flex;gap:8px;align-items:center;">';
+            h += '<input type="text" id="f2NewMedia" placeholder="z.B. medien/Bundesländer/bayern.jpg" oninput="Fragen2Plugin._liveMediaPreview(\'f2NewMedia\',\'f2NewMediaPreview\')" style="flex:1;padding:8px;background:rgba(255,255,255,0.1);border:2px solid rgba(255,255,255,0.2);border-radius:8px;color:var(--text);font-size:0.85rem;box-sizing:border-box;">';
+            h += '<input type="file" id="f2NewMediaBrowse" accept="image/*" style="display:none;" onchange="Fragen2Plugin._handleMediaBrowse(event,\'f2NewMedia\')">';
+            h += '<button type="button" class="btn btn-secondary btn-small" onclick="document.getElementById(\'f2NewMediaBrowse\').click()" style="white-space:nowrap;padding:6px 12px;font-size:0.8rem;">📂 Durchsuchen</button>';
+            h += '</div>';
+            h += '<div style="font-size:0.72rem;opacity:0.4;margin-top:3px;">Unterordner manuell eingeben — Browser kann Unterordner nicht erkennen</div>';
+            h += '<div id="f2NewMediaPreview" style="margin-top:6px;"></div>';
+            h += '</div></div>';
+        }
+
+        // Collapsible explanation section - always collapsed for new questions
+        h += '<div style="margin-top:12px;border:1px solid rgba(255,255,255,0.1);border-radius:8px;overflow:hidden;">';
+        h += '<div onclick="var c=this.nextElementSibling;var a=this.querySelector(\'.f2-collapse-arrow\');if(c.style.display===\'none\'){c.style.display=\'block\';a.textContent=\'▾\'}else{c.style.display=\'none\';a.textContent=\'▸\'}" style="padding:8px 12px;cursor:pointer;display:flex;align-items:center;gap:6px;background:rgba(255,255,255,0.03);user-select:none;">';
+        h += '<span class="f2-collapse-arrow" style="font-size:0.75rem;opacity:0.5;width:12px;">▸</span>';
+        h += '<span style="font-size:0.85rem;font-weight:600;">📖 Erklärung (optional)</span>';
+        h += '</div>';
+        h += '<div style="padding:10px 12px;display:none;">';
+        h += '<input type="text" id="f2NewExpl" placeholder="Wird nach falscher Antwort angezeigt..." style="width:100%;padding:8px;background:rgba(255,255,255,0.08);border:2px solid rgba(255,255,255,0.15);border-radius:8px;color:var(--text);font-size:0.85rem;box-sizing:border-box;">';
+        h += '<div style="display:flex;gap:8px;align-items:center;margin-top:4px;">';
+        h += '<input type="text" id="f2NewExplMedia" placeholder="Bild zur Erklärung (z.B. medien/erkl_001.jpg)" oninput="Fragen2Plugin._liveMediaPreview(\'f2NewExplMedia\',\'f2NewExplMediaPrev\')" style="flex:1;padding:6px 8px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:6px;color:var(--text);font-size:0.8rem;box-sizing:border-box;">';
+        h += '<input type="file" id="f2NewExplMediaBrowse" accept="image/*" style="display:none;" onchange="Fragen2Plugin._handleMediaBrowse(event,\'f2NewExplMedia\')">';
+        h += '<button type="button" class="btn btn-secondary btn-small" onclick="document.getElementById(\'f2NewExplMediaBrowse\').click()" style="padding:4px 8px;font-size:0.75rem;">📂</button>';
+        h += '</div>';
+        h += '<div id="f2NewExplMediaPrev" style="margin-top:4px;"></div>';
+        h += '</div></div>';
+
+        // Collapsible hint section - always collapsed for new questions
+        h += '<div style="margin-top:6px;border:1px solid rgba(255,255,255,0.1);border-radius:8px;overflow:hidden;">';
+        h += '<div onclick="var c=this.nextElementSibling;var a=this.querySelector(\'.f2-collapse-arrow\');if(c.style.display===\'none\'){c.style.display=\'block\';a.textContent=\'▾\'}else{c.style.display=\'none\';a.textContent=\'▸\'}" style="padding:8px 12px;cursor:pointer;display:flex;align-items:center;gap:6px;background:rgba(255,255,255,0.03);user-select:none;">';
+        h += '<span class="f2-collapse-arrow" style="font-size:0.75rem;opacity:0.5;width:12px;">▸</span>';
+        h += '<span style="font-size:0.85rem;font-weight:600;">💡 Hinweis (optional)</span>';
+        h += '</div>';
+        h += '<div style="padding:10px 12px;display:none;">';
+        h += '<input type="text" id="f2NewHint" placeholder="Wird bei Hinweis-Fähigkeit angezeigt..." style="width:100%;padding:8px;background:rgba(255,255,255,0.08);border:2px solid rgba(255,255,255,0.15);border-radius:8px;color:var(--text);font-size:0.85rem;box-sizing:border-box;">';
+        h += '<div style="display:flex;gap:8px;align-items:center;margin-top:4px;">';
+        h += '<input type="text" id="f2NewHintMedia" placeholder="Bild zum Hinweis (z.B. medien/hint_001.jpg)" oninput="Fragen2Plugin._liveMediaPreview(\'f2NewHintMedia\',\'f2NewHintMediaPrev\')" style="flex:1;padding:6px 8px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:6px;color:var(--text);font-size:0.8rem;box-sizing:border-box;">';
+        h += '<input type="file" id="f2NewHintMediaBrowse" accept="image/*" style="display:none;" onchange="Fragen2Plugin._handleMediaBrowse(event,\'f2NewHintMedia\')">';
+        h += '<button type="button" class="btn btn-secondary btn-small" onclick="document.getElementById(\'f2NewHintMediaBrowse\').click()" style="padding:4px 8px;font-size:0.75rem;">📂</button>';
+        h += '</div>';
+        h += '<div id="f2NewHintMediaPrev" style="margin-top:4px;"></div>';
+        h += '</div></div>';
+
         h += '<div style="display:flex;gap:8px;margin-top:14px;">';
         h += '<button class="btn" onclick="Fragen2Plugin._saveNew()" style="padding:10px 24px;background:linear-gradient(135deg,#27ae60,#2ecc71);">＋ Frage erstellen</button>';
         h += '<button class="btn btn-secondary" onclick="Fragen2Plugin._toggleNewForm()">Abbrechen</button>';
@@ -538,10 +691,16 @@ const Fragen2Plugin = {
         var group = groupEl ? groupEl.value : 'Manuell';
         var explEl = document.getElementById('f2NewExpl');
         var explanation = explEl && explEl.value.trim() ? explEl.value.trim() : null;
+        var explMediaEl = document.getElementById('f2NewExplMedia');
+        var explanationMedia = (explMediaEl && explMediaEl.value.trim()) ? { type: 'image', path: explMediaEl.value.trim() } : null;
+        var hintEl = document.getElementById('f2NewHint');
+        var hint = hintEl && hintEl.value.trim() ? hintEl.value.trim() : null;
+        var hintMediaEl = document.getElementById('f2NewHintMedia');
+        var hintMedia = (hintMediaEl && hintMediaEl.value.trim()) ? { type: 'image', path: hintMediaEl.value.trim() } : null;
         var newId = Date.now() + Math.floor(Math.random() * 1000);
         var displayNum = typeof getNextDisplayNumber === 'function' ? getNextDisplayNumber() : (questions.length + 1);
         var ansCount = (typeof CONFIG !== 'undefined' && CONFIG.QUIZ && CONFIG.QUIZ.DEFAULT_ANSWER_COUNT) ? CONFIG.QUIZ.DEFAULT_ANSWER_COUNT : 4;
-        
+
         var newQ = {
             id: newId,
             displayNumber: displayNum,
@@ -549,6 +708,9 @@ const Fragen2Plugin = {
             active: true,
             _fileGroup: group,
             explanation: explanation,
+            explanationMedia: explanationMedia,
+            hint: hint,
+            hintMedia: hintMedia,
             media: null
         };
         
@@ -589,7 +751,14 @@ const Fragen2Plugin = {
                 newQ.media = { type: 'image', data: this._imImageSrc };
             }
         }
-        
+        // Save media for MC and FT questions
+        if (ft === 'multiple-choice' || ft === 'text') {
+            var mediaPathEl = document.getElementById('f2NewMedia');
+            if (mediaPathEl && mediaPathEl.value.trim()) {
+                newQ.media = { type: 'image', path: mediaPathEl.value.trim() };
+            }
+        }
+
         newQ.questionId = typeof generateQuestionHash === 'function' ? generateQuestionHash(newQ) : ('Q_' + newId);
         
         if (typeof normalizeQuestion === 'function') {
@@ -1197,6 +1366,56 @@ const Fragen2Plugin = {
         Toast.show('Zone ' + this._imZones.length + ' gespeichert!', 'success');
     },
     
+    // ── Media-Helfer ──
+    _handleMediaBrowse(event, targetInputId) {
+        var file = event.target.files[0]; if (!file) return;
+        var fileName = file.name;
+        var filePath = event.target.value || '';
+        var relativePath = '';
+        if (file.webkitRelativePath) {
+            relativePath = 'medien/' + file.webkitRelativePath;
+        } else if (filePath.toLowerCase().includes('medien')) {
+            var idx = filePath.toLowerCase().lastIndexOf('medien');
+            relativePath = filePath.substring(idx).replace(/\\/g, '/');
+        } else {
+            relativePath = 'medien/' + fileName;
+        }
+        var targetEl = document.getElementById(targetInputId);
+        if (targetEl) targetEl.value = relativePath;
+        var warnEl = document.getElementById(targetInputId + '_warn');
+        if (!warnEl) {
+            warnEl = document.createElement('div');
+            warnEl.id = targetInputId + '_warn';
+            warnEl.style.cssText = 'font-size:0.75rem;margin-top:4px;padding:6px 10px;border-radius:6px;background:rgba(247,184,1,0.15);color:#f0c040;';
+            if (targetEl && targetEl.parentNode) targetEl.parentNode.after(warnEl);
+        }
+        warnEl.innerHTML = '⚠️ Browser zeigt keine Unterordner. Falls die Datei in einem Unterordner liegt (z.B. <code>medien/Unterordner/' + fileName + '</code>), bitte den Pfad oben manuell anpassen.';
+        // Trigger live preview
+        var previewId = targetInputId.replace('Media_', 'MediaPrev_').replace('Media', 'MediaPreview');
+        var previewEl = document.getElementById(previewId);
+        if (!previewEl) previewEl = document.getElementById('f2NewMediaPreview');
+        if (previewEl && file.type.startsWith('image/')) {
+            var reader = new FileReader();
+            reader.onload = function(e) {
+                previewEl.innerHTML = '<img src="' + e.target.result + '" style="max-width:200px;max-height:120px;border-radius:8px;border:2px solid rgba(255,255,255,0.15);object-fit:contain;"><div style="font-size:0.75rem;opacity:0.5;margin-top:3px;">✓ Pfad: ' + relativePath + '</div>';
+            };
+            reader.readAsDataURL(file);
+        }
+    },
+
+    _liveMediaPreview(inputId, previewId) {
+        var self = this;
+        clearTimeout(self._livePreviewTimer);
+        self._livePreviewTimer = setTimeout(function() {
+            var el = document.getElementById(inputId);
+            var prev = document.getElementById(previewId);
+            if (!el || !prev) return;
+            var path = el.value.trim();
+            if (!path) { prev.innerHTML = ''; return; }
+            prev.innerHTML = '<img src="' + path + '" style="max-width:200px;max-height:120px;border-radius:8px;border:2px solid rgba(255,255,255,0.15);object-fit:contain;" onerror="this.parentNode.innerHTML=\'<span style=\\\'color:#e74c3c;font-size:0.8rem;\\\'>❌ Bild nicht gefunden unter: ' + path.replace(/'/g, '') + '</span>\'"><div style="font-size:0.72rem;opacity:0.5;margin-top:2px;">✓ ' + path + '</div>';
+        }, 500);
+    },
+
     _imGetTargets() {
         var targets = JSON.parse(JSON.stringify(this._imZones));
         // Auch aktuelle (nicht gespeicherte) Zone hinzufügen
@@ -1206,5 +1425,49 @@ const Fragen2Plugin = {
             targets.push({ mode: 'polygon', points: this._imPoints.map(function(p) { return { x: Math.round(p.x * 100) / 100, y: Math.round(p.y * 100) / 100 }; }), tolerance: 2 });
         }
         return targets;
+    },
+
+    // Geometrie-Funktionen (für Imagemap-Hit-Detection im Quiz-Gameplay)
+    checkImagemapHit(cx, cy, targets) {
+        if (!targets || !Array.isArray(targets)) return false;
+        for (const t of targets) {
+            if (t.type === 'polygon' && t.points) {
+                if (this.pointInPolygon(cx, cy, t.points)) return true;
+                var d = this.distToPolygon(cx, cy, t.points);
+                if (d < (t.tolerance || 5)) return true;
+            } else {
+                var dx = cx - (t.x || 0), dy = cy - (t.y || 0), r = t.radius || 5;
+                if (dx * dx + dy * dy <= r * r) return true;
+            }
+        }
+        return false;
+    },
+    pointInPolygon(x, y, poly) {
+        var inside = false;
+        for (var i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+            var xi = poly[i].x, yi = poly[i].y, xj = poly[j].x, yj = poly[j].y;
+            if (((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi)) inside = !inside;
+        }
+        return inside;
+    },
+    distToPolygon(x, y, poly) {
+        var min = Infinity;
+        for (var i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+            var d = this.distToSegment(x, y, poly[j].x, poly[j].y, poly[i].x, poly[i].y);
+            if (d < min) min = d;
+        }
+        return min;
+    },
+    distToSegment(px, py, x1, y1, x2, y2) {
+        var dx = x2 - x1, dy = y2 - y1, t = Math.max(0, Math.min(1, ((px - x1) * dx + (py - y1) * dy) / (dx * dx + dy * dy)));
+        return Math.sqrt((px - x1 - t * dx) ** 2 + (py - y1 - t * dy) ** 2);
+    },
+
+    // Statistik-Berechnung
+    calculateQuestionStats(qid) {
+        var asked = 0, correct = 0;
+        users.forEach(function(u) { if (u.questionStats && u.questionStats[qid]) { asked += u.questionStats[qid].asked || 0; correct += u.questionStats[qid].correct || 0; } });
+        if (asked === 0) return null;
+        return { totalAsked: asked, totalCorrect: correct, percentage: Math.round((correct / asked) * 100) };
     }
 };

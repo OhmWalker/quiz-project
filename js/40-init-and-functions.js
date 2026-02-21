@@ -324,7 +324,6 @@ function showScreen(screenId) {
 
 function showAdminSection(section) {
     document.getElementById('adminSettings').style.display = 'none';
-    document.getElementById('adminQuestions').style.display = 'none';
     document.getElementById('adminBadges').style.display = 'none';
     document.getElementById('adminBackup').style.display = 'none';
     document.getElementById('adminUsers').style.display = 'none';
@@ -389,9 +388,6 @@ function showAdminSection(section) {
         var imgSlider = document.getElementById('quizImageWidthSlider');
         if (imgSlider) { imgSlider.value = md.quizImageWidth || 80; document.getElementById('quizImageWidthVal').textContent = (md.quizImageWidth || 80) + '%'; }
         
-    } else if (section === 'questions') {
-        document.getElementById('adminQuestions').style.display = 'block';
-        updateQuestionsList();
     } else if (section === 'badges') {
         document.getElementById('adminBadges').style.display = 'block';
         renderBadgeAdmin();
@@ -699,11 +695,6 @@ function updateImagemapRadius(event, element) {
     renderImagemapEditor();
 }
 
-function updateImagemapOpacity(displayId, event, element) {
-    document.getElementById(displayId).textContent = element.value;
-    renderImagemapEditor();
-}
-
 function toggleEncryptPlayerData() {
     var el = document.getElementById('encryptToggle');
     quizSettings.encryptPlayerData = el.checked;
@@ -767,329 +758,16 @@ function backToStart() {
     showScreen('startScreen');
 }
 
-// Question management
-function addAnswerInput() { QuestionEditorPlugin.addAnswerInput(); }
-
-function toggleQuestionType() { QuestionEditorPlugin.toggleQuestionType(); }
-
-Object.defineProperty(window, 'imagemapEditorMode', { get() { return QuestionEditorPlugin._imagemapEditorMode; }, set(v) { QuestionEditorPlugin._imagemapEditorMode = v; } });
-Object.defineProperty(window, 'imagemapEditorPoints', { get() { return QuestionEditorPlugin._imagemapEditorPoints; }, set(v) { QuestionEditorPlugin._imagemapEditorPoints = v; } });
-Object.defineProperty(window, 'imagemapEditorRadius', { get() { return QuestionEditorPlugin._imagemapEditorRadius; }, set(v) { QuestionEditorPlugin._imagemapEditorRadius = v; } });
-Object.defineProperty(window, 'imagemapEditorZones', { get() { return QuestionEditorPlugin._imagemapEditorZones; }, set(v) { QuestionEditorPlugin._imagemapEditorZones = v; } });
-Object.defineProperty(window, 'imagemapPolyFinalized', { get() { return QuestionEditorPlugin._imagemapPolyFinalized; }, set(v) { QuestionEditorPlugin._imagemapPolyFinalized = v; } });
-function finalizePolygon() { QuestionEditorPlugin.finalizePolygon(); }
-function initImagemapEditor() { QuestionEditorPlugin.initImagemapEditor(); }
-function buildImagemapEditor(src) { QuestionEditorPlugin.buildImagemapEditor(src); }
-function renderImagemapEditor() { QuestionEditorPlugin.renderImagemapEditor(); }
-function addImagemapZone() { QuestionEditorPlugin.addImagemapZone(); }
-function removeLastImagemapPoint() { QuestionEditorPlugin._imagemapEditorPoints.pop(); QuestionEditorPlugin.renderImagemapEditor(); }
-function clearImagemapPoints() { QuestionEditorPlugin._imagemapEditorPoints.length = 0; QuestionEditorPlugin.renderImagemapEditor(); }
-function getImagemapTargets() { return QuestionEditorPlugin.getImagemapTargets(); }
-
-Object.defineProperty(window, 'imagemapPlayerClick', { get() { return QuestionEditorPlugin._imagemapPlayerClick; }, set(v) { QuestionEditorPlugin._imagemapPlayerClick = v; } });
-function checkImagemapHit(clickX, clickY, targets) { return QuestionEditorPlugin.checkImagemapHit(clickX, clickY, targets); }
-function pointInPolygon(x, y, poly) { return QuestionEditorPlugin.pointInPolygon(x, y, poly); }
-function distToPolygon(x, y, poly) { return QuestionEditorPlugin.distToPolygon(x, y, poly); }
-function distToSegment(px, py, x1, y1, x2, y2) { return QuestionEditorPlugin.distToSegment(px, py, x1, y1, x2, y2); }
-
-function toggleMediaUpload() { QuestionEditorPlugin.toggleMediaUpload(); }
-// Media helpers (Delegiert an QuestionEditorPlugin)
-function handleExtraMediaBrowser(targetInputId, event) { QuestionEditorPlugin.handleExtraMediaBrowser(event, targetInputId); }
-function handlePathFileBrowser(event) { QuestionEditorPlugin.handlePathFileBrowser(event); }
-
-function addQuestion(event) { QuestionEditorPlugin.addQuestion(event); }
-
-function calculateQuestionStats(questionId) { return QuestionEditorPlugin.calculateQuestionStats(questionId); }
-
-function resetQuestionStats() { QuestionEditorPlugin.resetQuestionStats(); }
-
-function deleteAllQuestions() { QuestionEditorPlugin.deleteAllQuestions(); }
+// Geometrie + Statistik (delegiert an Fragen2Plugin)
+function checkImagemapHit(clickX, clickY, targets) { return Fragen2Plugin.checkImagemapHit(clickX, clickY, targets); }
+function pointInPolygon(x, y, poly) { return Fragen2Plugin.pointInPolygon(x, y, poly); }
+function distToPolygon(x, y, poly) { return Fragen2Plugin.distToPolygon(x, y, poly); }
+function distToSegment(px, py, x1, y1, x2, y2) { return Fragen2Plugin.distToSegment(px, py, x1, y1, x2, y2); }
+function calculateQuestionStats(questionId) { return Fragen2Plugin.calculateQuestionStats(questionId); }
 
 
-function updateQuestionsList() { _updateQuestionsListImpl(); }
-function _updateQuestionsListImpl() {
-    const questionsList = document.getElementById('questionsList');
-    
-    if (questions.length === 0) {
-        questionsList.innerHTML = '<div class="no-data">Keine Fragen vorhanden</div>';
-        return;
-    }
-    
-    // Sort questions by questionId
-    const sortedQuestions = [...questions].sort((a, b) => {
-        // Primär: nach Fragengruppe alphabetisch
-        const groupA = (a._fileGroup || 'Manuell').toLowerCase();
-        const groupB = (b._fileGroup || 'Manuell').toLowerCase();
-        if (groupA !== groupB) return groupA.localeCompare(groupB);
-        // Sekundär: nach displayNumber innerhalb der Gruppe
-        const numA = typeof a.displayNumber === 'number' ? a.displayNumber : 99999;
-        const numB = typeof b.displayNumber === 'number' ? b.displayNumber : 99999;
-        return numA - numB;
-    });
-    
-    // Add reset button at top
-    let headerHTML = `
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding: 15px; background: rgba(255,255,255,0.05); border-radius: 10px;">
-            <div>
-                <strong style="font-size: 1.1rem;">Fragen-Statistiken</strong>
-                <p style="opacity: 0.7; font-size: 0.9rem; margin-top: 5px;">Zeigt an, wie oft Fragen richtig beantwortet wurden</p>
-            </div>
-            <div style="display: flex; gap: 10px;">
-                <button class="btn btn-danger btn-small" onclick="deleteAllQuestions()">
-                    🗑️ Alle Fragen löschen
-                </button>
-                <button class="btn btn-secondary btn-small" onclick="resetQuestionStats()">
-                    📊 Statistiken zurücksetzen
-                </button>
-            </div>
-        </div>
-        
-        <!-- Batch Activation Section -->
-        <div style="margin-bottom: 25px; padding: 20px; background: rgba(255,255,255,0.05); border-radius: 10px; border: 2px solid var(--accent);">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                <strong style="font-size: 1.1rem; color: var(--accent);">🎯 Mehrfach-Auswahl</strong>
-            </div>
-            
-            <div style="display: grid; grid-template-columns: 1fr auto; gap: 15px; align-items: start;">
-                <div>
-                    <label style="display: block; margin-bottom: 8px; font-size: 0.95rem; opacity: 0.9;">
-                        Fragen-Nummern oder Hash eingeben:
-                    </label>
-                    <input type="text" 
-                           id="batchQuestionInput" 
-                           placeholder="z.B.: 5, 10, 17 oder 20-40 oder Q_60e6ac77"
-                           style="width: 100%; padding: 12px; font-size: 1rem; background: rgba(255,255,255,0.1); 
-                                  border: 2px solid rgba(255,255,255,0.3); border-radius: 8px; color: var(--text);">
-                    <div style="margin-top: 8px; font-size: 0.85rem; opacity: 0.7; line-height: 1.6;">
-                        💡 Beispiele:<br>
-                        • Einzelne Fragen: <code style="background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 3px;">5, 10, 17</code><br>
-                        • Bereich: <code style="background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 3px;">20-40</code><br>
-                        • Gemischt: <code style="background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 3px;">5, 10-15, 20, 30-35</code><br>
-                        • Hash (GOTO): <code style="background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 3px;">Q_60e6ac77</code>
-                    </div>
-                </div>
-                
-                <div style="display: flex; flex-direction: column; gap: 8px;">
-                    <button class="btn" onclick="batchActivateQuestions(true)" 
-                            style="white-space: nowrap; padding: 12px 20px;">
-                        ✅ Aktivieren
-                    </button>
-                    <button class="btn btn-secondary" onclick="batchActivateQuestions(false)" 
-                            style="white-space: nowrap; padding: 12px 20px;">
-                        ❌ Deaktivieren
-                    </button>
-                    <button class="btn" onclick="gotoQuestion()" 
-                            style="white-space: nowrap; padding: 12px 20px; background: linear-gradient(135deg, #8e44ad, #9b59b6);">
-                        🔎 GOTO
-                    </button>
-                </div>
-            </div>
-            
-            <!-- Quick Actions -->
-            <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.1);">
-                <div style="font-size: 0.9rem; opacity: 0.8; margin-bottom: 8px;">Schnellaktionen:</div>
-                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                    <button class="btn btn-small" onclick="batchSelectAll(true)" 
-                            style="font-size: 0.85rem; padding: 6px 12px;">
-                        ✅ Alle aktivieren
-                    </button>
-                    <button class="btn btn-small btn-secondary" onclick="batchSelectAll(false)" 
-                            style="font-size: 0.85rem; padding: 6px 12px;">
-                        ❌ Alle deaktivieren
-                    </button>
-                    <button class="btn btn-small btn-secondary" onclick="batchInvertSelection()" 
-                            style="font-size: 0.85rem; padding: 6px 12px;">
-                        🔄 Auswahl umkehren
-                    </button>
-                <button class="btn btn-small" onclick="renumberAllQuestionsUI()" title="Alle Fragen lückenlos 1, 2, 3, ... neu nummerieren">🔢 Neu nummerieren</button>
-                </div>
-            </div>
-        </div>
-    `;
-    
-    // Gruppen-Chips erstellen
-    const groupCounts = {};
-    sortedQuestions.forEach(function(q) {
-        let g = q._fileGroup || 'Manuell';
-        groupCounts[g] = (groupCounts[g] || 0) + 1;
-    });
-    const groupNames = Object.keys(groupCounts).sort(function(a, b) { return a.toLowerCase().localeCompare(b.toLowerCase()); });
-    
-    let filteredQuestions;
-    if (groupNames.length > 1) {
-        // Aktive Filter aus globalem State lesen
-        if (!window._questionGroupFilters) window._questionGroupFilters = {};
-        const filters = window._questionGroupFilters;
-        const anyFilterActive = Object.values(filters).some(function(v) { return v; });
-        
-        headerHTML += '<div style="margin-bottom: 20px; padding: 15px; background: rgba(255,255,255,0.05); border-radius: 10px;">';
-        headerHTML += '<div style="font-size: 0.9rem; opacity: 0.8; margin-bottom: 10px;">📁 Fragengruppen:</div>';
-        headerHTML += '<div style="display: flex; gap: 8px; flex-wrap: wrap;">';
-        groupNames.forEach(function(g) {
-            const isFiltered = !!filters[g];
-            const chipBg = isFiltered ? 'rgba(46, 204, 113, 0.3)' : 'rgba(255,255,255,0.1)';
-            const chipBorder = isFiltered ? 'var(--correct)' : 'rgba(255,255,255,0.2)';
-            const checkMark = isFiltered ? '✓ ' : '';
-            const safeG = g.replace(/'/g, "\\'");
-            headerHTML += '<div style="display:inline-flex;align-items:center;border-radius:20px;overflow:hidden;border:2px solid ' + chipBorder + ';">';
-            headerHTML += '<button onclick="toggleGroupFilter(\'' + safeG + '\')" style="padding:6px 10px;background:' + chipBg + ';border:none;color:var(--text);cursor:pointer;font-size:0.85rem;font-weight:' + (isFiltered ? '700' : '400') + ';">' + checkMark + sanitizeHTML(g) + ' <span style="opacity:0.6;">(' + groupCounts[g] + ')</span></button>';
-            headerHTML += '<button onclick="scrollToGroup(\'' + safeG + '\')" style="padding:6px 10px;background:rgba(255,255,255,0.05);border:none;border-left:1px solid rgba(255,255,255,0.15);color:var(--accent);cursor:pointer;font-size:0.85rem;" title="Zur Gruppe springen">↓</button>';
-            headerHTML += '</div>';
-        });
-        // "Alle zeigen" Button wenn Filter aktiv
-        if (anyFilterActive) {
-            headerHTML += '<button onclick="clearGroupFilters()" class="btn btn-small btn-secondary" style="font-size:0.85rem;padding:6px 12px;border-radius:20px;">✕ Alle zeigen</button>';
-        }
-        headerHTML += '</div></div>';
-        
-        // Fragen filtern wenn Filter aktiv
-        if (anyFilterActive) {
-            filteredQuestions = sortedQuestions.filter(function(q) {
-                return filters[q._fileGroup || 'Manuell'];
-            });
-        } else {
-            filteredQuestions = sortedQuestions;
-        }
-    } else {
-        filteredQuestions = sortedQuestions;
-    }
-    
-    // Gruppen-Überschriften einfügen
-    let lastGroup = null;
-    let questionsHTML = '';
-    filteredQuestions.forEach(function(q) {
-        const g = q._fileGroup || 'Manuell';
-        if (g !== lastGroup) {
-            questionsHTML += '<div id="group-' + g.replace(/[^a-zA-Z0-9]/g, '_') + '" style="margin: 25px 0 10px 0; padding: 10px 15px; background: linear-gradient(135deg, rgba(247,184,1,0.15), rgba(247,184,1,0.05)); border-left: 4px solid var(--accent); border-radius: 0 8px 8px 0; font-weight: 700; color: var(--accent);">📁 ' + sanitizeHTML(g) + ' <span style="opacity:0.6;font-weight:400;">(' + (groupCounts[g] || 0) + ' Fragen)</span></div>';
-            lastGroup = g;
-        }
-        questionsHTML += renderQuestionItem(q);
-    });
-    
-    questionsList.innerHTML = headerHTML + questionsHTML;
-}
+function updateQuestionsList() { if (typeof Fragen2Plugin !== 'undefined') Fragen2Plugin.render(); }
 
-function toggleGroupFilter(groupName) { QuestionEditorPlugin.toggleGroupFilter(groupName); }
-
-function scrollToGroup(groupName) { QuestionEditorPlugin.scrollToGroup(groupName); }
-
-function clearGroupFilters() { QuestionEditorPlugin.clearGroupFilters(); }
-
-function renderQuestionItem(q) { return _renderQuestionItemImpl(q); }
-function _renderQuestionItemImpl(q) {
-        const mediaSrc = getMediaSource(q.media);
-        const isActive = q.active !== false;
-        const questionId = q.questionId || '???';
-        const displayNum = q.displayNumber || '?';
-        
-        const hasBase64 = q.media && q.media.data && !q.media.path;
-        const convertButton = hasBase64 ? `
-            <button class="btn btn-small" onclick="convertBase64ToPath(${q.id})" 
-                    style="background: var(--accent); font-size: 0.8rem; padding: 4px 8px;"
-                    title="Base64 → Pfad konvertieren">
-                🔄 Base64
-            </button>
-        ` : '';
-        
-        const stats = calculateQuestionStats(questionId);
-        let statsHTML = '';
-        if (stats) {
-            const colorClass = stats.percentage >= 75 ? 'var(--correct)' : 
-                              stats.percentage >= 50 ? 'var(--accent)' : 'var(--incorrect)';
-            statsHTML = `
-                <div style="text-align: center; min-width: 100px;">
-                    <div style="font-size: 1.5rem; font-weight: 700; color: ${colorClass};">
-                        ${stats.percentage}%
-                    </div>
-                    <div style="font-size: 0.8rem; opacity: 0.7;">
-                        ${stats.totalCorrect}/${stats.totalAsked} richtig
-                    </div>
-                </div>
-            `;
-        } else {
-            statsHTML = `
-                <div style="text-align: center; min-width: 100px; opacity: 0.5;">
-                    <div style="font-size: 1rem;">—</div>
-                    <div style="font-size: 0.8rem;">Keine Daten</div>
-                </div>
-            `;
-        }
-        
-        return `
-        <div class="question-item" data-question-id="${displayNum}" data-hash-id="${questionId}" data-file-group="${sanitizeHTML(q._fileGroup || 'Manuell')}" style="display: grid; grid-template-columns: auto 1fr auto auto auto auto auto; gap: 15px; align-items: center;">
-            <div style="display: flex; align-items: center; gap: 10px;">
-                <input type="checkbox" 
-                       ${isActive ? 'checked' : ''} 
-                       onchange="toggleQuestionActive(${q.id})"
-                       style="width: 20px; height: 20px; cursor: pointer; accent-color: var(--accent);">
-                <input type="text" 
-                       value="${displayNum}" title="Hash: ${questionId}" onchange="updateDisplayNumber(${q.id}, this.value)"
-                       style="width: 60px; text-align: center; font-weight: 700; color: var(--accent); background: rgba(255,255,255,0.1); border: 1px solid var(--accent); border-radius: 5px; padding: 5px;">
-                <span style="font-size:0.65rem;opacity:0.4;font-family:monospace;white-space:nowrap;" title="${questionId}">#${questionId}</span>
-            </div>
-            <div class="question-preview">
-                <h3 style="opacity: ${isActive ? '1' : '0.5'};">
-                    ${q.type === QUESTION_TYPES.IMAGEMAP ? '🗺️ ' : q.type === QUESTION_TYPES.TEXT ? '📝 ' : '☑️ '}${q.text}
-                </h3>
-                <p style="opacity: ${isActive ? '0.8' : '0.4'};">
-                    ${q.type === QUESTION_TYPES.IMAGEMAP ? 'Bildklick · ' + (q.targets ? q.targets.length : 0) + ' Zielzone(n)' : q.type === QUESTION_TYPES.TEXT ? 'Freitext-Antwort' : (q.answers ? q.answers.length : 0) + ' Antworten'} · ${q.media ? (q.media.path ? '📁 Pfad' : q.media.data ? '💾 Base64' : q.media.type) : 'Kein Medium'}
-                    · <span style="color:var(--accent);font-size:0.8rem;">📁 ${sanitizeHTML(q._fileGroup || 'Manuell')}</span>
-                </p>
-            </div>
-            ${statsHTML}
-            ${q.media && q.media.type === 'image' && mediaSrc ? `<img src="${mediaSrc}" class="media-preview" loading="lazy" style="opacity: ${isActive ? '1' : '0.5'};" onerror="this.style.display='none'">` : '<div></div>'}
-            <div style="display: flex; gap: 5px; flex-direction: column;">
-                ${convertButton}
-                <span style="opacity: ${isActive ? '1' : '0.5'}; font-weight: 700; color: ${isActive ? 'var(--correct)' : 'var(--incorrect)'};">
-                    ${isActive ? '✓ Aktiv' : '✗ Inaktiv'}
-                </span>
-            </div>
-            <button class="btn btn-secondary btn-small" onclick="editQuestion(${q.id})">Bearbeiten</button>
-            <button class="btn btn-danger btn-small" onclick="deleteQuestion(${q.id})">Löschen</button>
-        </div>
-        `;
-}
-
-function toggleQuestionActive(questionId) { QuestionEditorPlugin.toggleQuestionActive(questionId); }
-
-function convertBase64ToPath(questionId) { QuestionEditorPlugin.convertBase64ToPath(questionId); }
-
-
-
-
-function renumberAllQuestionsUI() { QuestionEditorPlugin.renumberAllQuestionsUI(); }
-
-function gotoQuestion() { QuestionEditorPlugin.gotoQuestion(); }
-
-function batchActivateQuestions(activate) { QuestionEditorPlugin.batchActivateQuestions(activate); }
-
-function parseBatchInput(input) { return QuestionEditorPlugin.parseBatchInput(input); }
-
-function batchSelectAll(activate) { QuestionEditorPlugin.batchSelectAll(activate); }
-
-function batchInvertSelection() { QuestionEditorPlugin.batchInvertSelection(); }
-
-function updateDisplayNumber(questionId, newValue) { QuestionEditorPlugin.updateDisplayNumber(questionId, newValue); }
-
-function updateQuestionId(questionId, newId) { QuestionEditorPlugin.updateQuestionId(questionId, newId); }
-
-function findNextFreeQuestionId() { return QuestionEditorPlugin.findNextFreeQuestionId(); }
-
-function editQuestion(questionId) { QuestionEditorPlugin.editQuestion(questionId); }
-
-function cancelEdit() { QuestionEditorPlugin.cancelEdit(); }
-
-function deleteQuestion(questionId) { QuestionEditorPlugin.deleteQuestion(questionId); }
-
-function getFileGroups() { return QuestionEditorPlugin.getFileGroups(); }
-function updateFileGroupDropdown(v) { QuestionEditorPlugin.updateFileGroupDropdown(v); }
-function addNewFileGroup() { QuestionEditorPlugin.addNewFileGroup(); }
-function changeQuestionGroup(id, g) { QuestionEditorPlugin.changeQuestionGroup(id, g); }
-function exportQuestionsByGroup() { QuestionEditorPlugin.exportQuestionsByGroup(); }
-
-function exportQuestionsUnencrypted() { QuestionEditorPlugin.exportQuestionsUnencrypted(); }
-
-function importQuestionsUnencrypted(event) { QuestionEditorPlugin.importQuestionsUnencrypted(event); }
 
 function addUser(event) { UserManagementPlugin.addUser(event); }
 

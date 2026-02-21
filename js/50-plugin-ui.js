@@ -13,7 +13,6 @@ const PLUGIN_DISPLAY_NAMES = {
     'BossFightPlugin': { icon: '⚔️', label: 'Boss-Fight' },
     'BadgePlugin': { icon: '🏆', label: 'Badge-System' },
     'LeaderboardPlugin': { icon: '📊', label: 'Bestenliste' },
-    'QuestionEditorPlugin': { icon: '✏️', label: 'Fragen-Backend' },
     'Fragen2Plugin': { icon: '📝', label: 'Fragen-Manager' },
     'UserManagementPlugin': { icon: '👥', label: 'Benutzer-Verwaltung' }
 };
