@@ -99,32 +99,38 @@ function hashString(str) {
 function generateQuestionHash(question) {
     // Normalisiere Text (lowercase, trim)
     const text = (question.text || question.frage || '').toLowerCase().trim();
-    
+
+    // Media-Fingerprint: Pfad oder erste 80 Zeichen des Data-URLs
+    const media = question.media || question.bild || null;
+    const mediaFp = media
+        ? (media.path ? media.path.toLowerCase().trim() : (media.data ? media.data.slice(0, 80) : ''))
+        : '';
+
     // Für Imagemap: Text + Targets
     if (question.targets) {
         const targetStr = JSON.stringify(question.targets);
         return 'Q_' + hashString(text + '|' + targetStr);
     }
-    
-    // Für Freitext: Text + korrekte Antworten (über zentrale Funktion)
+
+    // Für Freitext: Text + korrekte Antworten + Media
     const textAnswers = getCorrectTextAnswers(question);
     if (textAnswers.length > 0 && (!question.answers || !question.answers[0] || !question.answers[0].text)) {
         const answer = textAnswers.map(function(a){ return String(a).toLowerCase().trim(); }).sort().join('|');
-        return 'Q_' + hashString(text + '|' + answer);
+        return 'Q_' + hashString(text + '|' + answer + '|' + mediaFp);
     }
-    
-    // Für Multiple-Choice: Text + alle Antwort-Texte
+
+    // Für Multiple-Choice: Text + alle Antwort-Texte + Media
     if (question.answers || question.antworten) {
         const answers = question.answers || question.antworten;
         const answerTexts = answers.map(a => {
             if (typeof a === 'string') return a.toLowerCase().trim();
             return (a.text || '').toLowerCase().trim();
         }).join('|');
-        return 'Q_' + hashString(text + '|' + answerTexts);
+        return 'Q_' + hashString(text + '|' + answerTexts + '|' + mediaFp);
     }
-    
-    // Fallback: nur Text
-    return 'Q_' + hashString(text);
+
+    // Fallback: Text + Media
+    return 'Q_' + hashString(text + '|' + mediaFp);
 }
 
 // DISPLAY-NUMMER SYSTEM

@@ -122,9 +122,8 @@ const AbilityPlugin = {
             if (charges <= 0) return;
             hasAny = true;
             const used = abilityUsedThisQuestion[key];
-            const disabled = used || charges <= 0 ? 'disabled' : '';
             const passive = def.passive ? ' (passiv)' : '';
-            html += `<button class="ability-btn ${disabled ? 'ability-used' : ''}" onclick="useAbility('${key}')" ${disabled} title="${def.desc}${passive}">
+            html += `<button class="ability-btn ${used ? 'used' : 'available'}" onclick="useAbility('${key}')" title="${def.desc}${passive}">
                 <span class="ability-icon">${def.icon}</span>
                 <span class="ability-name">${def.name}</span>
                 <span class="ability-charges">${charges}×</span>

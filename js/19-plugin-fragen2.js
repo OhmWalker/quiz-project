@@ -567,6 +567,16 @@ const Fragen2Plugin = {
             }
         }
 
+        // questionId nach Änderungen neu generieren, alte ID für Migration bewahren
+        if (typeof generateQuestionHash === 'function') {
+            var newHash = generateQuestionHash(q);
+            if (newHash !== q.questionId) {
+                q._oldQuestionId = q.questionId;
+                q.questionId = newHash;
+                if (typeof buildMigrationMap === 'function') buildMigrationMap();
+            }
+        }
+
         this._editingId = null;
         this._renderList();
         Toast.show('Frage #' + (q.displayNumber || '?') + ' gespeichert!', 'success');
@@ -812,24 +822,34 @@ const Fragen2Plugin = {
     },
     
     _countDuplicates(allQ) {
-        var seen = new Set();
+        var seenIds = new Set();
+        var seenTexts = new Set();
         var dupes = 0;
         allQ.forEach(function(q) {
-            var key = (q.text || '').trim().toLowerCase();
-            if (seen.has(key)) dupes++;
-            else seen.add(key);
+            var qid = q.questionId || '';
+            var txt = (q.text || '').trim().toLowerCase();
+            var isDupe = (qid && seenIds.has(qid)) || seenTexts.has(txt);
+            if (isDupe) dupes++;
+            else {
+                if (qid) seenIds.add(qid);
+                seenTexts.add(txt);
+            }
         });
         return dupes;
     },
-    
+
     _removeDuplicates() {
-        var seen = new Set();
+        var seenIds = new Set();
+        var seenTexts = new Set();
         var before = questions.length;
         var kept = [];
         questions.forEach(function(q) {
-            var key = (q.text || '').trim().toLowerCase();
-            if (!seen.has(key)) {
-                seen.add(key);
+            var qid = q.questionId || '';
+            var txt = (q.text || '').trim().toLowerCase();
+            var isDupe = (qid && seenIds.has(qid)) || seenTexts.has(txt);
+            if (!isDupe) {
+                if (qid) seenIds.add(qid);
+                seenTexts.add(txt);
                 kept.push(q);
             }
         });
@@ -1106,8 +1126,11 @@ const Fragen2Plugin = {
                         importedQuestions.forEach(function(iq) {
                             var normalized = typeof normalizeQuestion === 'function' ? normalizeQuestion(iq) : iq;
                             normalized._fileGroup = iq._fileGroup || importTheme;
-                            // Duplikat-Check
-                            var isDupe = questions.some(function(eq) { return (eq.text || '').trim().toLowerCase() === (normalized.text || '').trim().toLowerCase(); });
+                            // Duplikat-Check: questionId ODER Text
+                            var isDupe = questions.some(function(eq) {
+                                if (normalized.questionId && eq.questionId === normalized.questionId) return true;
+                                return (eq.text || '').trim().toLowerCase() === (normalized.text || '').trim().toLowerCase();
+                            });
                             if (isDupe) { dupes++; }
                             else {
                                 normalized.id = Date.now() + added + Math.floor(Math.random() * 1000);

@@ -148,6 +148,12 @@ async function loadFromFolderInput(event) {
             qList.forEach((q, qi) => {
                 try {
                     const normalized = normalizeQuestion(q);
+                    // Duplikat-Check: questionId ODER Text (verhindert doppelte Fragen aus mehreren Dateien)
+                    const isDupe = questions.some(function(eq) {
+                        if (normalized.questionId && eq.questionId === normalized.questionId) return true;
+                        return (eq.text || '').trim().toLowerCase() === (normalized.text || '').trim().toLowerCase();
+                    });
+                    if (isDupe) { qErrors++; return; }
                     // Eindeutige ID sicherstellen (verschiedene Dateien können gleiche IDs haben)
                     normalized.id = Date.now() + questions.length + qi;
                     normalized.sourceFile = qf.name;
