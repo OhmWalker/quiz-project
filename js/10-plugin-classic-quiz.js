@@ -32,17 +32,24 @@ const ClassicQuizPlugin = {
         const randomness = (sr.randomness !== undefined ? sr.randomness : 40) / 100;
         const cooldownHours = sr.streakCooldown || 48;
         const streakThreshold = sr.streakThreshold || 3;
+        const freshQuota = (sr.freshQuota !== undefined ? sr.freshQuota : 0) / 100;
+        const freshThreshold = sr.freshThreshold !== undefined ? sr.freshThreshold : 1;
         const stats = user.questionStats || {};
         const now = Date.now();
         const cooldownMs = cooldownHours * 3600000;
-        const scored = active.map(q => {
-            const qid = q.questionId;
-            const s = stats[qid];
+        const corePercent = quizSettings.corePercent || 70;
+
+        const alreadyPlayedToday = (user.dailyQuizCount || 0) > 0;
+        const maxCore = alreadyPlayedToday
+            ? (sr.maxCoreSubsequent !== undefined ? sr.maxCoreSubsequent : count)
+            : (sr.maxCoreFirst !== undefined ? sr.maxCoreFirst : count);
+
+        const scoreQuestion = q => {
+            const s = stats[q.questionId];
             let priority = 50;
             if (s) {
-                const correct = s.correct || 0;
                 const asked = s.asked || 0;
-                const ratio = asked > 0 ? correct / asked : 0;
+                const ratio = asked > 0 ? (s.correct || 0) / asked : 0;
                 priority = Math.max(5, 100 - ratio * 80);
                 if (s.consecutiveCorrect >= streakThreshold && s.lastAsked) {
                     const elapsed = now - new Date(s.lastAsked).getTime();
@@ -52,14 +59,36 @@ const ClassicQuizPlugin = {
             } else {
                 priority = 95;
             }
-            // Core-Fragen bevorzugen
-            const corePercent = quizSettings.corePercent || 70;
             if (q.isCore) priority *= (1 + corePercent / 200);
-            const rnd = Math.random() * 100 * randomness;
-            return { q, score: priority + rnd };
-        });
-        scored.sort((a, b) => b.score - a.score);
-        return scored.slice(0, Math.min(count, scored.length)).map(s => s.q);
+            return priority + Math.random() * 100 * randomness;
+        };
+
+        const pickTop = (pool, n) => pool
+            .map(q => ({ q, score: scoreQuestion(q) }))
+            .sort((a, b) => b.score - a.score)
+            .slice(0, n).map(s => s.q);
+
+        // Core-Deckel: max N Core-Fragen pro Quiz
+        const coreQ   = active.filter(q => q.isCore);
+        const nonCoreQ = active.filter(q => !q.isCore);
+        const corePicked = pickTop(coreQ, Math.min(maxCore, count));
+        const nonCoreSlots = count - corePicked.length;
+
+        // Fresh-Quota für Non-Core (ab 2. Quiz des Tages)
+        let nonCorePicked;
+        if (freshQuota > 0 && alreadyPlayedToday && nonCoreSlots > 0) {
+            const freshNC = nonCoreQ.filter(q => { const s = stats[q.questionId]; return !s || (s.asked || 0) <= freshThreshold; });
+            const oldNC   = nonCoreQ.filter(q => { const s = stats[q.questionId]; return s && (s.asked || 0) > freshThreshold; });
+            const freshCount = Math.min(Math.floor(nonCoreSlots * freshQuota), freshNC.length);
+            const oldPicked  = pickTop(oldNC, nonCoreSlots - freshCount);
+            // Falls old-Pool zu klein: restliche Slots mit fresh auffüllen
+            const freshCount2 = nonCoreSlots - oldPicked.length;
+            nonCorePicked = [...pickTop(freshNC, freshCount2), ...oldPicked];
+        } else {
+            nonCorePicked = pickTop(nonCoreQ, nonCoreSlots);
+        }
+
+        return shuffleArray([...corePicked, ...nonCorePicked]);
     },
 
     startQuiz() {
