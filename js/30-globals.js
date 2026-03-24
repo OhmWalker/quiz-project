@@ -77,8 +77,7 @@ const SETTINGS_DEFAULTS = {
     },
     miniGames: {
         spinner: { enabled: true, minCorrect: 10, quizCount: 2, maxXP: 50 },
-        speedTap: { enabled: true, quizCount: 5, rounds: 5, bonusXP: 30, btnText: '⚡ Reaktionstest', btnImage: '', ms1: 300, ms2: 400, ms3: 500 },
-        bossFight: { enabled: true, threshold: 10, hp: 100, lives: 3, winXP: 100 },
+bossFight: { enabled: true, threshold: 10, hp: 100, lives: 3, winXP: 100 },
         xpPerCorrect: 5
     },
     avatars: {

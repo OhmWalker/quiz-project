@@ -666,12 +666,6 @@ function saveCorePercent() {
     Toast.show('CORE: ' + quizSettings.corePercent + '%', 'info');
 }
 
-function clearSpeedTapBtnImage() {
-    document.getElementById('mgSpeedTapBtnImage').value = '';
-    var p = document.getElementById('speedtapImagePreview');
-    if (p) p.style.display = 'none';
-}
-
 function updateRangeDisplay(targetId, suffix, event, element) {
     document.getElementById(targetId).textContent = element.value + (suffix || '');
 }
@@ -1747,16 +1741,6 @@ function updateMiniGameSettings() {
     mg.spinner.minCorrect = parseInt(document.getElementById('mgSpinnerMinCorrect').value) || 10;
     mg.spinner.quizCount = parseInt(document.getElementById('mgSpinnerQuizCount').value) || 2;
     mg.spinner.maxXP = parseInt(document.getElementById('mgSpinnerMaxXP').value) || 50;
-    if (!mg.speedTap) mg.speedTap = {};
-    mg.speedTap.enabled = document.getElementById('mgSpeedTapEnabled').checked;
-    mg.speedTap.quizCount = parseInt(document.getElementById('mgSpeedTapCount').value) || 5;
-    mg.speedTap.rounds = parseInt(document.getElementById('mgSpeedTapRounds').value) || 5;
-    mg.speedTap.bonusXP = parseInt(document.getElementById('mgSpeedTapBonusXP').value) || 30;
-    mg.speedTap.ms1 = parseInt(document.getElementById('mgSpeedTapMs1').value) || 300;
-    mg.speedTap.ms2 = parseInt(document.getElementById('mgSpeedTapMs2').value) || 400;
-    mg.speedTap.ms3 = parseInt(document.getElementById('mgSpeedTapMs3').value) || 500;
-    mg.speedTap.btnText = document.getElementById('mgSpeedTapBtnText').value || '⚡ Reaktionstest';
-    mg.speedTap.btnImage = document.getElementById('mgSpeedTapBtnImage').value || '';
     mg.bossFight.enabled = document.getElementById('mgBossEnabled').checked;
     mg.bossFight.threshold = parseInt(document.getElementById('mgBossThreshold').value) || 10;
     mg.bossFight.hp = parseInt(document.getElementById('mgBossHP').value) || 100;
@@ -1792,20 +1776,6 @@ function populateMiniGameSettings() {
     el = document.getElementById('mgSpinnerMinCorrect'); if (el) el.value = mg.spinner.minCorrect || 10;
     el = document.getElementById('mgSpinnerQuizCount'); if (el) el.value = mg.spinner.quizCount || 2;
     el = document.getElementById('mgSpinnerMaxXP'); if (el) el.value = mg.spinner.maxXP || 50;
-    const st = mg.speedTap || {};
-    el = document.getElementById('mgSpeedTapEnabled'); if (el) el.checked = st.enabled !== false;
-    el = document.getElementById('mgSpeedTapCount'); if (el) el.value = st.quizCount || 5;
-    el = document.getElementById('mgSpeedTapRounds'); if (el) el.value = st.rounds || CONFIG.MINI_GAMES.SPEED_TAP_DEFAULT_ROUNDS;
-    el = document.getElementById('mgSpeedTapBonusXP'); if (el) el.value = st.bonusXP || 30;
-    el = document.getElementById('mgSpeedTapBtnText'); if (el) el.value = st.btnText || '⚡ Reaktionstest';
-    el = document.getElementById('mgSpeedTapMs1'); if (el) el.value = st.ms1 || 300;
-    el = document.getElementById('mgSpeedTapMs2'); if (el) el.value = st.ms2 || 400;
-    el = document.getElementById('mgSpeedTapMs3'); if (el) el.value = st.ms3 || 500;
-    el = document.getElementById('mgSpeedTapBtnImage'); if (el) el.value = st.btnImage || '';
-    // Vorschau aktualisieren
-    let preview = document.getElementById('speedtapImagePreview');
-    if (preview && st.btnImage) { preview.src = st.btnImage; preview.style.display = 'inline-block'; }
-    else if (preview) { preview.style.display = 'none'; }
     el = document.getElementById('mgBossEnabled'); if (el) el.checked = mg.bossFight.enabled !== false;
     el = document.getElementById('mgBossThreshold'); if (el) el.value = mg.bossFight.threshold || 10;
     el = document.getElementById('mgBossHP'); if (el) el.value = mg.bossFight.hp || CONFIG.MINI_GAMES.BOSS_DEFAULT_HP;
@@ -1814,26 +1784,3 @@ function populateMiniGameSettings() {
     el = document.getElementById('mgGameXPPerCorrect'); if (el) el.value = mg.xpPerCorrect || 5;
 }
 
-function handleSpeedTapBtnImage(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-    const fileName = file.name;
-    const filePath = event.target.value || '';
-    let relativePath = '';
-    
-    if (filePath.toLowerCase().includes('medien')) {
-        const idx = filePath.toLowerCase().lastIndexOf('medien');
-        relativePath = filePath.substring(idx).replace(/\\/g, '/');
-    } else {
-        relativePath = 'medien/' + fileName;
-    }
-    
-    document.getElementById('mgSpeedTapBtnImage').value = relativePath;
-    
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        const preview = document.getElementById('speedtapImagePreview');
-        if (preview) { preview.src = e.target.result; preview.style.display = 'inline-block'; }
-    };
-    reader.readAsDataURL(file);
-}

@@ -823,35 +823,24 @@ const Fragen2Plugin = {
     
     _countDuplicates(allQ) {
         var seenIds = new Set();
-        var seenTexts = new Set();
         var dupes = 0;
         allQ.forEach(function(q) {
             var qid = q.questionId || '';
-            var txt = (q.text || '').trim().toLowerCase();
-            var isDupe = (qid && seenIds.has(qid)) || seenTexts.has(txt);
-            if (isDupe) dupes++;
-            else {
-                if (qid) seenIds.add(qid);
-                seenTexts.add(txt);
-            }
+            if (qid && seenIds.has(qid)) dupes++;
+            else if (qid) seenIds.add(qid);
         });
         return dupes;
     },
 
     _removeDuplicates() {
         var seenIds = new Set();
-        var seenTexts = new Set();
         var before = questions.length;
         var kept = [];
         questions.forEach(function(q) {
             var qid = q.questionId || '';
-            var txt = (q.text || '').trim().toLowerCase();
-            var isDupe = (qid && seenIds.has(qid)) || seenTexts.has(txt);
-            if (!isDupe) {
-                if (qid) seenIds.add(qid);
-                seenTexts.add(txt);
-                kept.push(q);
-            }
+            if (qid && seenIds.has(qid)) return;
+            if (qid) seenIds.add(qid);
+            kept.push(q);
         });
         questions.length = 0;
         kept.forEach(function(q) { questions.push(q); });
@@ -1126,10 +1115,9 @@ const Fragen2Plugin = {
                         importedQuestions.forEach(function(iq) {
                             var normalized = typeof normalizeQuestion === 'function' ? normalizeQuestion(iq) : iq;
                             normalized._fileGroup = iq._fileGroup || importTheme;
-                            // Duplikat-Check: questionId ODER Text
-                            var isDupe = questions.some(function(eq) {
-                                if (normalized.questionId && eq.questionId === normalized.questionId) return true;
-                                return (eq.text || '').trim().toLowerCase() === (normalized.text || '').trim().toLowerCase();
+                            // Duplikat-Check: nur questionId (Hash)
+                            var isDupe = normalized.questionId && questions.some(function(eq) {
+                                return eq.questionId === normalized.questionId;
                             });
                             if (isDupe) { dupes++; }
                             else {

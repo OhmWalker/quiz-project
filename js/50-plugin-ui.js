@@ -9,7 +9,6 @@ const PLUGIN_DISPLAY_NAMES = {
     'ClassicQuizPlugin': { icon: '📝', label: 'Classic Quiz' },
     'AbilityPlugin': { icon: '⚡', label: 'Fähigkeiten' },
     'WheelPlugin': { icon: '🎰', label: 'Glücksrad' },
-    'SpeedTapPlugin': { icon: '🎯', label: 'Reaktionstest' },
     'BossFightPlugin': { icon: '⚔️', label: 'Boss-Fight' },
     'BadgePlugin': { icon: '🏆', label: 'Badge-System' },
     'LeaderboardPlugin': { icon: '📊', label: 'Bestenliste' },

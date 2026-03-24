@@ -448,19 +448,6 @@ const ClassicQuizPlugin = {
                 return;
             }
         }
-        this._checkSpeedTapTrigger();
-    },
-
-    _checkSpeedTapTrigger() {
-        if (!currentUser) return;
-        const mg = getMG();
-        if (PluginRegistry.isEnabled('SpeedTapPlugin') && mg.speedTap && mg.speedTap.enabled !== false) {
-            const quizCount = currentUser.quizzesTaken || 0;
-            if (quizCount > 0 && quizCount % (mg.speedTap.quizCount || 5) === 0) {
-                SpeedTapPlugin.open();
-                return;
-            }
-        }
         this._checkBossTrigger();
     },
 

@@ -39,8 +39,6 @@ const BadgePlugin = {
         // Mini-Game-Badges (10)
         glueckspilz:{id:'glueckspilz',name:'Glückspilz',emoji:'🍀',cat:'minigame',desc:'Spinner gespielt',stat:'spinnerPlays',thresholds:[3,10,30,100,300]},
         jackpot:{id:'jackpot',name:'Jackpot',emoji:'💎',cat:'minigame',desc:'Jackpot gewonnen',stat:'jackpots',thresholds:[1,5,15,50,150]},
-        blitzreflex:{id:'blitzreflex',name:'Blitzreflex',emoji:'⚡',cat:'minigame',desc:'SpeedTap gespielt',stat:'speedtapPlays',thresholds:[3,10,30,100,300]},
-        ueberschall:{id:'ueberschall',name:'Überschall',emoji:'💨',cat:'minigame',desc:'SpeedTap schnell',stat:'speedtapFast',thresholds:[3,10,30,100,300]},
         drachentoeter:{id:'drachentoeter',name:'Drachentöter',emoji:'🐉',cat:'minigame',desc:'Bosse besiegt',stat:'bossKills',thresholds:[1,5,15,50,150]},
         ueberlebender:{id:'ueberlebender',name:'Überlebender',emoji:'❤️',cat:'minigame',desc:'Boss-Kämpfe',stat:'bossAttempts',thresholds:[3,10,30,100,300]},
         spieler:{id:'spieler',name:'Spieler',emoji:'🎲',cat:'minigame',desc:'Mini-Games gesamt',stat:'totalMiniGames',thresholds:[10,30,100,300,1000]},
@@ -155,7 +153,7 @@ const BadgePlugin = {
         stats.ab_phoneJoker = au.phoneJoker || 0;
         stats.uniqueAbilities = Object.values(au).filter(v => v > 0).length;
         // Total mini-games
-        stats.totalMiniGames = (stats.spinnerPlays || 0) + (stats.speedtapPlays || 0) + (stats.bossAttempts || 0);
+        stats.totalMiniGames = (stats.spinnerPlays || 0) + (stats.bossAttempts || 0);
         return stats;
     },
 

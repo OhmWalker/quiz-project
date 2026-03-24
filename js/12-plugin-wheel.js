@@ -148,7 +148,7 @@ const WheelPlugin = {
         document.getElementById('spinnerOverlay').classList.remove('active');
         window._mgTestMode = false;
         // Chain: check next mini-game
-        if (ClassicQuizPlugin._checkSpeedTapTrigger) ClassicQuizPlugin._checkSpeedTapTrigger();
+        if (ClassicQuizPlugin._checkBossTrigger) ClassicQuizPlugin._checkBossTrigger();
     },
 
     _applyJokerReward(jokerType) {

@@ -2718,82 +2718,6 @@
         .spinner-btn:disabled { opacity: 0.5; pointer-events: none; }
 
 
-        .speedtap-overlay {
-            display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-            background: #000; z-index: 2000; justify-content: center;
-            align-items: center; padding: 20px;
-        }
-        .speedtap-overlay.active { display: flex; }
-        .speedtap-container {
-            text-align: center; max-width: 1200px; width: 100%;
-        }
-        .speedtap-row {
-            display: flex;
-            justify-content: center;
-            align-items: flex-start;
-            gap: 6px;
-            flex-wrap: wrap;
-        }
-        .speedtap-arena {
-            position: relative; flex: 0 1 700px; height: 640px;
-            background: #111; border-radius: 20px;
-            border: 2px solid rgba(255,255,255,0.15); overflow: hidden;
-            margin: 20px 0; cursor: crosshair;
-        }
-        .speedtap-side-panel {
-            flex: 0 1 280px;
-            min-width: 220px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            margin-top: 20px;
-            min-height: 300px;
-        }
-        .speedtap-target {
-            position: absolute; width: 140px; height: 140px; border-radius: 50%;
-            background: radial-gradient(circle, var(--accent) 0%, var(--primary) 100%);
-            display: none; cursor: pointer; transition: transform 0.05s;
-            box-shadow: 0 0 35px rgba(255,107,53,0.6), 0 0 70px rgba(255,107,53,0.3);
-            z-index: 2;
-        }
-        .speedtap-target:hover { transform: scale(1.1); }
-        .speedtap-target.hit {
-            animation: tapHit 0.3s ease-out;
-        }
-        .speedtap-target.hit:not(.has-image) {
-            background: radial-gradient(circle, var(--correct) 0%, #27ae60 100%);
-            box-shadow: 0 0 25px rgba(46,204,113,0.6);
-        }
-        .speedtap-target.hit.has-image {
-            box-shadow: 0 0 30px rgba(46,204,113,0.8);
-            border: 3px solid #2ecc71;
-        }
-        @keyframes tapHit {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.3); }
-            100% { transform: scale(0); opacity: 0; }
-        }
-        .speedtap-round-info {
-            font-size: 1.2rem; font-weight: 700; margin: 10px 0;
-        }
-        .speedtap-time-display {
-            font-size: 2.5rem; font-weight: 800; color: var(--accent);
-            font-family: 'Courier New', monospace; margin: 8px 0;
-        }
-        .speedtap-results-grid {
-            display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin: 12px 0;
-            flex-direction: column; align-items: center;
-        }
-        .speedtap-round-badge {
-            padding: 6px 12px; border-radius: 20px; font-size: 0.85rem; font-weight: 700;
-            background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15);
-        }
-        .speedtap-round-badge.fast { border-color: #2ecc71; color: #2ecc71; }
-        .speedtap-round-badge.medium { border-color: var(--accent); color: var(--accent); }
-        .speedtap-round-badge.slow { border-color: #e74c3c; color: #e74c3c; }
-
-
         .boss-overlay {
             display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
             background: #000; z-index: 2000; justify-content: center;
@@ -3127,11 +3051,9 @@
         <p>Alle Mini-Games sind im Admin unter <strong>Einstellungen → 🎮 Mini-Games</strong> konfigurierbar. XP aus Spielen sind bewusst als Bonus konzipiert (Standard: 5 XP/richtige Antwort), nicht als Hauptquelle.</p>
         <table class="info-table-sm">
             <tr><td class="td-bold">🎰 Glücksrad</td><td>Nach Quiz bei X richtigen Antworten</td><td class="td-muted">minCorrect, maxXP</td></tr>
-            <tr><td class="td-bold">⚡ Speed-Tap</td><td>Nach X Quiz/Tag, 5 Runden Reaktionstest</td><td class="td-muted">quizCount, rounds, bonusXP, btnText, btnImage</td></tr>
             <tr><td class="td-bold">⚔️ Boss-Fight</td><td>Nach X Quiz mit >80%</td><td class="td-muted">threshold, hp, lives, winXP</td></tr>
         </table>
         <p><strong>Einstellungen:</strong> Alle Mini-Games können einzeln ein-/ausgeschaltet werden. Settings werden automatisch im Master-Backup (02_QUIZ-MASTER) unter <code class="code-tag">quizSettings.miniGames</code> gespeichert.</p>
-        <p><strong>Speed-Tap Ziel-Bild:</strong> Das Bild, auf das Spieler klicken müssen, kann angepasst werden. Bild im <strong>medien/</strong>-Unterordner ablegen und im Admin den Pfad eingeben (z.B. <code class="code-tag">medien/target.png</code>). Der Pfad wird als relative Referenz in <code class="code-tag">quizSettings.miniGames.speedTap.btnImage</code> gespeichert und im Master-Backup (02_QUIZ-MASTER) exportiert. Dies folgt dem gleichen Prinzip wie Fragen-Medien: Pfade statt eingebettete Daten.</p>
 
         <div style="text-align:center;margin-top:25px;">
             <button class="btn" data-toggle-overlay="adminFeaturesOverlay" data-overlay-show="false">Verstanden!</button>
@@ -3735,63 +3657,6 @@
                         Glücksrad aktiviert
                     </label>
                     
-                    <div class="sub-title">⚡ Speed-Tap Reaktionstest (nach X Quiz/Tag)</div>
-                    <div class="grid-2col">
-                        <div class="field-row">
-                            <span class="field-label">Quiz pro Tag für Auslöser</span>
-                            <input type="number" id="mgSpeedTapCount" min="1" max="20" value="5">
-                        </div>
-                        <div class="field-row">
-                            <span class="field-label">Max Bonus-XP<span class="hint">bei 🏆 Blitzschnell</span></span>
-                            <input type="number" id="mgSpeedTapBonusXP" min="5" max="200" value="30">
-                        </div>
-                    </div>
-                    <div class="grid-2col">
-                        <div class="field-row">
-                            <span class="field-label">Button-Text</span>
-                            <input type="text" id="mgSpeedTapBtnText" value="⚡ Reaktionstest" style="font-size:0.85rem;">
-                        </div>
-                        <div class="field-row">
-                            <span class="field-label">Runden</span>
-                            <input type="number" id="mgSpeedTapRounds" min="3" max="10" value="5">
-                        </div>
-                    </div>
-                    <div class="grid-2col">
-                        <div class="field-row">
-                            <span class="field-label">🏆 Blitzschnell (ms)<span class="hint">100% XP</span></span>
-                            <input type="number" id="mgSpeedTapMs1" min="100" max="2000" value="300">
-                        </div>
-                        <div class="field-row">
-                            <span class="field-label">⚡ Schnell (ms)<span class="hint">60% XP</span></span>
-                            <input type="number" id="mgSpeedTapMs2" min="100" max="3000" value="400">
-                        </div>
-                    </div>
-                    <div class="grid-2col">
-                        <div class="field-row">
-                            <span class="field-label">👍 Solide (ms)<span class="hint">30% XP</span></span>
-                            <input type="number" id="mgSpeedTapMs3" min="100" max="5000" value="500">
-                        </div>
-                        <div class="field-row">
-                            <span class="field-label">💪 Darüber<span class="hint">10% XP</span></span>
-                            <input type="number" id="mgSpeedTapMs3Info" value="—" disabled style="opacity:0.5;">
-                        </div>
-                    </div>
-                    <div class="field-row">
-                        <span class="field-label">Ziel-Bild (ersetzt den Kreis)<span class="hint">Pfad: medien/datei.png</span></span>
-                        <div style="display:flex;gap:8px;align-items:center;flex:1;">
-                            <input type="text" id="mgSpeedTapBtnImage" placeholder="medien/speedtap_target.png" style="font-size:0.85rem;flex:1;">
-                            <input type="file" id="mgSpeedTapBtnImageUpload" accept="image/*" style="display:none;" data-change="handleSpeedTapBtnImage">
-                            <button type="button" class="btn btn-secondary" data-trigger="mgSpeedTapBtnImageUpload" style="padding:4px 10px;font-size:0.8rem;white-space:nowrap;">📂 Bild</button>
-                            <button type="button" class="btn btn-secondary" data-action="clearSpeedTapBtnImage" style="padding:4px 10px;font-size:0.8rem;white-space:nowrap;" title="Bild entfernen">✕</button>
-                            <img id="speedtapImagePreview" src="" style="display:none;width:32px;height:32px;object-fit:contain;border-radius:6px;border:1px solid rgba(255,255,255,0.2);">
-                        </div>
-                    </div>
-                    <p style="opacity:0.4;font-size:0.75rem;margin-top:2px;margin-bottom:8px;">Kein Bild sichtbar? Befindet sich die HTML-Datei und der Ordner <strong>medien/</strong> im selben Verzeichnis?</p>
-                    <label class="cb-row" style="margin-top:4px;">
-                        <input type="checkbox" id="mgSpeedTapEnabled" checked>
-                        Speed-Tap aktiviert
-                    </label>
-                    
                     <div class="sub-title">⚔️ Boss-Fight (nach guten Leistungen)</div>
                     <div class="grid-2col">
                         <div class="field-row">
@@ -3821,7 +3686,6 @@
                         <button class="btn-save" data-action="updateMiniGameSettings">🎮 Mini-Games speichern</button>
                         <button class="btn-save" data-action="testMiniGame" data-args='["WheelPlugin","open","🎰 Test-Spin!","Admin-Test"]' style="background:linear-gradient(135deg,#f39c12,#e67e22);margin-left:8px;">🎰 Spinner testen</button>
                         <button class="btn-save" data-action="testMiniGame" data-args='["BossFightPlugin","start"]' style="background:linear-gradient(135deg,#e74c3c,#c0392b);margin-left:8px;">⚔️ Boss testen</button>
-                        <button class="btn-save" data-action="testMiniGame" data-args='["SpeedTapPlugin","open"]' style="background:linear-gradient(135deg,#9b59b6,#8e44ad);margin-left:8px;">⚡ Reaktion testen</button>
                     </div>
                 </div>
 
@@ -4154,27 +4018,6 @@
     </div>
 </div>
 
-<!-- ═══ Speed-Tap Reaktionstest Overlay ═══ -->
-<div class="speedtap-overlay" id="speedtapOverlay">
-    <div class="speedtap-container">
-        <h2 style="color: var(--accent); font-size: 1.8rem; margin-bottom: 5px;">⚡ Reaktionstest</h2>
-        <p style="opacity: 0.7; font-size: 0.9rem;" id="speedtapSubtitle">Triff das Ziel so schnell wie möglich!</p>
-        <div class="speedtap-round-info">Runde <span id="speedtapRound">1</span> / <span id="speedtapMaxRounds">5</span></div>
-        <div class="speedtap-row">
-            <div class="speedtap-arena" id="speedtapArena">
-                <div class="speedtap-target" id="speedtapTarget"></div>
-                <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);opacity:0.3;font-size:1.1rem;font-weight:700;pointer-events:none;" id="speedtapWaitMsg">Warte auf das Ziel...</div>
-            </div>
-            <div class="speedtap-side-panel">
-                <div class="speedtap-time-display" id="speedtapTimeDisplay">—</div>
-                <div class="speedtap-results-grid" id="speedtapResultsGrid"></div>
-                <div style="margin-top: 10px;">
-                    <button class="spinner-btn" id="speedtapCloseBtn" data-action="close" data-plugin="SpeedTapPlugin" style="display: none;">Weiter</button>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
 
 <!-- ═══ Boss Fight Overlay ═══ -->
 <div class="boss-overlay" id="bossOverlay">
@@ -5417,19 +5260,6 @@
                         return;
                     }
                 }
-                this._checkSpeedTapTrigger();
-            },
-
-            _checkSpeedTapTrigger() {
-                if (!currentUser) return;
-                const mg = getMG();
-                if (PluginRegistry.isEnabled('SpeedTapPlugin') && mg.speedTap && mg.speedTap.enabled !== false) {
-                    const quizCount = currentUser.quizzesTaken || 0;
-                    if (quizCount > 0 && quizCount % (mg.speedTap.quizCount || 5) === 0) {
-                        SpeedTapPlugin.open();
-                        return;
-                    }
-                }
                 this._checkBossTrigger();
             },
 
@@ -6050,7 +5880,7 @@
                 document.getElementById('spinnerOverlay').classList.remove('active');
                 window._mgTestMode = false;
                 // Chain: check next mini-game
-                if (ClassicQuizPlugin._checkSpeedTapTrigger) ClassicQuizPlugin._checkSpeedTapTrigger();
+                if (ClassicQuizPlugin._checkBossTrigger) ClassicQuizPlugin._checkBossTrigger();
             },
 
             _applyJokerReward(jokerType) {
@@ -6090,120 +5920,6 @@
         };
 
         // ── SPEEDTAP PLUGIN ─────────────────────────────────────────
-
-
-        // === 13-plugin-speedtap.js ===
-        // 13-plugin-speedtap.js
-        // SpeedTapPlugin - reaction test mini-game
-        // ============================================================
-
-        const SpeedTapPlugin = {
-            name: 'SpeedTapPlugin',
-            _state: { round: 0, maxRounds: 5, times: [], targetVisible: false, startTime: 0, timeout: null },
-
-            init() {},
-            enable() {},
-            disable() {},
-
-            open() {
-                const mg = getMG();
-                const st = mg.speedTap || {};
-                const s = this._state;
-                s.round = 0;
-                s.maxRounds = st.rounds || CONFIG.MINI_GAMES.SPEED_TAP_DEFAULT_ROUNDS;
-                s.times = [];
-                s.targetVisible = false;
-                document.getElementById('speedtapRound').textContent = '1';
-                document.getElementById('speedtapMaxRounds').textContent = s.maxRounds;
-                document.getElementById('speedtapTimeDisplay').textContent = '—';
-                document.getElementById('speedtapResultsGrid').innerHTML = '';
-                document.getElementById('speedtapCloseBtn').style.display = 'none';
-                document.getElementById('speedtapWaitMsg').style.display = '';
-                const target = document.getElementById('speedtapTarget');
-                target.style.display = 'none';
-                document.getElementById('speedtapOverlay').classList.add('active');
-                this._startRound();
-            },
-
-            _startRound() {
-                const s = this._state;
-                s.round++;
-                if (s.round > s.maxRounds) { this._showResults(); return; }
-                document.getElementById('speedtapRound').textContent = s.round;
-                document.getElementById('speedtapWaitMsg').style.display = '';
-                const target = document.getElementById('speedtapTarget');
-                target.style.display = 'none';
-                s.targetVisible = false;
-                const delay = 1000 + Math.random() * 2500;
-                s.timeout = setTimeout(() => this._showTarget(), delay);
-            },
-
-            _showTarget() {
-                const s = this._state;
-                const arena = document.getElementById('speedtapArena');
-                const target = document.getElementById('speedtapTarget');
-                const aw = arena.offsetWidth - 60;
-                const ah = arena.offsetHeight - 60;
-                const x = 20 + Math.random() * aw;
-                const y = 20 + Math.random() * ah;
-                target.style.left = x + 'px';
-                target.style.top = y + 'px';
-                target.style.display = '';
-                document.getElementById('speedtapWaitMsg').style.display = 'none';
-                s.targetVisible = true;
-                s.startTime = performance.now();
-                target.onclick = () => this._handleHit();
-            },
-
-            _handleHit() {
-                const s = this._state;
-                if (!s.targetVisible) return;
-                const elapsed = performance.now() - s.startTime;
-                const ms = Math.round(elapsed);
-                s.times.push(ms);
-                s.targetVisible = false;
-                document.getElementById('speedtapTarget').style.display = 'none';
-                document.getElementById('speedtapTimeDisplay').textContent = ms + ' ms';
-                // Color-code
-                const mg = getMG().speedTap || {};
-                const ms1 = mg.ms1 || 300, ms2 = mg.ms2 || 400, ms3 = mg.ms3 || 500;
-                let color = '#e74c3c';
-                if (ms <= ms1) color = '#2ecc71';
-                else if (ms <= ms2) color = '#f39c12';
-                else if (ms <= ms3) color = '#e67e22';
-                const grid = document.getElementById('speedtapResultsGrid');
-                grid.innerHTML += `<div style="padding:4px 8px;border-radius:6px;background:${color};color:#fff;font-weight:700;font-size:0.85rem;text-align:center;">${ms}ms</div>`;
-                setTimeout(() => this._startRound(), 800);
-            },
-
-            _showResults() {
-                const s = this._state;
-                const avg = s.times.length > 0 ? Math.round(s.times.reduce((a, b) => a + b, 0) / s.times.length) : 0;
-                const best = s.times.length > 0 ? Math.min(...s.times) : 0;
-                const mg = getMG().speedTap || {};
-                const bonusXP = mg.bonusXP || 30;
-                // XP: better time = more XP
-                const xpRatio = Math.max(0, 1 - (avg - 200) / 600);
-                const xp = Math.round(bonusXP * Math.max(0.2, xpRatio));
-                document.getElementById('speedtapTimeDisplay').innerHTML = `<div style="font-size:1.2rem;">Ø ${avg} ms</div><div style="font-size:0.85rem;opacity:0.7;">Bester: ${best} ms</div><div style="font-size:1rem;color:var(--accent);margin-top:5px;">+${xp} XP</div>`;
-                document.getElementById('speedtapCloseBtn').style.display = '';
-                applyMiniGameXP(xp);
-                if (currentUser && currentUser.badgeStats) {
-                    currentUser.badgeStats.speedtapPlays = (currentUser.badgeStats.speedtapPlays || 0) + 1;
-                    if (avg <= (mg.ms1 || 300)) currentUser.badgeStats.speedtapFast = (currentUser.badgeStats.speedtapFast || 0) + 1;
-                }
-            },
-
-            close() {
-                const s = this._state;
-                if (s.timeout) { clearTimeout(s.timeout); s.timeout = null; }
-                document.getElementById('speedtapOverlay').classList.remove('active');
-                window._mgTestMode = false;
-                if (ClassicQuizPlugin._checkBossTrigger) ClassicQuizPlugin._checkBossTrigger();
-            }
-        };
-
-        // ── BOSS FIGHT PLUGIN ───────────────────────────────────────
 
 
         // === 14-plugin-bossfight.js ===
@@ -6425,8 +6141,6 @@
                 // Mini-Game-Badges (10)
                 glueckspilz:{id:'glueckspilz',name:'Glückspilz',emoji:'🍀',cat:'minigame',desc:'Spinner gespielt',stat:'spinnerPlays',thresholds:[3,10,30,100,300]},
                 jackpot:{id:'jackpot',name:'Jackpot',emoji:'💎',cat:'minigame',desc:'Jackpot gewonnen',stat:'jackpots',thresholds:[1,5,15,50,150]},
-                blitzreflex:{id:'blitzreflex',name:'Blitzreflex',emoji:'⚡',cat:'minigame',desc:'SpeedTap gespielt',stat:'speedtapPlays',thresholds:[3,10,30,100,300]},
-                ueberschall:{id:'ueberschall',name:'Überschall',emoji:'💨',cat:'minigame',desc:'SpeedTap schnell',stat:'speedtapFast',thresholds:[3,10,30,100,300]},
                 drachentoeter:{id:'drachentoeter',name:'Drachentöter',emoji:'🐉',cat:'minigame',desc:'Bosse besiegt',stat:'bossKills',thresholds:[1,5,15,50,150]},
                 ueberlebender:{id:'ueberlebender',name:'Überlebender',emoji:'❤️',cat:'minigame',desc:'Boss-Kämpfe',stat:'bossAttempts',thresholds:[3,10,30,100,300]},
                 spieler:{id:'spieler',name:'Spieler',emoji:'🎲',cat:'minigame',desc:'Mini-Games gesamt',stat:'totalMiniGames',thresholds:[10,30,100,300,1000]},
@@ -6541,7 +6255,7 @@
                 stats.ab_phoneJoker = au.phoneJoker || 0;
                 stats.uniqueAbilities = Object.values(au).filter(v => v > 0).length;
                 // Total mini-games
-                stats.totalMiniGames = (stats.spinnerPlays || 0) + (stats.speedtapPlays || 0) + (stats.bossAttempts || 0);
+                stats.totalMiniGames = (stats.spinnerPlays || 0) + (stats.bossAttempts || 0);
                 return stats;
             },
 
@@ -7943,35 +7657,24 @@
     
             _countDuplicates(allQ) {
                 var seenIds = new Set();
-                var seenTexts = new Set();
                 var dupes = 0;
                 allQ.forEach(function(q) {
                     var qid = q.questionId || '';
-                    var txt = (q.text || '').trim().toLowerCase();
-                    var isDupe = (qid && seenIds.has(qid)) || seenTexts.has(txt);
-                    if (isDupe) dupes++;
-                    else {
-                        if (qid) seenIds.add(qid);
-                        seenTexts.add(txt);
-                    }
+                    if (qid && seenIds.has(qid)) dupes++;
+                    else if (qid) seenIds.add(qid);
                 });
                 return dupes;
             },
 
             _removeDuplicates() {
                 var seenIds = new Set();
-                var seenTexts = new Set();
                 var before = questions.length;
                 var kept = [];
                 questions.forEach(function(q) {
                     var qid = q.questionId || '';
-                    var txt = (q.text || '').trim().toLowerCase();
-                    var isDupe = (qid && seenIds.has(qid)) || seenTexts.has(txt);
-                    if (!isDupe) {
-                        if (qid) seenIds.add(qid);
-                        seenTexts.add(txt);
-                        kept.push(q);
-                    }
+                    if (qid && seenIds.has(qid)) return;
+                    if (qid) seenIds.add(qid);
+                    kept.push(q);
                 });
                 questions.length = 0;
                 kept.forEach(function(q) { questions.push(q); });
@@ -8246,10 +7949,9 @@
                                 importedQuestions.forEach(function(iq) {
                                     var normalized = typeof normalizeQuestion === 'function' ? normalizeQuestion(iq) : iq;
                                     normalized._fileGroup = iq._fileGroup || importTheme;
-                                    // Duplikat-Check: questionId ODER Text
-                                    var isDupe = questions.some(function(eq) {
-                                        if (normalized.questionId && eq.questionId === normalized.questionId) return true;
-                                        return (eq.text || '').trim().toLowerCase() === (normalized.text || '').trim().toLowerCase();
+                                    // Duplikat-Check: nur questionId (Hash)
+                                    var isDupe = normalized.questionId && questions.some(function(eq) {
+                                        return eq.questionId === normalized.questionId;
                                     });
                                     if (isDupe) { dupes++; }
                                     else {
@@ -8698,7 +8400,6 @@
         PluginRegistry.register('ClassicQuizPlugin', ClassicQuizPlugin, {category:'quiz', required:true});
         PluginRegistry.register('AbilityPlugin', AbilityPlugin, {category:'feature'});
         PluginRegistry.register('WheelPlugin', WheelPlugin, {category:'minigame'});
-        PluginRegistry.register('SpeedTapPlugin', SpeedTapPlugin, {category:'minigame'});
         PluginRegistry.register('BossFightPlugin', BossFightPlugin, {category:'minigame'});
         PluginRegistry.register('BadgePlugin', BadgePlugin, {category:'feature'});
         PluginRegistry.register('LeaderboardPlugin', LeaderboardPlugin, {category:'feature'});
@@ -8944,8 +8645,7 @@
             },
             miniGames: {
                 spinner: { enabled: true, minCorrect: 10, quizCount: 2, maxXP: 50 },
-                speedTap: { enabled: true, quizCount: 5, rounds: 5, bonusXP: 30, btnText: '⚡ Reaktionstest', btnImage: '', ms1: 300, ms2: 400, ms3: 500 },
-                bossFight: { enabled: true, threshold: 10, hp: 100, lives: 3, winXP: 100 },
+        bossFight: { enabled: true, threshold: 10, hp: 100, lives: 3, winXP: 100 },
                 xpPerCorrect: 5
             },
             avatars: {
@@ -10653,12 +10353,6 @@
             Toast.show('CORE: ' + quizSettings.corePercent + '%', 'info');
         }
 
-        function clearSpeedTapBtnImage() {
-            document.getElementById('mgSpeedTapBtnImage').value = '';
-            var p = document.getElementById('speedtapImagePreview');
-            if (p) p.style.display = 'none';
-        }
-
         function updateRangeDisplay(targetId, suffix, event, element) {
             document.getElementById(targetId).textContent = element.value + (suffix || '');
         }
@@ -11734,16 +11428,6 @@
             mg.spinner.minCorrect = parseInt(document.getElementById('mgSpinnerMinCorrect').value) || 10;
             mg.spinner.quizCount = parseInt(document.getElementById('mgSpinnerQuizCount').value) || 2;
             mg.spinner.maxXP = parseInt(document.getElementById('mgSpinnerMaxXP').value) || 50;
-            if (!mg.speedTap) mg.speedTap = {};
-            mg.speedTap.enabled = document.getElementById('mgSpeedTapEnabled').checked;
-            mg.speedTap.quizCount = parseInt(document.getElementById('mgSpeedTapCount').value) || 5;
-            mg.speedTap.rounds = parseInt(document.getElementById('mgSpeedTapRounds').value) || 5;
-            mg.speedTap.bonusXP = parseInt(document.getElementById('mgSpeedTapBonusXP').value) || 30;
-            mg.speedTap.ms1 = parseInt(document.getElementById('mgSpeedTapMs1').value) || 300;
-            mg.speedTap.ms2 = parseInt(document.getElementById('mgSpeedTapMs2').value) || 400;
-            mg.speedTap.ms3 = parseInt(document.getElementById('mgSpeedTapMs3').value) || 500;
-            mg.speedTap.btnText = document.getElementById('mgSpeedTapBtnText').value || '⚡ Reaktionstest';
-            mg.speedTap.btnImage = document.getElementById('mgSpeedTapBtnImage').value || '';
             mg.bossFight.enabled = document.getElementById('mgBossEnabled').checked;
             mg.bossFight.threshold = parseInt(document.getElementById('mgBossThreshold').value) || 10;
             mg.bossFight.hp = parseInt(document.getElementById('mgBossHP').value) || 100;
@@ -11779,20 +11463,6 @@
             el = document.getElementById('mgSpinnerMinCorrect'); if (el) el.value = mg.spinner.minCorrect || 10;
             el = document.getElementById('mgSpinnerQuizCount'); if (el) el.value = mg.spinner.quizCount || 2;
             el = document.getElementById('mgSpinnerMaxXP'); if (el) el.value = mg.spinner.maxXP || 50;
-            const st = mg.speedTap || {};
-            el = document.getElementById('mgSpeedTapEnabled'); if (el) el.checked = st.enabled !== false;
-            el = document.getElementById('mgSpeedTapCount'); if (el) el.value = st.quizCount || 5;
-            el = document.getElementById('mgSpeedTapRounds'); if (el) el.value = st.rounds || CONFIG.MINI_GAMES.SPEED_TAP_DEFAULT_ROUNDS;
-            el = document.getElementById('mgSpeedTapBonusXP'); if (el) el.value = st.bonusXP || 30;
-            el = document.getElementById('mgSpeedTapBtnText'); if (el) el.value = st.btnText || '⚡ Reaktionstest';
-            el = document.getElementById('mgSpeedTapMs1'); if (el) el.value = st.ms1 || 300;
-            el = document.getElementById('mgSpeedTapMs2'); if (el) el.value = st.ms2 || 400;
-            el = document.getElementById('mgSpeedTapMs3'); if (el) el.value = st.ms3 || 500;
-            el = document.getElementById('mgSpeedTapBtnImage'); if (el) el.value = st.btnImage || '';
-            // Vorschau aktualisieren
-            let preview = document.getElementById('speedtapImagePreview');
-            if (preview && st.btnImage) { preview.src = st.btnImage; preview.style.display = 'inline-block'; }
-            else if (preview) { preview.style.display = 'none'; }
             el = document.getElementById('mgBossEnabled'); if (el) el.checked = mg.bossFight.enabled !== false;
             el = document.getElementById('mgBossThreshold'); if (el) el.value = mg.bossFight.threshold || 10;
             el = document.getElementById('mgBossHP'); if (el) el.value = mg.bossFight.hp || CONFIG.MINI_GAMES.BOSS_DEFAULT_HP;
@@ -11801,29 +11471,6 @@
             el = document.getElementById('mgGameXPPerCorrect'); if (el) el.value = mg.xpPerCorrect || 5;
         }
 
-        function handleSpeedTapBtnImage(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            const fileName = file.name;
-            const filePath = event.target.value || '';
-            let relativePath = '';
-    
-            if (filePath.toLowerCase().includes('medien')) {
-                const idx = filePath.toLowerCase().lastIndexOf('medien');
-                relativePath = filePath.substring(idx).replace(/\\/g, '/');
-            } else {
-                relativePath = 'medien/' + fileName;
-            }
-    
-            document.getElementById('mgSpeedTapBtnImage').value = relativePath;
-    
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const preview = document.getElementById('speedtapImagePreview');
-                if (preview) { preview.src = e.target.result; preview.style.display = 'inline-block'; }
-            };
-            reader.readAsDataURL(file);
-        }
 
 
         // === 50-plugin-ui.js ===
@@ -11838,7 +11485,6 @@
             'ClassicQuizPlugin': { icon: '📝', label: 'Classic Quiz' },
             'AbilityPlugin': { icon: '⚡', label: 'Fähigkeiten' },
             'WheelPlugin': { icon: '🎰', label: 'Glücksrad' },
-            'SpeedTapPlugin': { icon: '🎯', label: 'Reaktionstest' },
             'BossFightPlugin': { icon: '⚔️', label: 'Boss-Fight' },
             'BadgePlugin': { icon: '🏆', label: 'Badge-System' },
             'LeaderboardPlugin': { icon: '📊', label: 'Bestenliste' },

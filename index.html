@@ -238,11 +238,9 @@
         <p>Alle Mini-Games sind im Admin unter <strong>Einstellungen → 🎮 Mini-Games</strong> konfigurierbar. XP aus Spielen sind bewusst als Bonus konzipiert (Standard: 5 XP/richtige Antwort), nicht als Hauptquelle.</p>
         <table class="info-table-sm">
             <tr><td class="td-bold">🎰 Glücksrad</td><td>Nach Quiz bei X richtigen Antworten</td><td class="td-muted">minCorrect, maxXP</td></tr>
-            <tr><td class="td-bold">⚡ Speed-Tap</td><td>Nach X Quiz/Tag, 5 Runden Reaktionstest</td><td class="td-muted">quizCount, rounds, bonusXP, btnText, btnImage</td></tr>
             <tr><td class="td-bold">⚔️ Boss-Fight</td><td>Nach X Quiz mit >80%</td><td class="td-muted">threshold, hp, lives, winXP</td></tr>
         </table>
         <p><strong>Einstellungen:</strong> Alle Mini-Games können einzeln ein-/ausgeschaltet werden. Settings werden automatisch im Master-Backup (02_QUIZ-MASTER) unter <code class="code-tag">quizSettings.miniGames</code> gespeichert.</p>
-        <p><strong>Speed-Tap Ziel-Bild:</strong> Das Bild, auf das Spieler klicken müssen, kann angepasst werden. Bild im <strong>medien/</strong>-Unterordner ablegen und im Admin den Pfad eingeben (z.B. <code class="code-tag">medien/target.png</code>). Der Pfad wird als relative Referenz in <code class="code-tag">quizSettings.miniGames.speedTap.btnImage</code> gespeichert und im Master-Backup (02_QUIZ-MASTER) exportiert. Dies folgt dem gleichen Prinzip wie Fragen-Medien: Pfade statt eingebettete Daten.</p>
 
         <div style="text-align:center;margin-top:25px;">
             <button class="btn" data-toggle-overlay="adminFeaturesOverlay" data-overlay-show="false">Verstanden!</button>
@@ -846,63 +844,6 @@
                         Glücksrad aktiviert
                     </label>
                     
-                    <div class="sub-title">⚡ Speed-Tap Reaktionstest (nach X Quiz/Tag)</div>
-                    <div class="grid-2col">
-                        <div class="field-row">
-                            <span class="field-label">Quiz pro Tag für Auslöser</span>
-                            <input type="number" id="mgSpeedTapCount" min="1" max="20" value="5">
-                        </div>
-                        <div class="field-row">
-                            <span class="field-label">Max Bonus-XP<span class="hint">bei 🏆 Blitzschnell</span></span>
-                            <input type="number" id="mgSpeedTapBonusXP" min="5" max="200" value="30">
-                        </div>
-                    </div>
-                    <div class="grid-2col">
-                        <div class="field-row">
-                            <span class="field-label">Button-Text</span>
-                            <input type="text" id="mgSpeedTapBtnText" value="⚡ Reaktionstest" style="font-size:0.85rem;">
-                        </div>
-                        <div class="field-row">
-                            <span class="field-label">Runden</span>
-                            <input type="number" id="mgSpeedTapRounds" min="3" max="10" value="5">
-                        </div>
-                    </div>
-                    <div class="grid-2col">
-                        <div class="field-row">
-                            <span class="field-label">🏆 Blitzschnell (ms)<span class="hint">100% XP</span></span>
-                            <input type="number" id="mgSpeedTapMs1" min="100" max="2000" value="300">
-                        </div>
-                        <div class="field-row">
-                            <span class="field-label">⚡ Schnell (ms)<span class="hint">60% XP</span></span>
-                            <input type="number" id="mgSpeedTapMs2" min="100" max="3000" value="400">
-                        </div>
-                    </div>
-                    <div class="grid-2col">
-                        <div class="field-row">
-                            <span class="field-label">👍 Solide (ms)<span class="hint">30% XP</span></span>
-                            <input type="number" id="mgSpeedTapMs3" min="100" max="5000" value="500">
-                        </div>
-                        <div class="field-row">
-                            <span class="field-label">💪 Darüber<span class="hint">10% XP</span></span>
-                            <input type="number" id="mgSpeedTapMs3Info" value="—" disabled style="opacity:0.5;">
-                        </div>
-                    </div>
-                    <div class="field-row">
-                        <span class="field-label">Ziel-Bild (ersetzt den Kreis)<span class="hint">Pfad: medien/datei.png</span></span>
-                        <div style="display:flex;gap:8px;align-items:center;flex:1;">
-                            <input type="text" id="mgSpeedTapBtnImage" placeholder="medien/speedtap_target.png" style="font-size:0.85rem;flex:1;">
-                            <input type="file" id="mgSpeedTapBtnImageUpload" accept="image/*" style="display:none;" data-change="handleSpeedTapBtnImage">
-                            <button type="button" class="btn btn-secondary" data-trigger="mgSpeedTapBtnImageUpload" style="padding:4px 10px;font-size:0.8rem;white-space:nowrap;">📂 Bild</button>
-                            <button type="button" class="btn btn-secondary" data-action="clearSpeedTapBtnImage" style="padding:4px 10px;font-size:0.8rem;white-space:nowrap;" title="Bild entfernen">✕</button>
-                            <img id="speedtapImagePreview" src="" style="display:none;width:32px;height:32px;object-fit:contain;border-radius:6px;border:1px solid rgba(255,255,255,0.2);">
-                        </div>
-                    </div>
-                    <p style="opacity:0.4;font-size:0.75rem;margin-top:2px;margin-bottom:8px;">Kein Bild sichtbar? Befindet sich die HTML-Datei und der Ordner <strong>medien/</strong> im selben Verzeichnis?</p>
-                    <label class="cb-row" style="margin-top:4px;">
-                        <input type="checkbox" id="mgSpeedTapEnabled" checked>
-                        Speed-Tap aktiviert
-                    </label>
-                    
                     <div class="sub-title">⚔️ Boss-Fight (nach guten Leistungen)</div>
                     <div class="grid-2col">
                         <div class="field-row">
@@ -932,7 +873,6 @@
                         <button class="btn-save" data-action="updateMiniGameSettings">🎮 Mini-Games speichern</button>
                         <button class="btn-save" data-action="testMiniGame" data-args='["WheelPlugin","open","🎰 Test-Spin!","Admin-Test"]' style="background:linear-gradient(135deg,#f39c12,#e67e22);margin-left:8px;">🎰 Spinner testen</button>
                         <button class="btn-save" data-action="testMiniGame" data-args='["BossFightPlugin","start"]' style="background:linear-gradient(135deg,#e74c3c,#c0392b);margin-left:8px;">⚔️ Boss testen</button>
-                        <button class="btn-save" data-action="testMiniGame" data-args='["SpeedTapPlugin","open"]' style="background:linear-gradient(135deg,#9b59b6,#8e44ad);margin-left:8px;">⚡ Reaktion testen</button>
                     </div>
                 </div>
 
@@ -1265,27 +1205,6 @@
     </div>
 </div>
 
-<!-- ═══ Speed-Tap Reaktionstest Overlay ═══ -->
-<div class="speedtap-overlay" id="speedtapOverlay">
-    <div class="speedtap-container">
-        <h2 style="color: var(--accent); font-size: 1.8rem; margin-bottom: 5px;">⚡ Reaktionstest</h2>
-        <p style="opacity: 0.7; font-size: 0.9rem;" id="speedtapSubtitle">Triff das Ziel so schnell wie möglich!</p>
-        <div class="speedtap-round-info">Runde <span id="speedtapRound">1</span> / <span id="speedtapMaxRounds">5</span></div>
-        <div class="speedtap-row">
-            <div class="speedtap-arena" id="speedtapArena">
-                <div class="speedtap-target" id="speedtapTarget"></div>
-                <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);opacity:0.3;font-size:1.1rem;font-weight:700;pointer-events:none;" id="speedtapWaitMsg">Warte auf das Ziel...</div>
-            </div>
-            <div class="speedtap-side-panel">
-                <div class="speedtap-time-display" id="speedtapTimeDisplay">—</div>
-                <div class="speedtap-results-grid" id="speedtapResultsGrid"></div>
-                <div style="margin-top: 10px;">
-                    <button class="spinner-btn" id="speedtapCloseBtn" data-action="close" data-plugin="SpeedTapPlugin" style="display: none;">Weiter</button>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
 
 <!-- ═══ Boss Fight Overlay ═══ -->
 <div class="boss-overlay" id="bossOverlay">
@@ -1324,7 +1243,6 @@
     <script src="js/10-plugin-classic-quiz.js"></script>
     <script src="js/11-plugin-ability.js"></script>
     <script src="js/12-plugin-wheel.js"></script>
-    <script src="js/13-plugin-speedtap.js"></script>
     <script src="js/14-plugin-bossfight.js"></script>
     <script src="js/16-plugin-badge.js"></script>
     <script src="js/17-plugin-leaderboard.js"></script>
