@@ -486,7 +486,14 @@ const ClassicQuizPlugin = {
         if (PluginRegistry.isEnabled('BossFightPlugin') && mg.bossFight.enabled !== false) {
             const quizCount = currentUser.quizzesTaken || 0;
             if (quizCount > 0 && quizCount % (mg.bossFight.threshold || 10) === 0) {
-                BossFightPlugin.start();
+                const boss = BossFightPlugin.BOSS_TYPES[Math.floor(Math.random() * BossFightPlugin.BOSS_TYPES.length)];
+                GameDialog.showConfirm(
+                    boss.sprite,
+                    'Boss-Fight verfügbar!',
+                    `<strong>${boss.name}</strong> fordert dich heraus!<br><br>Jetzt kämpfen?`,
+                    () => BossFightPlugin.start(),
+                    null
+                );
                 return;
             }
         }
