@@ -547,6 +547,26 @@
                     <div style="font-size:0.75rem;opacity:0.6;margin:-4px 0 8px 0;padding-left:2px;">
                         Fragen die N× hintereinander korrekt beantwortet wurden, werden für X Stunden pausiert.
                     </div>
+                    <div class="grid-2col">
+                        <div class="field-row">
+                            <span class="field-label">Core-Limit Quiz 1<span class="hint">Max. Core-Fragen im 1. Quiz des Tages (0=kein Limit)</span></span>
+                            <input type="number" id="maxCoreFirstInput" min="0" max="50" step="1" value="0">
+                        </div>
+                        <div class="field-row">
+                            <span class="field-label">Core-Limit Folge-Quiz<span class="hint">Max. Core-Fragen ab 2. Quiz (0=kein Limit)</span></span>
+                            <input type="number" id="maxCoreSubsequentInput" min="0" max="50" step="1" value="0">
+                        </div>
+                    </div>
+                    <div class="grid-2col">
+                        <div class="field-row">
+                            <span class="field-label">Neu-Fragen-Quote %<span class="hint">% neue/seltene Non-Core-Fragen ab Quiz 2 (0=aus)</span></span>
+                            <input type="number" id="freshQuotaInput" min="0" max="100" step="5" value="0">
+                        </div>
+                        <div class="field-row">
+                            <span class="field-label">Neu-Schwelle<span class="hint">Max. asked-Zahl für "selten gestellt"</span></span>
+                            <input type="number" id="freshThresholdInput" min="1" max="10" step="1" value="1">
+                        </div>
+                    </div>
                     <div class="section-actions">
                         <button class="btn-save" data-action="updateSpacedRepetitionSettings">🔀 SR speichern</button>
                     </div>

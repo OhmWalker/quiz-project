@@ -367,6 +367,14 @@ function showAdminSection(section) {
         if (srCoolEl) srCoolEl.value = sr.streakCooldown !== undefined ? sr.streakCooldown : 48;
         const srStreakEl = document.getElementById('srStreakInput');
         if (srStreakEl) srStreakEl.value = sr.streakThreshold !== undefined ? sr.streakThreshold : 3;
+        const mcfEl = document.getElementById('maxCoreFirstInput');
+        if (mcfEl) mcfEl.value = sr.maxCoreFirst !== undefined && sr.maxCoreFirst < 999 ? sr.maxCoreFirst : 0;
+        const mcsEl = document.getElementById('maxCoreSubsequentInput');
+        if (mcsEl) mcsEl.value = sr.maxCoreSubsequent !== undefined && sr.maxCoreSubsequent < 999 ? sr.maxCoreSubsequent : 0;
+        const fqEl = document.getElementById('freshQuotaInput');
+        if (fqEl) fqEl.value = sr.freshQuota !== undefined ? sr.freshQuota : 0;
+        const ftEl = document.getElementById('freshThresholdInput');
+        if (ftEl) ftEl.value = sr.freshThreshold !== undefined ? sr.freshThreshold : 1;
         
         // Populate Leaderboard settings (via Plugin)
         LeaderboardPlugin.populateSettings();
@@ -825,13 +833,21 @@ function updateSpacedRepetitionSettings() {
     const randomness = parseInt(document.getElementById('srRandomnessInput').value) || 40;
     const cooldown = parseInt(document.getElementById('srCooldownInput').value) || 48;
     const streak = parseInt(document.getElementById('srStreakInput').value) || 3;
-    
+    const maxCoreFirst = parseInt(document.getElementById('maxCoreFirstInput').value) || 0;
+    const maxCoreSubsequent = parseInt(document.getElementById('maxCoreSubsequentInput').value) || 0;
+    const freshQuota = parseInt(document.getElementById('freshQuotaInput').value) || 0;
+    const freshThreshold = parseInt(document.getElementById('freshThresholdInput').value) || 1;
+
     ensureSettingsDefaults(quizSettings);
     quizSettings.spacedRepetition.randomness = Math.max(0, Math.min(100, randomness));
     quizSettings.spacedRepetition.streakCooldown = Math.max(1, Math.min(720, cooldown));
     quizSettings.spacedRepetition.streakThreshold = Math.max(2, Math.min(10, streak));
-    
-    Toast.show('🔀 Spaced Repetition: ' + randomness + '% Zufall, Streak ' + streak + '× → ' + cooldown + 'h Pause', 'success');
+    quizSettings.spacedRepetition.maxCoreFirst = maxCoreFirst > 0 ? maxCoreFirst : 999;
+    quizSettings.spacedRepetition.maxCoreSubsequent = maxCoreSubsequent > 0 ? maxCoreSubsequent : 999;
+    quizSettings.spacedRepetition.freshQuota = Math.max(0, Math.min(100, freshQuota));
+    quizSettings.spacedRepetition.freshThreshold = Math.max(1, Math.min(10, freshThreshold));
+
+    Toast.show('🔀 Spaced Repetition gespeichert', 'success');
 }
 
 function updateQuizSettings() {
