@@ -37,12 +37,141 @@ const UserManagementPlugin = {
     renderUserDetailContent(user){
         const el=document.getElementById('adminUserDetail');if(!el)return;
         const lvl=calculateLevel(user.totalXP||0);
-        el.innerHTML=`<a href="#" onclick="showAdminSection('users');return false;" style="display:inline-block;margin-bottom:15px;">← Zurück</a>
-        <h3>${sanitizeHTML(user.name)}</h3>
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:15px;margin:20px 0;">
-            <div class="card" style="padding:15px;text-align:center;"><div style="font-size:2rem;">${lvl.level}</div><div style="opacity:0.7;">Level</div></div>
-            <div class="card" style="padding:15px;text-align:center;"><div style="font-size:2rem;">${user.totalXP||0}</div><div style="opacity:0.7;">XP</div></div>
-            <div class="card" style="padding:15px;text-align:center;"><div style="font-size:2rem;">${user.quizzesTaken||0}</div><div style="opacity:0.7;">Quizze</div></div>
+
+        // ── Quiz-Historie Auswertung ──────────────────────────────
+        const hist = user.history || [];
+        const scores = hist.map(h => h.score || 0).filter(s => s > 0);
+        const avgScore = scores.length ? Math.round(scores.reduce((a,b)=>a+b,0)/scores.length) : 0;
+        const bestScore = scores.length ? Math.max(...scores) : 0;
+        const worstScore = scores.length ? Math.min(...scores) : 0;
+        const totalXPEarned = hist.reduce((s,h)=>s+(h.xp||0),0);
+
+        // ── questionStats Auswertung ──────────────────────────────
+        const qs = user.questionStats || {};
+        const qids = Object.keys(qs);
+        const totalAsked = qids.reduce((s,k)=>s+(qs[k].timesAnswered||0),0);
+        const totalCorrect = qids.reduce((s,k)=>s+(qs[k].timesCorrect||0),0);
+        const overallRate = totalAsked > 0 ? Math.round(totalCorrect/totalAsked*100) : 0;
+        const mastered = qids.filter(k=>(qs[k].timesAnswered||0)>=3 && Math.round((qs[k].timesCorrect||0)/(qs[k].timesAnswered||1)*100)>=80).length;
+
+        // ── Prioritäts-Hilfsfunktion (ohne Zufall) ────────────────
+        const calcPrio = (qid) => {
+            const s = qs[qid];
+            if (!s || (s.timesAnswered||0)===0) return 300;
+            let score = 100;
+            score -= Math.log2(s.timesAnswered+1)*30;
+            score += (1-(s.timesCorrect||0)/s.timesAnswered)*100;
+            if (s.lastAsked) score += Math.min(Math.floor((Date.now()-new Date(s.lastAsked))/86400000),30)*3;
+            return Math.max(0,Math.round(score));
+        };
+
+        // ── Fragen-Tabelle aufbauen ───────────────────────────────
+        const statsRows = qids.map(qid => {
+            const s = qs[qid];
+            const q = (typeof questions !== 'undefined') ? questions.find(q=>q.questionId===qid) : null;
+            return {
+                qid,
+                displayNumber: q ? (q.displayNumber||'?') : '?',
+                text: q ? (q.text||'') : '(Frage nicht gefunden)',
+                asked: s.timesAnswered||0,
+                correct: s.timesCorrect||0,
+                rate: (s.timesAnswered||0)>0 ? Math.round((s.timesCorrect||0)/(s.timesAnswered)*100) : -1,
+                lastAsked: s.lastAsked ? new Date(s.lastAsked).toLocaleDateString('de-DE') : '–',
+                prio: calcPrio(qid)
+            };
+        }).filter(r=>r.asked>0).sort((a,b)=>b.prio-a.prio);
+
+        const tile = (label, value, color='') =>
+            `<div class="card" style="padding:14px;text-align:center;">
+                <div style="font-size:1.6rem;font-weight:700;${color?'color:'+color+';':''}">${value}</div>
+                <div style="font-size:0.8rem;opacity:0.6;margin-top:4px;">${label}</div>
+            </div>`;
+
+        const rateColor = r => r>=70?'var(--correct)':r>=50?'var(--accent)':'var(--incorrect)';
+
+        el.innerHTML = `
+        <a href="#" onclick="showAdminSection('users');return false;" style="display:inline-block;margin-bottom:15px;">← Zurück</a>
+        <h3 style="margin:0 0 20px 0;">${sanitizeHTML(user.name)}</h3>
+
+        <h4 style="margin:0 0 12px 0;opacity:0.7;">📈 Übersicht</h4>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:28px;">
+            ${tile('Level', lvl.level)}
+            ${tile('Gesamt-XP', (user.totalXP||0).toLocaleString())}
+            ${tile('Quizze', user.quizzesTaken||0)}
+            ${tile('Streak', user.streak||0)}
+        </div>
+
+        <h4 style="margin:0 0 12px 0;opacity:0.7;">📊 Detaillierte Statistiken</h4>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:28px;">
+            ${tile('Ø Ergebnis', avgScore+'%', rateColor(avgScore))}
+            ${tile('Bestes Ergebnis', bestScore+'%', 'var(--correct)')}
+            ${tile('Schlechtestes', worstScore>0?worstScore+'%':'–', 'var(--incorrect)')}
+            ${tile('Gesamt richtig', totalCorrect+' / '+totalAsked)}
+            ${tile('Erfolgsrate', overallRate+'%', rateColor(overallRate))}
+            ${tile('Verdiente XP', totalXPEarned.toLocaleString())}
+            ${tile('Gemeistert ≥80%', mastered)}
+        </div>
+
+        <h4 style="margin:0 0 12px 0;opacity:0.7;">📜 Quiz-Historie (letzte 10)</h4>
+        ${hist.length > 0 ? `
+        <div style="max-height:240px;overflow-y:auto;border:1px solid rgba(255,255,255,0.1);border-radius:10px;margin-bottom:28px;">
+            <table style="width:100%;border-collapse:collapse;">
+                <thead style="position:sticky;top:0;background:var(--bg-dark);">
+                    <tr>
+                        <th style="padding:10px;text-align:left;border-bottom:1px solid rgba(255,255,255,0.1);">Datum</th>
+                        <th style="padding:10px;text-align:center;border-bottom:1px solid rgba(255,255,255,0.1);">Ergebnis</th>
+                        <th style="padding:10px;text-align:center;border-bottom:1px solid rgba(255,255,255,0.1);">Richtig</th>
+                        <th style="padding:10px;text-align:center;border-bottom:1px solid rgba(255,255,255,0.1);">XP</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${hist.slice(-10).reverse().map(h=>`
+                    <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
+                        <td style="padding:8px;font-size:0.9rem;">${new Date(h.date).toLocaleDateString('de-DE')} ${new Date(h.date).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'})}</td>
+                        <td style="padding:8px;text-align:center;"><span style="color:${rateColor(h.score||0)};font-weight:700;">${h.score||0}%</span></td>
+                        <td style="padding:8px;text-align:center;">${h.correct||0} / ${h.total||0}</td>
+                        <td style="padding:8px;text-align:center;color:var(--accent);">+${h.xp||0}</td>
+                    </tr>`).join('')}
+                </tbody>
+            </table>
+        </div>` : `<div style="padding:20px;opacity:0.5;text-align:center;margin-bottom:28px;">Noch keine Quiz-Historie vorhanden.</div>`}
+
+        <h4 style="margin:0 0 6px 0;opacity:0.7;">🎯 Fragen-Prioritäten</h4>
+        <p style="font-size:0.85rem;opacity:0.5;margin:0 0 12px 0;">Höhere Priorität = wird eher im nächsten Quiz gestellt.</p>
+        ${statsRows.length > 0 ? `
+        <div style="max-height:350px;overflow-y:auto;border:1px solid rgba(255,255,255,0.1);border-radius:10px;margin-bottom:28px;">
+            <table style="width:100%;border-collapse:collapse;font-size:0.88rem;">
+                <thead style="position:sticky;top:0;background:var(--bg-dark);">
+                    <tr>
+                        <th style="padding:10px;text-align:left;border-bottom:1px solid rgba(255,255,255,0.1);">Frage</th>
+                        <th style="padding:10px;text-align:center;border-bottom:1px solid rgba(255,255,255,0.1);">Beantw.</th>
+                        <th style="padding:10px;text-align:center;border-bottom:1px solid rgba(255,255,255,0.1);">Erfolg</th>
+                        <th style="padding:10px;text-align:center;border-bottom:1px solid rgba(255,255,255,0.1);">Zuletzt</th>
+                        <th style="padding:10px;text-align:center;border-bottom:1px solid rgba(255,255,255,0.1);">Prio</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${statsRows.map(r=>`
+                    <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
+                        <td style="padding:10px;">
+                            <span style="color:var(--accent);font-weight:700;">#${r.displayNumber}</span>
+                            <div style="font-size:0.8rem;opacity:0.55;margin-top:2px;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${sanitizeHTML(r.text.substring(0,80)+(r.text.length>80?'…':''))}</div>
+                        </td>
+                        <td style="padding:10px;text-align:center;">${r.asked}x</td>
+                        <td style="padding:10px;text-align:center;"><span style="color:${rateColor(r.rate)};">${r.rate>=0?r.rate+'%':'–'}</span></td>
+                        <td style="padding:10px;text-align:center;opacity:0.65;">${r.lastAsked}</td>
+                        <td style="padding:10px;text-align:center;">
+                            <span style="background:${r.prio>=200?'var(--correct)':r.prio>=100?'var(--accent)':'var(--secondary)'};color:white;padding:3px 8px;border-radius:4px;font-weight:700;">${r.prio}</span>
+                        </td>
+                    </tr>`).join('')}
+                </tbody>
+            </table>
+        </div>` : `<div style="padding:20px;opacity:0.5;text-align:center;margin-bottom:28px;">Noch keine Fragen-Daten vorhanden.</div>`}
+
+        <h4 style="margin:0 0 12px 0;opacity:0.7;">🔧 Datenverwaltung</h4>
+        <div style="display:flex;flex-wrap:wrap;gap:10px;">
+            <button class="btn btn-secondary btn-small" onclick="UserManagementPlugin.exportUserData(${user.id})">💾 Exportieren</button>
+            <button class="btn btn-danger btn-small" onclick="UserManagementPlugin.confirmResetUserStats(${user.id})">🗑️ Statistiken zurücksetzen</button>
         </div>`;
     },
     renderSuperAdminEditForm(){return'';},
