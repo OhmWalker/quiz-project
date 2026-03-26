@@ -7400,6 +7400,7 @@
                 if (this._viewMode === 'compact') {
                     h += '<button class="btn btn-small btn-secondary" onclick="Fragen2Plugin._toggleExpand(' + q.id + ')" style="font-size:0.78rem;padding:4px 10px;">' + (isExpanded ? '▲ Weniger' : '▼ Details') + '</button>';
                 }
+                h += '<button class="btn btn-small btn-secondary" onclick="Fragen2Plugin._showQuestionStats(' + q.id + ')" style="font-size:0.78rem;padding:4px 10px;">📊</button>';
                 h += '<button class="btn btn-small btn-secondary" onclick="Fragen2Plugin._preview(' + q.id + ')" style="font-size:0.78rem;padding:4px 10px;">👁️</button>';
                 h += '<button class="btn btn-small" onclick="Fragen2Plugin._startEdit(' + q.id + ')" style="font-size:0.78rem;padding:4px 10px;background:linear-gradient(135deg,#2980b9,#3498db);">✏️ Bearbeiten</button>';
                 h += '<button class="btn btn-small btn-danger" onclick="Fragen2Plugin._delete(' + q.id + ')" style="font-size:0.78rem;padding:4px 10px;">🗑️</button>';
@@ -8030,6 +8031,103 @@
     
             _closePreview() {
                 var el = document.getElementById('f2PreviewOverlay');
+                if (el) el.remove();
+            },
+
+            _showQuestionStats(qId) {
+                var q = questions.find(function(qq) { return qq.id === qId; });
+                if (!q) return;
+                var qid = q.questionId || '???';
+
+                // Aggregate across all users
+                var totalAsked = 0, totalCorrect = 0;
+                var userRows = [];
+                users.forEach(function(u) {
+                    var s = u.questionStats && u.questionStats[qid];
+                    if (s && s.asked > 0) {
+                        totalAsked += s.asked || 0;
+                        totalCorrect += s.correct || 0;
+                        userRows.push({
+                            name: u.name,
+                            asked: s.asked || 0,
+                            correct: s.correct || 0,
+                            pct: Math.round(((s.correct || 0) / s.asked) * 100),
+                            streak: s.consecutiveCorrect || 0,
+                            lastAsked: s.lastAsked ? new Date(s.lastAsked).toLocaleDateString('de-DE') : '–'
+                        });
+                    }
+                });
+                var totalPct = totalAsked > 0 ? Math.round((totalCorrect / totalAsked) * 100) : -1;
+                var pctColor = totalPct >= 75 ? '#2ecc71' : totalPct >= 50 ? '#f1c40f' : totalPct >= 0 ? '#e74c3c' : 'rgba(255,255,255,0.4)';
+
+                var h = '<div class="f2-preview-overlay" onclick="if(event.target===this)Fragen2Plugin._closeQuestionStats()">';
+                h += '<div class="f2-preview-card" style="max-width:700px;">';
+                h += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">';
+                h += '<span style="font-size:0.8rem;opacity:0.5;">📊 Fragen-Statistik</span>';
+                h += '<button class="btn btn-small btn-secondary" onclick="Fragen2Plugin._closeQuestionStats()">✕</button>';
+                h += '</div>';
+
+                var qText = q.text || '';
+                h += '<div style="font-size:0.95rem;font-weight:600;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid rgba(255,255,255,0.1);">' + sanitizeHTML(qText.length > 120 ? qText.substring(0, 120) + '…' : qText) + '</div>';
+
+                // 3 overview tiles
+                h += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px;">';
+                h += '<div style="background:rgba(255,255,255,0.05);border-radius:10px;padding:14px;text-align:center;">';
+                h += '<div style="font-size:1.8rem;font-weight:700;color:' + pctColor + ';">' + (totalPct >= 0 ? totalPct + '%' : '–') + '</div>';
+                h += '<div style="font-size:0.8rem;opacity:0.6;margin-top:4px;">Erfolgsrate gesamt</div></div>';
+                h += '<div style="background:rgba(255,255,255,0.05);border-radius:10px;padding:14px;text-align:center;">';
+                h += '<div style="font-size:1.8rem;font-weight:700;">' + totalAsked + '</div>';
+                h += '<div style="font-size:0.8rem;opacity:0.6;margin-top:4px;">Mal gestellt</div></div>';
+                h += '<div style="background:rgba(255,255,255,0.05);border-radius:10px;padding:14px;text-align:center;">';
+                h += '<div style="font-size:1.8rem;font-weight:700;color:#2ecc71;">' + totalCorrect + '</div>';
+                h += '<div style="font-size:0.8rem;opacity:0.6;margin-top:4px;">Richtig beantwortet</div></div>';
+                h += '</div>';
+
+                // Per-user table
+                if (userRows.length === 0) {
+                    h += '<div style="text-align:center;padding:30px;opacity:0.5;">Noch keine Daten – Frage wurde noch nicht gestellt.</div>';
+                } else {
+                    h += '<div style="font-weight:600;margin-bottom:10px;font-size:0.9rem;">Pro Nutzer</div>';
+                    h += '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:0.87rem;">';
+                    h += '<thead><tr style="border-bottom:1px solid rgba(255,255,255,0.15);">';
+                    h += '<th style="padding:8px;text-align:left;">Nutzer</th>';
+                    h += '<th style="padding:8px;text-align:center;">Gestellt</th>';
+                    h += '<th style="padding:8px;text-align:center;">Richtig</th>';
+                    h += '<th style="padding:8px;text-align:center;">Rate</th>';
+                    h += '<th style="padding:8px;text-align:center;">Streak</th>';
+                    h += '<th style="padding:8px;text-align:center;">Zuletzt</th>';
+                    h += '</tr></thead><tbody>';
+                    userRows.forEach(function(r) {
+                        var rColor = r.pct >= 75 ? '#2ecc71' : r.pct >= 50 ? '#f1c40f' : '#e74c3c';
+                        h += '<tr style="border-bottom:1px solid rgba(255,255,255,0.06);">';
+                        h += '<td style="padding:8px;font-weight:600;">' + sanitizeHTML(r.name) + '</td>';
+                        h += '<td style="padding:8px;text-align:center;">' + r.asked + 'x</td>';
+                        h += '<td style="padding:8px;text-align:center;">' + r.correct + '</td>';
+                        h += '<td style="padding:8px;text-align:center;"><span style="color:' + rColor + ';font-weight:700;">' + r.pct + '%</span></td>';
+                        h += '<td style="padding:8px;text-align:center;">' + (r.streak > 0 ? '🔥 ' + r.streak : '–') + '</td>';
+                        h += '<td style="padding:8px;text-align:center;opacity:0.65;">' + r.lastAsked + '</td>';
+                        h += '</tr>';
+                    });
+                    h += '</tbody></table></div>';
+
+                    // Trend hint
+                    var improving = userRows.filter(function(r) { return r.streak >= 3; }).length;
+                    if (improving > 0) {
+                        h += '<div style="margin-top:14px;padding:10px 14px;background:rgba(46,204,113,0.1);border:1px solid rgba(46,204,113,0.3);border-radius:8px;font-size:0.85rem;color:#2ecc71;">🔥 '
+                            + improving + (improving === 1 ? ' Nutzer hat' : ' Nutzer haben')
+                            + ' einen aktuellen Richtig-Streak von ≥ 3 – Tendenz steigend!</div>';
+                    }
+                }
+
+                h += '</div></div>';
+                var overlay = document.createElement('div');
+                overlay.id = 'f2StatsOverlay';
+                overlay.innerHTML = h;
+                document.body.appendChild(overlay);
+            },
+
+            _closeQuestionStats() {
+                var el = document.getElementById('f2StatsOverlay');
                 if (el) el.remove();
             },
     
