@@ -385,6 +385,8 @@ const ClassicQuizPlugin = {
 
     nextQuestion() {
         clearAutoAdvance();
+        const hintEl = document.getElementById('hintContainer');
+        if (hintEl) hintEl.remove();
         currentQuestionIndex++;
         if (currentQuestionIndex >= currentQuizQuestions.length) {
             this.showResults();
@@ -474,7 +476,7 @@ const ClassicQuizPlugin = {
             const quizCount = currentUser.quizzesTaken || 0;
             if (correctTotal >= (mg.spinner.minCorrect || 10) && quizCount % (mg.spinner.quizCount || 2) === 0) {
                 WheelPlugin.open('🎰 Glücksrad!', 'Du hast dir eine Drehung verdient!');
-                return;
+                return; // Boss-Check folgt nach Rad-Schließen via WheelPlugin.close()
             }
         }
         this._checkBossTrigger();
@@ -487,10 +489,11 @@ const ClassicQuizPlugin = {
             const quizCount = currentUser.quizzesTaken || 0;
             if (quizCount > 0 && quizCount % (mg.bossFight.threshold || 10) === 0) {
                 const boss = BossFightPlugin.BOSS_TYPES[Math.floor(Math.random() * BossFightPlugin.BOSS_TYPES.length)];
+                const winXP = mg.bossFight.winXP || 100;
                 GameDialog.showConfirm(
                     boss.sprite,
                     'Boss-Fight verfügbar!',
-                    `<strong>${boss.name}</strong> fordert dich heraus!<br><br>Jetzt kämpfen?`,
+                    `<strong>${boss.name}</strong> fordert dich heraus!<br><br>Jetzt kämpfen?<br><small style="color:var(--accent-warning,#f39c12);">⚠️ Bei Ablehnung entgehen dir bis zu ${winXP} XP!</small>`,
                     () => BossFightPlugin.start(),
                     null
                 );
