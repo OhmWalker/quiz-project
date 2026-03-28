@@ -77,6 +77,7 @@ async function _adminLoadFolder(event) {
     questions = [];
     loadedQuestionFiles = [];
     questionFiles.forEach(qf => {
+        const fileTheme = qf.data.theme || '';
         const qList = qf.data.questions || [];
         let loaded = 0;
         qList.forEach((q, qi) => {
@@ -89,11 +90,13 @@ async function _adminLoadFolder(event) {
                 if (isDupe) return;
                 n.id = Date.now() + questions.length + qi;
                 n.sourceFile = qf.name;
+                // _fileGroup: Frage selbst → Datei-Theme → 'Manuell'
+                if (!n._fileGroup) n._fileGroup = fileTheme || 'Manuell';
                 questions.push(n);
                 loaded++;
             } catch { /* fehlerhafte Frage überspringen */ }
         });
-        loadedQuestionFiles.push({ name: qf.name, theme: qf.data.theme || 'Unbekannt', count: loaded });
+        loadedQuestionFiles.push({ name: qf.name, theme: fileTheme || 'Unbekannt', count: loaded });
     });
 
     // Spieler laden (neueste Version pro Name)
@@ -117,6 +120,6 @@ async function _adminLoadFolder(event) {
 
     Toast.show(`✅ Geladen: ${users.length} Spieler, ${questions.length} Fragen`, 'success');
 
-    // Panel neu rendern (zeigt jetzt die Summary)
-    AdminShell.showPanel('datei');
+    // Passwort prüfen → Tabs freischalten (oder direkt wenn leer)
+    AdminShell.unlock();
 }
