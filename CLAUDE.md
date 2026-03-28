@@ -133,20 +133,22 @@ Alte Felder `timesAnswered`, `timesCorrect`, `streakCooldownUntil` existieren ni
 - `renderFn` wird bei **jedem** Tab-Wechsel neu aufgerufen (kein einmaliges Init)
 
 ### Forge-Tabs
+Reihenfolge in der Nav (von oben nach unten):
+
 | Tab | Datei | Funktion |
 |---|---|---|
 | Datei | `20-admin-datei.js` | Ordner laden (Master-JSON + Spieler-JSONs) |
+| Fragen | `25-forge-fragen.js` | Fragen erstellen/bearbeiten (MC, Text, Bildklick) + Export |
 | Nutzer | `30-admin-nutzer.js` | Umbenennen, Übersicht |
 | Einstellungen | `40-admin-einstellungen.js` | earnPer/earnStat für Fähigkeiten |
+| *(Trennlinie)* | `45-admin-separator.js` | `AdminShell.registerSeparator()` |
 | Migrationen | `50-admin-migrationen.js` | `used`-Feld entfernen |
 | ID-Migration | `60-forge-id-migration.js` | Hash-IDs → stabile IDs migrieren |
-| Fragen | `70-forge-fragen.js` | Fragen erstellen (MC, Text, Bildklick) + Export |
 
 ## Offene Punkte
 - **Hash → Stabile ID Migration** ausführen (Forge → "ID-Migration") sobald alle `_fileGroup`-Zuordnungen korrekt sind
 - Nach Migration: `buildMigrationMap` + `_oldQuestionId`-Logik vereinfachen
 - `used`-Feld in abilities komplett entfernen wenn alle User migriert sind (Forge → "Migrationen")
-- Fragen-Bearbeitung in Forge (Edit-Formular für bestehende Fragen, nicht nur Neu-Erstellen)
 
 ## Workflow-Präferenzen
 - User testet Änderungen erst in der Built-Datei, dann CSS-Quellen anpassen
