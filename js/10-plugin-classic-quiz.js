@@ -416,8 +416,10 @@ const ClassicQuizPlugin = {
     },
 
     showResults() {
-        const total = userAnswers.length;
-        const correct = userAnswers.filter(a => a.correct).length;
+        const skipped   = userAnswers.filter(a => a.skipped).length;
+        const answered  = userAnswers.filter(a => !a.skipped);
+        const total     = answered.length;
+        const correct   = answered.filter(a => a.correct).length;
         const incorrect = total - correct;
         const pct = total > 0 ? Math.round((correct / total) * 100) : 0;
         // Apply daily XP multiplier
@@ -449,7 +451,7 @@ const ClassicQuizPlugin = {
             if (new Date().getDay() === 1) bs.mondayQuizzes = (bs.mondayQuizzes || 0) + 1;
             // History
             if (!currentUser.history) currentUser.history = [];
-            currentUser.history.push({ date: new Date().toISOString(), correct, total, xp: finalXP, score: pct });
+            currentUser.history.push({ date: new Date().toISOString(), correct, total, xp: finalXP, score: pct, skipped: skipped || undefined });
             // Streak
             const today = new Date().toDateString();
             if (!currentUser._lastStreakDate || currentUser._lastStreakDate !== today) {
@@ -469,7 +471,11 @@ const ClassicQuizPlugin = {
         document.getElementById('finalScore').textContent = `${pct}%`;
         document.getElementById('correctCount').textContent = correct;
         document.getElementById('incorrectCount').textContent = incorrect;
-        document.getElementById('totalQuestions').textContent = total;
+        document.getElementById('totalQuestions').textContent = total + skipped;
+        const skippedStat = document.getElementById('skippedStat');
+        if (skippedStat) skippedStat.style.display = skipped > 0 ? '' : 'none';
+        const skippedEl = document.getElementById('skippedCount');
+        if (skippedEl) skippedEl.textContent = skipped;
         const msg = document.getElementById('resultsMessage');
         if (pct === 100) msg.textContent = '🏆 Perfekt! Alle Fragen richtig!';
         else if (pct >= 80) msg.textContent = '🌟 Ausgezeichnet!';
