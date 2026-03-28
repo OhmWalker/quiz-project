@@ -5685,7 +5685,7 @@
 
         let _fqShowForm    = false;
         let _fqFormType    = QUESTION_TYPES.MULTIPLE_CHOICE;
-        let _fqGroupFilter = '';
+        let _fqOpenGroups  = new Set();
         let _fqEditIdx     = -1;   // -1 = neue Frage, >= 0 = Index in questions[]
 
         // Imagemap editor state
@@ -5716,17 +5716,31 @@
         // ── Listen-Ansicht ────────────────────────────────────────────────────────────
 
         function _fqRenderList(container) {
-            const groups  = [...new Set(questions.map(q => q._fileGroup || 'Manuell'))].sort();
-            const filtered = _fqGroupFilter
-                ? questions.filter(q => (q._fileGroup || 'Manuell') === _fqGroupFilter)
-                : questions;
-
             const typeIcon = t => t === QUESTION_TYPES.TEXT ? '📝' : t === QUESTION_TYPES.IMAGEMAP ? '🗺' : '☑';
 
-            const rows = questions
-                .map((q, idx) => ({ q, idx }))
-                .filter(({ q }) => !_fqGroupFilter || (q._fileGroup || 'Manuell') === _fqGroupFilter)
-                .map(({ q, idx }) => `
+            const groups = [...new Set(questions.map(q => q._fileGroup || 'Manuell'))].sort();
+
+            const tableRows = groups.map(g => {
+                const groupQs = questions
+                    .map((q, idx) => ({ q, idx }))
+                    .filter(({ q }) => (q._fileGroup || 'Manuell') === g);
+                const isOpen = _fqOpenGroups.has(g);
+                const arrow  = isOpen ? '▼' : '▶';
+                const escapedG = _fqEsc(g);
+
+                const header = `
+                <tr style="background:var(--overlay-8);cursor:pointer;user-select:none"
+                    onclick="_fqToggleGroup('${escapedG}')">
+                    <td colspan="6" style="padding:10px 14px;font-weight:600;font-size:0.9rem">
+                        <span style="opacity:0.6;margin-right:8px;font-size:0.8rem">${arrow}</span>
+                        ${escapedG}
+                        <span style="opacity:0.45;font-size:0.8rem;margin-left:8px">(${groupQs.length})</span>
+                    </td>
+                </tr>`;
+
+                if (!isOpen) return header;
+
+                const qRows = groupQs.map(({ q, idx }) => `
                 <tr>
                     <td style="opacity:0.45;width:40px">${q.displayNumber ?? '—'}</td>
                     <td style="width:28px;text-align:center" title="${q.type}">${typeIcon(q.type)}</td>
@@ -5740,21 +5754,15 @@
                     </td>
                 </tr>`).join('');
 
-            const groupOptions = groups.map(g =>
-                `<option value="${_fqEsc(g)}" ${_fqGroupFilter === g ? 'selected' : ''}>${_fqEsc(g)}</option>`
-            ).join('');
+                return header + qRows;
+            }).join('');
 
             container.innerHTML = `
                 <div class="card">
                     <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
                         <div style="flex:1;min-width:160px">
-                            <h2 style="margin:0;font-size:1.2rem">${questions.length} Fragen geladen</h2>
+                            <h2 style="margin:0;font-size:1.2rem">${questions.length} Fragen / ${groups.length} Gruppen</h2>
                         </div>
-                        <select id="fqGroupFilter" onchange="_fqSetGroupFilter(this.value)"
-                            style="margin:0;width:auto;padding:8px 12px;font-size:0.85rem">
-                            <option value="">Alle Gruppen</option>
-                            ${groupOptions}
-                        </select>
                         <button class="btn btn-small btn-secondary" onclick="_fqStartExport()">
                             ↓ Exportieren
                         </button>
@@ -5777,14 +5785,18 @@
                             </tr>
                         </thead>
                         <tbody>
-                            ${rows || '<tr><td colspan="6" style="text-align:center;padding:30px;opacity:0.4">Keine Fragen in dieser Gruppe</td></tr>'}
+                            ${tableRows || '<tr><td colspan="6" style="text-align:center;padding:30px;opacity:0.4">Keine Fragen geladen</td></tr>'}
                         </tbody>
                     </table>
                 </div>`;
         }
 
-        function _fqSetGroupFilter(val) {
-            _fqGroupFilter = val;
+        function _fqToggleGroup(groupName) {
+            if (_fqOpenGroups.has(groupName)) {
+                _fqOpenGroups.delete(groupName);
+            } else {
+                _fqOpenGroups.add(groupName);
+            }
             AdminShell.showPanel('fragen');
         }
 
