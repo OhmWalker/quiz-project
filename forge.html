@@ -5474,26 +5474,26 @@
         // ── Analyse ───────────────────────────────────────────────────────────────────
 
         function _fmAnalyse() {
-            let hashIdCount = 0, oldIdCount = 0;
+            let hashIdCount = 0, stableIdCount = 0;
             questions.forEach(q => {
                 if (q.questionId && q.questionId.startsWith('Q_')) hashIdCount++;
-                else oldIdCount++;
+                else stableIdCount++;
             });
 
             const userRows = users.map(u => {
                 const stats   = u.questionStats || {};
                 const total   = Object.keys(stats).length;
-                const hashed  = Object.keys(stats).filter(id => id.startsWith('Q_')).length;
-                const old     = total - hashed;
+                const hashKeys   = Object.keys(stats).filter(id => id.startsWith('Q_')).length;
+                const stableKeys = total - hashKeys;
                 const hasTimesAnswered = Object.values(stats).some(s => s.timesAnswered !== undefined);
                 const orphans = questions.length > 0
                     ? Object.keys(stats).filter(id => !questions.some(q => q.questionId === id)).length
                     : '?';
-                const ok = old === 0 && !hasTimesAnswered && orphans === 0;
-                return { name: u.name, total, hashed, old, hasTimesAnswered, orphans, ok };
+                const ok = hashKeys === 0 && !hasTimesAnswered && orphans === 0;
+                return { name: u.name, total, hashKeys, stableKeys, hasTimesAnswered, orphans, ok };
             });
 
-            return { hashIdCount, oldIdCount, userRows };
+            return { hashIdCount, stableIdCount, userRows };
         }
 
         // ── Panel ─────────────────────────────────────────────────────────────────────
@@ -5510,9 +5510,9 @@
             }
 
             _fmBuildMigrationMap();
-            const { hashIdCount, oldIdCount, userRows } = _fmAnalyse();
+            const { hashIdCount, stableIdCount, userRows } = _fmAnalyse();
             const mapSize    = Object.keys(questionIdMigrationMap).length;
-            const needsMigration = oldIdCount > 0 || userRows.some(r => !r.ok);
+            const needsMigration = hashIdCount > 0 || userRows.some(r => !r.ok);
 
             const statusColor = needsMigration ? 'var(--accent)' : 'var(--correct)';
             const statusText  = needsMigration ? '⚠ Migration empfohlen' : '✓ Alles auf aktuellem Stand';
@@ -5521,8 +5521,8 @@
                 <tr>
                     <td class="td-bold">${r.name}</td>
                     <td style="text-align:right">${r.total}</td>
-                    <td style="text-align:right;color:var(--correct)">${r.hashed}</td>
-                    <td style="text-align:right;color:${r.old > 0 ? 'var(--accent)' : 'inherit'}">${r.old}</td>
+                    <td style="text-align:right;color:var(--correct)">${r.stableKeys}</td>
+                    <td style="text-align:right;color:${r.hashKeys > 0 ? 'var(--accent)' : 'inherit'}">${r.hashKeys}</td>
                     <td style="text-align:right;color:${r.hasTimesAnswered ? 'var(--accent)' : 'inherit'}">${r.hasTimesAnswered ? 'ja' : '—'}</td>
                     <td style="text-align:right;color:${r.orphans > 0 ? 'var(--incorrect)' : 'inherit'}">${r.orphans}</td>
                     <td style="text-align:center">${r.ok ? '✓' : '⚠'}</td>
@@ -5543,9 +5543,9 @@
                     <h3 class="section-heading">Fragen</h3>
                     <table class="info-table-sm">
                         <tr><td class="td-bold">Gesamt</td><td>${questions.length}</td></tr>
-                        <tr><td class="td-bold">Hash-IDs (Q_…)</td><td style="color:var(--correct)">${hashIdCount}</td></tr>
-                        <tr><td class="td-bold" style="color:${oldIdCount > 0 ? 'var(--accent)' : ''}">Alte IDs</td>
-                            <td style="color:${oldIdCount > 0 ? 'var(--accent)' : ''}">${oldIdCount}</td></tr>
+                        <tr><td class="td-bold" style="color:${hashIdCount > 0 ? 'var(--accent)' : ''}">Hash-IDs (Q_…, zu migrieren)</td>
+                            <td style="color:${hashIdCount > 0 ? 'var(--accent)' : ''}">${hashIdCount}</td></tr>
+                        <tr><td class="td-bold">Stabile IDs (prefix_NNNNN)</td><td style="color:var(--correct)">${stableIdCount}</td></tr>
                     </table>
 
                     <h3 class="section-heading mt-15">Migration-Map</h3>
@@ -5562,8 +5562,8 @@
                             <tr style="opacity:0.5;font-size:0.78rem;text-transform:uppercase;letter-spacing:1px">
                                 <td>Name</td>
                                 <td style="text-align:right">Stats</td>
-                                <td style="text-align:right">Hash</td>
-                                <td style="text-align:right">Alt</td>
+                                <td style="text-align:right">Stabil</td>
+                                <td style="text-align:right">Q_-Keys</td>
                                 <td style="text-align:right">timesAnswered</td>
                                 <td style="text-align:right">Orphans</td>
                                 <td style="text-align:center">OK</td>
@@ -5576,9 +5576,9 @@
                 <div class="card">
                     <h3 class="section-heading">Migration ausführen</h3>
                     <p class="text-muted mb-20">
-                        Normalisiert Fragen-IDs, baut Migration-Map, migriert alle Nutzer-Statistiken
-                        (alte IDs → Hash-IDs, Feldnamen-Fix, Orphan-Cleanup).
-                        Anschließend werden alle betroffenen Spieler-Dateien heruntergeladen.
+                        Weist allen Fragen mit <code>Q_…</code>-IDs stabile IDs (<code>prefix_NNNNN</code>) zu,
+                        baut Migration-Map, migriert alle Nutzer-Statistiken (Feldnamen-Fix, Orphan-Cleanup).
+                        Anschließend werden alle Fragen-JSON-Dateien und betroffene Spieler-Dateien heruntergeladen.
                     </p>
                     ${needsMigration
                         ? `<button class="btn btn-small" onclick="_fmRunMigration()">▶ Migration ausführen</button>`
@@ -5587,21 +5587,59 @@
                 </div>`;
         });
 
+        // ── Export-Helpers ────────────────────────────────────────────────────────────
+
+        function _fmBuildExportQ(q) {
+            const out = {
+                id:               q.id,
+                questionId:       q.questionId,
+                displayNumber:    q.displayNumber ?? null,
+                text:             q.text,
+                type:             q.type,
+                active:           q.active !== false,
+                media:            q.media || null,
+                explanation:      q.explanation || null,
+                explanationMedia: q.explanationMedia || null,
+                hint:             q.hint || null,
+                hintMedia:        q.hintMedia || null,
+                _fileGroup:       q._fileGroup || 'Manuell',
+            };
+            if (q.type === QUESTION_TYPES.TEXT) {
+                out.correctAnswer = getCorrectTextAnswers(q);
+            } else if (q.type === QUESTION_TYPES.IMAGEMAP) {
+                out.targets = q.targets;
+            } else {
+                out.answers = q.answers;
+            }
+            return out;
+        }
+
+        function _fmDownloadFile(content, filename) {
+            const blob = new Blob([content], { type: 'application/json' });
+            const url  = URL.createObjectURL(blob);
+            const a    = document.createElement('a');
+            a.href = url; a.download = filename;
+            document.body.appendChild(a); a.click();
+            document.body.removeChild(a); URL.revokeObjectURL(url);
+        }
+
         // ── Migration ausführen ───────────────────────────────────────────────────────
 
         function _fmRunMigration() {
-            // Fragen normalisieren (Hash-IDs generieren)
-            questions = questions.map(q => {
-                if (!q.questionId || !q.questionId.startsWith('Q_')) {
-                    const hash = _fmGenerateQuestionHash(q);
-                    if (q.questionId) q._oldQuestionId = q.questionId;
-                    q.questionId = hash;
+            // 1. Fragen: Q_xxxxxxxx → prefix_NNNNN stabile IDs
+            //    In-place-Loop damit _fmAssignStableId sofort die bereits vergebenen IDs sieht
+            for (let i = 0; i < questions.length; i++) {
+                const q = questions[i];
+                if (q.questionId && q.questionId.startsWith('Q_')) {
+                    q._oldQuestionId = q.questionId;
+                    q.questionId = _fmAssignStableId(q._fileGroup || 'Manuell', questions);
                 }
-                return q;
-            });
+            }
 
+            // 2. Migration-Map aufbauen (_oldQuestionId → neues questionId)
             _fmBuildMigrationMap();
 
+            // 3. Nutzer-Statistiken migrieren + Spieler-Dateien herunterladen
             let migratedUsers = 0;
             users.forEach(u => {
                 const changed = _fmMigrateUserQuestionStats(u);
@@ -5612,24 +5650,35 @@
                 }
             });
 
-            const mappings = Object.keys(questionIdMigrationMap).length;
+            // 4. Fragen-JSONs pro Gruppe exportieren
+            const byGroup = {};
+            questions.forEach(q => {
+                const g = q._fileGroup || 'Manuell';
+                if (!byGroup[g]) byGroup[g] = [];
+                byGroup[g].push(q);
+            });
+            const ts = new Date().toISOString().slice(0, 19).replace('T', '_').replace(/:/g, '');
+            Object.entries(byGroup).forEach(([group, qs]) => {
+                const safeName = group.replace(/[^a-zA-Z0-9äöüÄÖÜß_-]/g, '_');
+                const data = { theme: group, questions: qs.map(_fmBuildExportQ) };
+                _fmDownloadFile(JSON.stringify(data, null, 2), `03_questions_${safeName}_${ts}.json`);
+            });
 
             Toast.show(
                 `Migration abgeschlossen:\n` +
-                `• ${questions.length} Fragen verarbeitet\n` +
-                `• ${mappings} ID-Mappings erstellt\n` +
+                `• ${Object.keys(questionIdMigrationMap).length} Fragen-IDs migriert\n` +
+                `• ${Object.keys(byGroup).length} Fragen-Datei(en) exportiert\n` +
                 `• ${migratedUsers} Spieler-Datei(en) heruntergeladen`,
                 'success'
             );
 
-            // Panel neu rendern (zeigt aktualisierten Status)
             AdminShell.showPanel('id-migration');
         }
 
 
         // === 70-forge-fragen.js ===
         // === Forge: Fragen-Verwaltung (Erstellen + Export) ===
-        // MC und Text-Fragen — kein Imagemap (zu komplex für Admin-Kontext)
+        // MC, Text und Bildklick-Fragen
 
         let _fqShowForm  = false;
         let _fqFormType  = QUESTION_TYPES.MULTIPLE_CHOICE;
