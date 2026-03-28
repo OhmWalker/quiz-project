@@ -49,18 +49,21 @@ const UserManagementPlugin = {
         // ── questionStats Auswertung ──────────────────────────────
         const qs = user.questionStats || {};
         const qids = Object.keys(qs);
-        const totalAsked = qids.reduce((s,k)=>s+(qs[k].timesAnswered||0),0);
-        const totalCorrect = qids.reduce((s,k)=>s+(qs[k].timesCorrect||0),0);
+        const qAsked  = k => qs[k].asked  ?? qs[k].timesAnswered ?? 0;
+        const qCorrect = k => qs[k].correct ?? qs[k].timesCorrect ?? 0;
+        const totalAsked = qids.reduce((s,k)=>s+qAsked(k),0);
+        const totalCorrect = qids.reduce((s,k)=>s+qCorrect(k),0);
         const overallRate = totalAsked > 0 ? Math.round(totalCorrect/totalAsked*100) : 0;
-        const mastered = qids.filter(k=>(qs[k].timesAnswered||0)>=3 && Math.round((qs[k].timesCorrect||0)/(qs[k].timesAnswered||1)*100)>=80).length;
+        const mastered = qids.filter(k=>qAsked(k)>=3 && Math.round(qCorrect(k)/(qAsked(k)||1)*100)>=80).length;
 
         // ── Prioritäts-Hilfsfunktion (ohne Zufall) ────────────────
         const calcPrio = (qid) => {
             const s = qs[qid];
-            if (!s || (s.timesAnswered||0)===0) return 300;
+            const a = qAsked(qid);
+            if (!s || a===0) return 300;
             let score = 100;
-            score -= Math.log2(s.timesAnswered+1)*30;
-            score += (1-(s.timesCorrect||0)/s.timesAnswered)*100;
+            score -= Math.log2(a+1)*30;
+            score += (1-qCorrect(qid)/a)*100;
             if (s.lastAsked) score += Math.min(Math.floor((Date.now()-new Date(s.lastAsked))/86400000),30)*3;
             return Math.max(0,Math.round(score));
         };
@@ -73,9 +76,9 @@ const UserManagementPlugin = {
                 qid,
                 displayNumber: q ? (q.displayNumber||'?') : '?',
                 text: q ? (q.text||'') : '(Frage nicht gefunden)',
-                asked: s.timesAnswered||0,
-                correct: s.timesCorrect||0,
-                rate: (s.timesAnswered||0)>0 ? Math.round((s.timesCorrect||0)/(s.timesAnswered)*100) : -1,
+                asked: qAsked(qid),
+                correct: qCorrect(qid),
+                rate: qAsked(qid)>0 ? Math.round(qCorrect(qid)/qAsked(qid)*100) : -1,
                 lastAsked: s.lastAsked ? new Date(s.lastAsked).toLocaleDateString('de-DE') : '–',
                 prio: calcPrio(qid)
             };
@@ -261,9 +264,27 @@ function generateQuestionHash(question) {
     return 'Q_' + hashString(text + '|' + mediaFp);
 }
 
+function getGroupPrefix(groupName) {
+    return (groupName || 'manu').replace(/[^a-zA-ZäöüÄÖÜ]/g, '')
+        .replace(/ä/gi,'a').replace(/ö/gi,'o').replace(/ü/gi,'u')
+        .toLowerCase().slice(0, 4) || 'manu';
+}
+
+function assignStableId(group, allQuestions) {
+    const prefix = getGroupPrefix(group);
+    let max = 0;
+    (allQuestions || questions).forEach(q => {
+        if (q.questionId && q.questionId.startsWith(prefix + '_')) {
+            const n = parseInt(q.questionId.split('_')[1], 10);
+            if (!isNaN(n) && n > max) max = n;
+        }
+    });
+    return prefix + '_' + String(max + 1).padStart(5, '0');
+}
+
 // DISPLAY-NUMMER SYSTEM
 // Fortlaufende Nummern für die Anzeige (1, 2, 3, ...)
-// questionId (Hash) bleibt intern für Stats/Duplikate
+// questionId (stabile ID) bleibt intern für Stats/Duplikate
 
 
 function getNextDisplayNumber() {
@@ -355,6 +376,32 @@ function migrateUserQuestionStats(user) {
     
     if (migrated) {
         user.questionStats = newStats;
+    }
+
+    // Feldnamen-Migration: timesAnswered/timesCorrect → asked/correct
+    for (const id in user.questionStats) {
+        const s = user.questionStats[id];
+        if (s.timesAnswered !== undefined && s.asked === undefined) {
+            s.asked   = s.timesAnswered;
+            s.correct = s.timesCorrect || 0;
+            delete s.timesAnswered;
+            delete s.timesCorrect;
+        }
+        if (s.streakCooldownUntil !== undefined) {
+            delete s.streakCooldownUntil;
+        }
+    }
+
+    // Orphan-Cleanup: Einträge ohne passende Frage entfernen
+    // (nur wenn Fragen bereits geladen sind)
+    if (typeof questions !== 'undefined' && questions.length > 0) {
+        const knownIds = new Set(questions.map(q => q.questionId));
+        for (const id in user.questionStats) {
+            if (!knownIds.has(id)) {
+                console.log(`[Migration] Orphan entfernt: User ${user.name}, ID ${id} (_q: ${user.questionStats[id]._q || '?'})`);
+                delete user.questionStats[id];
+            }
+        }
     }
 }
 

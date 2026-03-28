@@ -184,19 +184,33 @@ function syncFromAppState() {
 syncToAppState();
 
 
+function hasStableId(id) {
+    return id && !id.startsWith('Q_') && !/^\d+$/.test(String(id));
+}
+
 function normalizeQuestion(q) {
     // Text der Frage
     const text = q.text || q.frage || '';
 
-    // Alte questionId für Migration speichern
+    // questionId bestimmen:
+    // - Stabile ID (kein Q_-Präfix, nicht rein numerisch): beibehalten
+    // - Q_-Präfix: beibehalten (Migration später)
+    // - Fehlt: neue stabile ID vergeben
     const oldQuestionId = q.questionId;
+    function resolveId() {
+        if (hasStableId(oldQuestionId)) return oldQuestionId;
+        if (oldQuestionId && oldQuestionId.startsWith('Q_')) return oldQuestionId;
+        return typeof assignStableId === 'function'
+            ? assignStableId(q._fileGroup || 'Manuell', questions)
+            : generateQuestionHash(q);
+    }
 
     // Imagemap-Frage?
     if (q.type === QUESTION_TYPES.IMAGEMAP) {
         return {
             id: q.id,
-            questionId: oldQuestionId && oldQuestionId.startsWith('Q_') ? oldQuestionId : generateQuestionHash(q),
-            _oldQuestionId: oldQuestionId,
+            questionId: resolveId(),
+            _contentHash: typeof generateQuestionHash === 'function' ? generateQuestionHash(q) : null,
             displayNumber: typeof q.displayNumber === 'number' ? q.displayNumber : null,
             text: text,
             type: QUESTION_TYPES.IMAGEMAP,
@@ -216,8 +230,8 @@ function normalizeQuestion(q) {
         const textAnswers = getCorrectTextAnswers(q);
         return {
             id: q.id,
-            questionId: oldQuestionId && oldQuestionId.startsWith('Q_') ? oldQuestionId : generateQuestionHash(q),
-            _oldQuestionId: oldQuestionId,
+            questionId: resolveId(),
+            _contentHash: typeof generateQuestionHash === 'function' ? generateQuestionHash(q) : null,
             displayNumber: typeof q.displayNumber === 'number' ? q.displayNumber : null,
             text: text,
             type: QUESTION_TYPES.TEXT,
@@ -257,8 +271,8 @@ function normalizeQuestion(q) {
 
     return {
         id: q.id,
-        questionId: oldQuestionId && oldQuestionId.startsWith('Q_') ? oldQuestionId : generateQuestionHash(q),
-        _oldQuestionId: oldQuestionId,
+        questionId: resolveId(),
+        _contentHash: typeof generateQuestionHash === 'function' ? generateQuestionHash(q) : null,
         displayNumber: typeof q.displayNumber === 'number' ? q.displayNumber : null,
         text: text,
         type: QUESTION_TYPES.MULTIPLE_CHOICE,

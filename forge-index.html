@@ -10,6 +10,46 @@
     <link rel="stylesheet" href="css/02-admin.css">
     <link rel="stylesheet" href="css/03-plugins.css">
     <style>
+        /* === Passwort-Modal (nach Datei-Load, wenn Passwort gesetzt) === */
+        .forge-pw-modal {
+            position: fixed;
+            inset: 0;
+            background: var(--shadow-70);
+            z-index: 9000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .forge-pw-card {
+            background: var(--bg-light);
+            border: 1px solid var(--overlay-15);
+            border-radius: 20px;
+            padding: 40px;
+            width: 340px;
+            box-shadow: 0 20px 60px var(--shadow-50);
+            text-align: center;
+        }
+
+        .forge-pw-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            opacity: 0.7;
+            margin-bottom: 20px;
+        }
+
+        .forge-pw-error {
+            color: var(--incorrect);
+            font-size: 0.85rem;
+            margin-top: 8px;
+            min-height: 18px;
+            display: none;
+        }
+
+        .forge-pw-error.active { display: block; }
+
         /* === Admin-Layout === */
         .admin-layout {
             display: flex;
@@ -22,14 +62,6 @@
             flex-shrink: 0;
             position: sticky;
             top: 80px;
-        }
-
-        .admin-nav-label {
-            font-size: 0.72rem;
-            letter-spacing: 2px;
-            opacity: 0.45;
-            text-transform: uppercase;
-            margin: 16px 0 6px 4px;
         }
 
         .admin-nav-item {
@@ -52,9 +84,7 @@
             letter-spacing: 1px;
         }
 
-        .admin-nav-item:hover {
-            background: var(--overlay-10);
-        }
+        .admin-nav-item:hover { background: var(--overlay-10); }
 
         .admin-nav-item.active {
             background: var(--overlay-12);
@@ -62,14 +92,9 @@
             color: var(--primary);
         }
 
-        .admin-content {
-            flex: 1;
-            min-width: 0;
-        }
+        .admin-content { flex: 1; min-width: 0; }
 
-        .admin-panel {
-            display: none;
-        }
+        .admin-panel { display: none; }
 
         .admin-panel.active {
             display: block;
@@ -81,37 +106,6 @@
             to   { opacity: 1; transform: translateY(0); }
         }
 
-        /* === IO-Warnung === */
-        .io-warning {
-            background: rgba(247, 184, 1, 0.10);
-            border: 1px solid rgba(247, 184, 1, 0.35);
-            border-radius: 10px;
-            padding: 11px 16px;
-            margin-bottom: 18px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            font-size: 0.88rem;
-        }
-
-        .io-warning-icon { font-size: 1.1rem; flex-shrink: 0; }
-        .io-warning-text { flex: 1; opacity: 0.85; line-height: 1.5; }
-
-        .io-warning-close {
-            background: none;
-            border: none;
-            color: var(--text);
-            opacity: 0.4;
-            cursor: pointer;
-            font-size: 1.1rem;
-            padding: 0 2px;
-            flex-shrink: 0;
-            transition: opacity 0.15s;
-        }
-
-        .io-warning-close:hover { opacity: 0.9; }
-
-        /* === Leere Seite === */
         .admin-empty {
             text-align: center;
             padding: 60px 20px;
@@ -125,14 +119,28 @@
 </head>
 <body>
 
+<!-- Passwort-Modal — erscheint nach Datei-Load wenn adminPassword gesetzt -->
+<div class="forge-pw-modal" id="forgePasswordModal">
+    <div class="forge-pw-card">
+        <div class="forge-pw-title">Forge · Passwort</div>
+        <form onsubmit="forgeCheckPassword(event)">
+            <input type="password" id="forgePasswordInput"
+                placeholder="Admin-Passwort" autocomplete="current-password"
+                style="margin-bottom:0">
+            <div class="forge-pw-error" id="forgePasswordError">Falsches Passwort</div>
+            <button type="submit" class="btn" style="width:100%;margin-top:16px">
+                Einloggen
+            </button>
+        </form>
+    </div>
+</div>
+
 <header>
     <h1>Forge</h1>
     <div class="subtitle">Quiz-System &middot; Data Maintenance</div>
 </header>
 
 <div class="container">
-    <div id="adminIoWarning"></div>
-
     <div class="admin-layout">
         <nav class="admin-nav" id="adminNav">
             <!-- wird durch AdminShell befüllt -->

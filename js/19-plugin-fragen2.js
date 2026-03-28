@@ -382,7 +382,12 @@ const Fragen2Plugin = {
         h += '</select>';
         h += '<input type="text" id="f2EditGroupInput_' + q.id + '" placeholder="Neuer Gruppenname..." style="display:none;flex-basis:100%;padding:6px 10px;background:rgba(255,255,255,0.1);border:2px solid rgba(255,255,255,0.2);border-radius:8px;color:var(--text);font-size:0.85rem;margin-top:4px;">';
         h += '</div>';
-        
+
+        h += '<div style="display:flex;align-items:center;gap:8px;margin-top:8px;">';
+        h += '<label style="font-size:0.8rem;opacity:0.6;white-space:nowrap;">Fragen-ID:</label>';
+        h += '<input type="text" id="f2EditId_' + q.id + '" value="' + sanitizeHTML(q.questionId || '') + '" style="flex:1;padding:4px 8px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:6px;color:var(--text);font-size:0.78rem;font-family:monospace;" placeholder="prefix_00001">';
+        h += '</div>';
+
         if (qType === 'multiple-choice') {
             h += '<label style="font-size:0.85rem;font-weight:600;margin:12px 0 6px;display:block;">Antworten</label>';
             (q.answers || []).forEach(function(a, i) {
@@ -501,8 +506,10 @@ const Fragen2Plugin = {
                 var customEl = document.getElementById('f2EditGroupInput_' + qId);
                 gVal = customEl && customEl.value.trim() ? customEl.value.trim() : q._fileGroup;
             }
+            q._prevFileGroup = q._fileGroup; // für ID-Neuvergabe merken
             q._fileGroup = gVal;
         }
+        var idInputVal = (document.getElementById('f2EditId_' + qId) || {}).value || '';
         var explEl = document.getElementById('f2EditExpl_' + qId);
         if (explEl) q.explanation = explEl.value.trim() || null;
         // Explanation media
@@ -568,14 +575,16 @@ const Fragen2Plugin = {
             }
         }
 
-        // questionId nach Änderungen neu generieren, alte ID für Migration bewahren
-        if (typeof generateQuestionHash === 'function') {
-            var newHash = generateQuestionHash(q);
-            if (newHash !== q.questionId) {
-                q._oldQuestionId = q.questionId;
-                q.questionId = newHash;
-                if (typeof buildMigrationMap === 'function') buildMigrationMap();
+        // Bei Gruppenänderung: neue stabile ID vergeben
+        if (q._fileGroup !== (q._prevFileGroup || q._fileGroup)) {
+            if (typeof assignStableId === 'function') {
+                q.questionId = assignStableId(q._fileGroup, questions);
             }
+        }
+        delete q._prevFileGroup;
+        // Manuelle ID-Änderung (hat Vorrang, wird nach Gruppencheck angewendet)
+        if (idInputVal.trim() && idInputVal.trim() !== q.questionId) {
+            q.questionId = idInputVal.trim();
         }
 
         this._editingId = null;
@@ -778,7 +787,7 @@ const Fragen2Plugin = {
             }
         }
 
-        newQ.questionId = typeof generateQuestionHash === 'function' ? generateQuestionHash(newQ) : ('Q_' + newId);
+        newQ.questionId = typeof assignStableId === 'function' ? assignStableId(group, questions) : ('manu_' + String(newId).padStart(5,'0'));
         
         if (typeof normalizeQuestion === 'function') {
             var dn = displayNum;
