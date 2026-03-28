@@ -4,8 +4,8 @@
 - Quiz-System v4.0, Single-Page-App (HTML/CSS/JS)
 - Modulare Plugin-Architektur: ~20 JS-Dateien, 4 CSS-Dateien
 - Build: `python3 build.py` → zwei Dateien:
-  - `quiz-system-built.html` (~607 KB) — das Quiz
-  - `forge.html` (~247 KB) — Admin-/Wartungs-Tool
+  - `quiz-system-built.html` (~610 KB) — das Quiz
+  - `forge.html` (~255 KB) — Admin-/Wartungs-Tool
 - Referenz-Datei: `01_quiz-Referenz.html` (alte monolithische Version)
 
 ## Architektur
@@ -27,7 +27,7 @@
 ### Aktueller Stand (gemischt — Migration noch ausstehend)
 - **Neue Fragen** (ab jetzt): stabile ID `prefix_NNNNN` (z.B. `allg_00042`, `core_00007`)
 - **Bestehende Fragen** (380 Stück): noch Hash-IDs `Q_xxxxxxxx` — warten auf einmalige Migration
-- Die Migration wird über das **Admin-Tool** (`admin-tool.html`) ausgelöst, nicht automatisch
+- Die Migration wird über **Forge** (`forge.html` → Tab "ID-Migration") ausgelöst, nicht automatisch
 
 ### ID-Format
 - Präfix = erste 4 Buchstaben des `_fileGroup`-Namens, lowercase, nur a-z (Umlaute → ae/oe/ue)
@@ -108,7 +108,9 @@
 `id`, `name`, `totalXP`, `level`, `quizzesTaken`, `correctAnswers`, `totalAnswers`,
 `streak`, `history[]`, `badgeStats{}`, `questionStats{}`, `lastQuizDate`,
 `dailyQuizCount`, `abilities{}`, `chargesEarned{}`, `sentPhoneJokers[]`,
-`pendingPhoneJoker[]`, `sidebarPositions{}`
+`pendingPhoneJoker[]`, `pendingJokerBonus`, `sidebarPositions{}`
+
+- `pendingJokerBonus`: XP-Gutschrift für Phone-Joker-Sender (wird bei nächstem USER_SELECTED via `checkPendingJokers()` ausgezahlt)
 
 ### abilities{}-Struktur (pro Key)
 `{ charges: number, unlocked: boolean }`
@@ -123,7 +125,9 @@ Alte Felder `timesAnswered`, `timesCorrect`, `streakCooldownUntil` existieren ni
 `migrateUserQuestionStats()` konvertiert sie beim Laden automatisch → `asked`, `correct`.
 
 ### History-Einträge
-`{ date, correct, total, xp, score }`
+`{ date, correct, total, xp, score, skipped? }`
+- `skipped`: Anzahl übersprungener Fragen (Skip/Phone-Joker) — nur gesetzt wenn > 0
+- `total` zählt nur beantwortete Fragen (ohne Skips), Score berechnet sich nur daraus
 
 ## Forge (`forge.html`)
 - Gebaut via `python3 build.py` — Core-JS + `js/admin/*.js`
