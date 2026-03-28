@@ -3,9 +3,10 @@
 ## Projekt-Überblick
 - Quiz-System v4.0, Single-Page-App (HTML/CSS/JS)
 - Modulare Plugin-Architektur: ~20 JS-Dateien, 4 CSS-Dateien
-- Build: `python3 build.py` → zwei Dateien:
-  - `quiz-system-built.html` (~610 KB) — das Quiz
-  - `forge.html` (~255 KB) — Admin-/Wartungs-Tool
+- Build: `python3 build.py` → drei Dateien:
+  - `quiz-system-built.html` (~605 KB) — das Quiz
+  - `forge.html` (~279 KB) — Admin-/Wartungs-Tool
+  - `herald.html` (~127 KB) — Fragen-Einreichungs-Tool (für Nutzer)
 - Referenz-Datei: `01_quiz-Referenz.html` (alte monolithische Version)
 
 ## Architektur
@@ -149,6 +150,23 @@ Reihenfolge in der Nav (von oben nach unten):
 | *(Trennlinie)* | `45-admin-separator.js` | `AdminShell.registerSeparator()` |
 | Migrationen | `50-admin-migrationen.js` | `used`-Feld entfernen |
 | ID-Migration | `60-forge-id-migration.js` | Hash-IDs → stabile IDs migrieren |
+| Einreichungen | `65-forge-einreichungen.js` | Herald-Einreichungen prüfen: annehmen (→ stabile ID + questions[]) oder ablehnen |
+
+## Herald (`herald.html`)
+- Gebaut via `python3 build.py` — nur `01-constants.js` + `02-toast-dialog.js` + `js/herald/*.js`
+- Kein Passwort, kein Datei-Load — eigenständige Seite für Nutzer
+- Unterstützt MC, Freitext und Bildklick (voller Imagemap-Editor)
+- Nutzer sammelt Fragen in der Session → Download als `herald-pending_DATUM.json`
+- Jede eingereichte Frage trägt: `_pending: true`, `_submittedAt`, optional `_submittedBy`
+- `active: false` — verhindert Laden ins Quiz bis Admin annimmt
+- Admin lädt JSON in Forge → Tab "Einreichungen" → annehmen/ablehnen
+- Bei "Annehmen": `_fmAssignStableId()` vergibt stabile ID, Herald-Felder werden entfernt
+
+### Herald-Quellstruktur
+| Datei | Funktion |
+|---|---|
+| `herald-index.html` | Quell-HTML (ohne inline JS/CSS) |
+| `js/herald/10-herald.js` | Formular, Imagemap-Editor, Drafts-Liste, Download |
 
 ## Offene Punkte
 - **Hash → Stabile ID Migration** ausführen (Forge → "ID-Migration") sobald alle `_fileGroup`-Zuordnungen korrekt sind

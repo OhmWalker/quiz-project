@@ -8,10 +8,11 @@ import os
 import glob
 import re
 
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-CSS_DIR    = os.path.join(SCRIPT_DIR, "css")
-JS_DIR     = os.path.join(SCRIPT_DIR, "js")
-JS_ADMIN_DIR = os.path.join(SCRIPT_DIR, "js", "admin")
+SCRIPT_DIR    = os.path.dirname(os.path.abspath(__file__))
+CSS_DIR       = os.path.join(SCRIPT_DIR, "css")
+JS_DIR        = os.path.join(SCRIPT_DIR, "js")
+JS_ADMIN_DIR  = os.path.join(SCRIPT_DIR, "js", "admin")
+JS_HERALD_DIR = os.path.join(SCRIPT_DIR, "js", "herald")
 
 # Core-JS-Dateien die ins Admin-Build kommen (Reihenfolge wichtig)
 ADMIN_CORE_JS = [
@@ -23,6 +24,12 @@ ADMIN_CORE_JS = [
     '07-event-delegation.js',
     '30-globals.js',
     '32-file-io.js',
+]
+
+# Core-JS-Dateien die ins Herald-Build kommen
+HERALD_CORE_JS = [
+    '01-constants.js',
+    '02-toast-dialog.js',
 ]
 
 
@@ -103,3 +110,27 @@ with open(admin_out, "w", encoding="utf-8") as f:
 
 size_kb = os.path.getsize(admin_out) / 1024
 print(f"[OK] forge.html              —  {size_kb:.1f} KB  |  CSS: {len(css_files_adm)}  |  Core-JS: {len(core_paths)}  |  Admin-JS: {len(admin_paths)}")
+
+
+# ── Herald-Build ──────────────────────────────────────────────────────────────
+html             = read_file(os.path.join(SCRIPT_DIR, "herald-index.html"))
+css_files_herald = sorted(glob.glob(os.path.join(CSS_DIR, "*.css")))
+
+core_herald_paths = [os.path.join(JS_DIR, f) for f in HERALD_CORE_JS]
+missing_herald    = [p for p in core_herald_paths if not os.path.exists(p)]
+if missing_herald:
+    print(f"[WARN] Herald-Core JS fehlt: {[os.path.basename(p) for p in missing_herald]}")
+    core_herald_paths = [p for p in core_herald_paths if os.path.exists(p)]
+
+herald_paths  = sorted(glob.glob(os.path.join(JS_HERALD_DIR, "*.js")))
+js_files_herald = core_herald_paths + herald_paths
+
+html = inject(html, build_css(css_files_herald), build_js(js_files_herald))
+html = html.replace('Development Version (Split Files)', 'Single File · 100% Offline · No localStorage')
+
+herald_out = os.path.join(SCRIPT_DIR, "herald.html")
+with open(herald_out, "w", encoding="utf-8") as f:
+    f.write(html)
+
+size_kb = os.path.getsize(herald_out) / 1024
+print(f"[OK] herald.html             —  {size_kb:.1f} KB  |  CSS: {len(css_files_herald)}  |  Core-JS: {len(core_herald_paths)}  |  Herald-JS: {len(herald_paths)}")
