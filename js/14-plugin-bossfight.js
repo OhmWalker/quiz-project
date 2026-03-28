@@ -354,6 +354,8 @@ const BossFightPlugin = {
         s.xpEarned += winXP;
         document.getElementById('bossQuestionCard').innerHTML = `<div style="text-align:center;padding:30px;"><div style="font-size:3rem;">🏆</div><h3 style="color:#2ecc71;">Boss besiegt!</h3><p>+${s.xpEarned} XP verdient!</p></div>`;
         document.getElementById('bossCloseBtn').style.display = '';
+        const abortBtn = document.getElementById('bossAbortBtn');
+        if (abortBtn) abortBtn.style.display = 'none';
         document.getElementById('bossEffectText').textContent = '💀 K.O.!';
         applyMiniGameXP(s.xpEarned);
         if (currentUser && currentUser.badgeStats) {
@@ -368,6 +370,8 @@ const BossFightPlugin = {
         this._resetColors();
         document.getElementById('bossQuestionCard').innerHTML = `<div style="text-align:center;padding:30px;"><div style="font-size:3rem;">💔</div><h3 style="color:#e74c3c;">Niederlage!</h3><p>+${s.xpEarned} XP trotzdem verdient.</p></div>`;
         document.getElementById('bossCloseBtn').style.display = '';
+        const abortBtn = document.getElementById('bossAbortBtn');
+        if (abortBtn) abortBtn.style.display = 'none';
         document.getElementById('bossEffectText').textContent = '';
         applyMiniGameXP(s.xpEarned);
         if (currentUser && currentUser.badgeStats) {
@@ -376,10 +380,21 @@ const BossFightPlugin = {
         s.active = false;
     },
 
+    abort() {
+        if (!this._state.active) return;
+        GameDialog.showConfirm(
+            'Boss-Fight abbrechen?',
+            'Du verlässt den Kampf. Keine XP werden vergeben.',
+            () => { this.close(); }
+        );
+    },
+
     close() {
         this._clearIntervals();
         this._resetColors();
         this._state.active = false;
+        const abortBtn = document.getElementById('bossAbortBtn');
+        if (abortBtn) abortBtn.style.display = '';
         document.getElementById('bossOverlay').classList.remove('active');
         window._mgTestMode = false;
     }
