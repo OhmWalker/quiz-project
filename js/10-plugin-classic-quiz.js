@@ -135,7 +135,7 @@ const ClassicQuizPlugin = {
         document.getElementById('currentUserName').textContent = currentUser ? currentUser.name : '';
         // Question ID info
         const qidInfo = document.getElementById('quizQuestionIdInfo');
-        if (qidInfo) qidInfo.textContent = `#${q.displayNumber || '?'} · ${q.questionId || ''}`;
+        if (qidInfo) qidInfo.textContent = `[${q._fileGroup || 'Manuell'}] #${q.displayNumber || '?'} · ${q.questionId || ''}`;
         // Media
         const mediaEl = document.getElementById('questionMedia');
         const mediaSrc = getMediaSource(q.media);
@@ -337,6 +337,7 @@ const ClassicQuizPlugin = {
             const qs = currentUser.questionStats[qid];
             qs.asked++;
             qs.lastAsked = new Date().toISOString();
+            qs._q = (q.text || '').replace(/<[^>]*>/g, '').slice(0, 60);
             if (isCorrect) { qs.correct++; qs.consecutiveCorrect = (qs.consecutiveCorrect || 0) + 1; }
             else { qs.consecutiveCorrect = 0; }
         }
@@ -350,18 +351,37 @@ const ClassicQuizPlugin = {
 
     _resolvePhoneJoker(question, wasCorrect) {
         if (!question._isPhoneJoker) return;
+        const now = new Date().toISOString();
         // Mark as resolved on currentUser's pendingPhoneJoker (stays as receipt)
         if (currentUser.pendingPhoneJoker) {
             currentUser.pendingPhoneJoker.forEach(j => {
                 if (j.from === question._jokerFrom && j.questionId === question.questionId && !j.resolved) {
                     j.resolved = true;
                     j.correct = wasCorrect;
-                    j.resolvedDate = new Date().toISOString();
+                    j.resolvedDate = now;
                 }
             });
         }
         if (wasCorrect) {
-            Toast.show(`📞 ${question._jokerFrom} bekommt beim nächsten Laden 5× XP Bonus!`, 'success', 4000);
+            // XP-Bonus dem Absender gutschreiben
+            const xpSettings  = quizSettings.xpSystem || {};
+            const baseCorrectXP = xpSettings.correctAnswerXP || CONFIG.XP.CORRECT_ANSWER;
+            const bonus = baseCorrectXP * 5;
+            const sender = users.find(u => u.name === question._jokerFrom);
+            if (sender) {
+                sender.pendingJokerBonus = (sender.pendingJokerBonus || 0) + bonus;
+                // sentPhoneJokers-Eintrag als erledigt markieren
+                if (sender.sentPhoneJokers) {
+                    sender.sentPhoneJokers.forEach(j => {
+                        if (j.targetName === currentUser.name && j.questionId === question.questionId && !j.resolved) {
+                            j.resolved = true;
+                            j.correct  = true;
+                            j.resolvedDate = now;
+                        }
+                    });
+                }
+            }
+            Toast.show(`📞 ${question._jokerFrom} bekommt beim nächsten Quiz-Start ${bonus} XP Bonus!`, 'success', 4000);
         }
     },
 
