@@ -36,11 +36,13 @@ quiz-project/
     ├── 40-init-and-functions.js   ← init(), Utility-Funktionen
     ├── 50-plugin-ui.js            ← Plugin-UI, State-Bridges, Initialisierung
     └── admin/                     ← Forge Module (nur in forge.html)
-        ├── 10-admin-shell.js      ← Tab-System & IO-Warnung
-        ├── 20-admin-datei.js      ← Ordner laden (Admin-spezifischer Loader)
-        ├── 30-admin-nutzer.js     ← Nutzer umbenennen, Übersicht
+        ├── 10-admin-shell.js         ← Tab-System, Passwort-Modal
+        ├── 20-admin-datei.js         ← Ordner laden (Admin-spezifischer Loader)
+        ├── 30-admin-nutzer.js        ← Nutzer umbenennen, Übersicht
         ├── 40-admin-einstellungen.js ← earnPer/earnStat für Fähigkeiten
-        └── 50-admin-migrationen.js   ← Daten-Migrationen (z.B. "used"-Feld)
+        ├── 50-admin-migrationen.js   ← Daten-Migrationen (z.B. "used"-Feld)
+        ├── 60-forge-id-migration.js  ← Hash-ID → stabile ID Migration
+        └── 70-forge-fragen.js        ← Fragen erstellen (MC, Text, Bildklick) + Export
 ```
 
 ## Entwicklung (VS Code)

@@ -3,7 +3,9 @@
 ## Projekt-Überblick
 - Quiz-System v4.0, Single-Page-App (HTML/CSS/JS)
 - Modulare Plugin-Architektur: ~20 JS-Dateien, 4 CSS-Dateien
-- Build: `python3 build.py` → `quiz-system-built.html` (einzelne HTML-Datei, ~594 KB)
+- Build: `python3 build.py` → zwei Dateien:
+  - `quiz-system-built.html` (~607 KB) — das Quiz
+  - `forge.html` (~247 KB) — Admin-/Wartungs-Tool
 - Referenz-Datei: `01_quiz-Referenz.html` (alte monolithische Version)
 
 ## Architektur
@@ -56,10 +58,10 @@
 3. Alle User-`questionStats`-Keys werden umgeschrieben (alte Hash-Keys → neue stabile Keys)
 4. Einmalig, irreversibel
 
-**Tool:** `admin-tool.html` (eigenständige HTML-Seite, kein Build nötig)
-- Lädt Master-JSON + Player-JSONs
-- Zeigt Vorschau der Änderungen
-- Exportiert migrierte Dateien zum Download
+**Tool:** Forge (`forge.html`) → Tab "ID-Migration"
+- Lädt Master-JSON + Player-JSONs per Ordner-Import
+- Zeigt Analyse: Hash-IDs vs. stabile IDs, Nutzer-Stats-Zustand
+- Führt Migration aus und lädt betroffene Spieler-Dateien herunter
 
 **Nach der Migration:** `_oldQuestionId`-Mechanismus und `buildMigrationMap` können vereinfacht/entfernt werden
 
@@ -123,16 +125,28 @@ Alte Felder `timesAnswered`, `timesCorrect`, `streakCooldownUntil` existieren ni
 ### History-Einträge
 `{ date, correct, total, xp, score }`
 
-## Admin-Tool (`admin-tool.html`)
-- Eigenständige HTML-Datei, kein Build-System, keine Quiz-Abhängigkeiten
-- Zweck: Einmalige Daten-Migrationen und Admin-Aufgaben die nicht in die Haupt-App gehören
-- Aktuell implementiert: Hash-ID → Stabile-ID-Migration
+## Forge (`forge.html`)
+- Gebaut via `python3 build.py` — Core-JS + `js/admin/*.js`
+- Passwort-geschützt: nach Ordner-Import zeigt `AdminShell.unlock()` Passwort-Modal
+- Kein Passwort gesetzt → Enter reicht
+- Tab-System via `AdminShell.registerPanel(id, label, icon, renderFn)`
+- `renderFn` wird bei **jedem** Tab-Wechsel neu aufgerufen (kein einmaliges Init)
+
+### Forge-Tabs
+| Tab | Datei | Funktion |
+|---|---|---|
+| Datei | `20-admin-datei.js` | Ordner laden (Master-JSON + Spieler-JSONs) |
+| Nutzer | `30-admin-nutzer.js` | Umbenennen, Übersicht |
+| Einstellungen | `40-admin-einstellungen.js` | earnPer/earnStat für Fähigkeiten |
+| Migrationen | `50-admin-migrationen.js` | `used`-Feld entfernen |
+| ID-Migration | `60-forge-id-migration.js` | Hash-IDs → stabile IDs migrieren |
+| Fragen | `70-forge-fragen.js` | Fragen erstellen (MC, Text, Bildklick) + Export |
 
 ## Offene Punkte
-- **Hash → Stabile ID Migration** ausführen (via `admin-tool.html`) sobald alle `_fileGroup`-Zuordnungen korrekt sind
+- **Hash → Stabile ID Migration** ausführen (Forge → "ID-Migration") sobald alle `_fileGroup`-Zuordnungen korrekt sind
 - Nach Migration: `buildMigrationMap` + `_oldQuestionId`-Logik vereinfachen
-- `used`-Feld in abilities komplett entfernen wenn alle User migriert sind
-- Admin-UI für earnPer/earnStat-Anpassung (Referenz hatte das)
+- `used`-Feld in abilities komplett entfernen wenn alle User migriert sind (Forge → "Migrationen")
+- Fragen-Bearbeitung in Forge (Edit-Formular für bestehende Fragen, nicht nur Neu-Erstellen)
 
 ## Workflow-Präferenzen
 - User testet Änderungen erst in der Built-Datei, dann CSS-Quellen anpassen
