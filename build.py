@@ -1,69 +1,105 @@
 #!/usr/bin/env python3
 """
-Build Script: Combines separate CSS, JS, and HTML files back into a single HTML file.
-Run from the quiz-project directory:  python build.py
-Output: quiz-system-built.html (single file, ready for offline use)
+Build Script: Builds quiz-system-built.html and forge.html
+Run from quiz-project directory: python3 build.py
 """
 
 import os
 import glob
+import re
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-CSS_DIR = os.path.join(SCRIPT_DIR, "css")
-JS_DIR = os.path.join(SCRIPT_DIR, "js")
-INDEX_HTML = os.path.join(SCRIPT_DIR, "index.html")
-OUTPUT = os.path.join(SCRIPT_DIR, "quiz-system-built.html")
+CSS_DIR    = os.path.join(SCRIPT_DIR, "css")
+JS_DIR     = os.path.join(SCRIPT_DIR, "js")
+JS_ADMIN_DIR = os.path.join(SCRIPT_DIR, "js", "admin")
+
+# Core-JS-Dateien die ins Admin-Build kommen (Reihenfolge wichtig)
+ADMIN_CORE_JS = [
+    '01-constants.js',
+    '02-toast-dialog.js',
+    '03-eventbus.js',
+    '04-appstate.js',
+    '06-plugin-registry.js',
+    '07-event-delegation.js',
+    '30-globals.js',
+    '32-file-io.js',
+]
+
 
 def read_file(path):
     with open(path, "r", encoding="utf-8") as f:
         return f.read()
 
+
 def indent(text, spaces=8):
-    """Add indentation to each line (matching original format)."""
     lines = text.split('\n')
     return '\n'.join((' ' * spaces + line if line.strip() else line) for line in lines)
 
-# 1. Read index.html
-html = read_file(INDEX_HTML)
 
-# 2. Collect and inline CSS
+def build_css(css_files):
+    combined = ""
+    for cf in css_files:
+        combined += f"/* === {os.path.basename(cf)} === */\n"
+        combined += read_file(cf) + "\n"
+    return combined
+
+
+def build_js(js_files):
+    combined = ""
+    for jf in js_files:
+        combined += f"\n// === {os.path.basename(jf)} ===\n"
+        combined += read_file(jf) + "\n"
+    return combined
+
+
+def inject(html, css_combined, js_combined):
+    # CSS: Link-Tags entfernen, inline <style> einfügen
+    html = re.sub(r'\s*<link\s+rel="stylesheet"\s+href="css/[^"]*"\s*/?>', '', html)
+    html = html.replace('</head>',
+        f'    <style>\n{indent(css_combined.rstrip())}\n    </style>\n</head>', 1)
+    # JS: Script-Tags entfernen, inline <script> einfügen
+    html = re.sub(r'\s*<script\s+src="[^"]*"></script>', '', html)
+    html = html.replace('</body>',
+        f'    <script>\n{indent(js_combined.rstrip())}\n    </script>\n</body>')
+    return html
+
+
+# ── Quiz-Build ────────────────────────────────────────────────────────────────
+html      = read_file(os.path.join(SCRIPT_DIR, "index.html"))
 css_files = sorted(glob.glob(os.path.join(CSS_DIR, "*.css")))
-css_combined = ""
-for cf in css_files:
-    css_combined += f"/* === {os.path.basename(cf)} === */\n"
-    css_combined += read_file(cf) + "\n"
+js_files  = sorted(glob.glob(os.path.join(JS_DIR, "*.js")))
 
-# Replace all <link rel="stylesheet" ...> with a single inline <style>
-import re
-css_indented = indent(css_combined.rstrip())
-# Remove all CSS link tags
-html = re.sub(r'\s*<link\s+rel="stylesheet"\s+href="css/[^"]*"\s*/?>', '', html)
-# Insert combined style before </head>
-html = html.replace('</head>', f'    <style>\n{css_indented}\n    </style>\n</head>', 1)
-
-# 3. Collect and inline JS (in sorted order)
-js_files = sorted(glob.glob(os.path.join(JS_DIR, "*.js")))
-js_combined = ""
-for jf in js_files:
-    js_combined += f"\n// === {os.path.basename(jf)} ===\n"
-    js_combined += read_file(jf) + "\n"
-
-# Replace all <script src="js/..."> tags with a single inline <script>
-js_indented = indent(js_combined.rstrip())
-# Remove all individual script tags
-html = re.sub(r'\s*<script\s+src="js/[^"]*"></script>', '', html)
-# Insert combined script before </body>
-html = html.replace('</body>', f'    <script>\n{js_indented}\n    </script>\n</body>')
-
-# 4. Clean up: fix "Development Version" comment
+html = inject(html, build_css(css_files), build_js(js_files))
 html = html.replace('Development Version (Split Files)', 'Single File · 100% Offline · No localStorage')
 
-# 5. Write output
-with open(OUTPUT, "w", encoding="utf-8") as f:
+quiz_out = os.path.join(SCRIPT_DIR, "quiz-system-built.html")
+with open(quiz_out, "w", encoding="utf-8") as f:
     f.write(html)
 
-size_kb = os.path.getsize(OUTPUT) / 1024
-print(f"[OK] Build complete: {OUTPUT}")
-print(f"   Size: {size_kb:.1f} KB")
-print(f"   CSS files: {len(css_files)}")
-print(f"   JS files:  {len(js_files)}")
+size_kb = os.path.getsize(quiz_out) / 1024
+print(f"[OK] quiz-system-built.html  —  {size_kb:.1f} KB  |  CSS: {len(css_files)}  |  JS: {len(js_files)}")
+
+
+# ── Admin-Build ───────────────────────────────────────────────────────────────
+html           = read_file(os.path.join(SCRIPT_DIR, "forge-index.html"))
+css_files_adm  = sorted(glob.glob(os.path.join(CSS_DIR, "*.css")))
+
+# Core-JS-Pfade verifizieren
+core_paths  = [os.path.join(JS_DIR, f) for f in ADMIN_CORE_JS]
+missing     = [p for p in core_paths if not os.path.exists(p)]
+if missing:
+    print(f"[WARN] Admin-Core JS fehlt: {[os.path.basename(p) for p in missing]}")
+    core_paths = [p for p in core_paths if os.path.exists(p)]
+
+admin_paths = sorted(glob.glob(os.path.join(JS_ADMIN_DIR, "*.js")))
+js_files_adm = core_paths + admin_paths
+
+html = inject(html, build_css(css_files_adm), build_js(js_files_adm))
+html = html.replace('Development Version (Split Files)', 'Single File · 100% Offline · No localStorage')
+
+admin_out = os.path.join(SCRIPT_DIR, "forge.html")
+with open(admin_out, "w", encoding="utf-8") as f:
+    f.write(html)
+
+size_kb = os.path.getsize(admin_out) / 1024
+print(f"[OK] forge.html              —  {size_kb:.1f} KB  |  CSS: {len(css_files_adm)}  |  Core-JS: {len(core_paths)}  |  Admin-JS: {len(admin_paths)}")

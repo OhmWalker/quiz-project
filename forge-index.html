@@ -1,0 +1,147 @@
+<!-- Forge — Development Version (Split Files) -->
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Forge</title>
+    <link rel="stylesheet" href="css/00-base.css">
+    <link rel="stylesheet" href="css/01-screens.css">
+    <link rel="stylesheet" href="css/02-admin.css">
+    <link rel="stylesheet" href="css/03-plugins.css">
+    <style>
+        /* === Admin-Layout === */
+        .admin-layout {
+            display: flex;
+            gap: 24px;
+            align-items: flex-start;
+        }
+
+        .admin-nav {
+            width: 190px;
+            flex-shrink: 0;
+            position: sticky;
+            top: 80px;
+        }
+
+        .admin-nav-label {
+            font-size: 0.72rem;
+            letter-spacing: 2px;
+            opacity: 0.45;
+            text-transform: uppercase;
+            margin: 16px 0 6px 4px;
+        }
+
+        .admin-nav-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 100%;
+            padding: 10px 14px;
+            background: var(--overlay-5);
+            border: 1px solid var(--overlay-10);
+            border-radius: 10px;
+            color: var(--text);
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.85rem;
+            text-align: left;
+            cursor: pointer;
+            margin-bottom: 5px;
+            transition: background 0.15s, border-color 0.15s, color 0.15s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .admin-nav-item:hover {
+            background: var(--overlay-10);
+        }
+
+        .admin-nav-item.active {
+            background: var(--overlay-12);
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .admin-content {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .admin-panel {
+            display: none;
+        }
+
+        .admin-panel.active {
+            display: block;
+            animation: adminFadeIn 0.25s ease-out;
+        }
+
+        @keyframes adminFadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        /* === IO-Warnung === */
+        .io-warning {
+            background: rgba(247, 184, 1, 0.10);
+            border: 1px solid rgba(247, 184, 1, 0.35);
+            border-radius: 10px;
+            padding: 11px 16px;
+            margin-bottom: 18px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 0.88rem;
+        }
+
+        .io-warning-icon { font-size: 1.1rem; flex-shrink: 0; }
+        .io-warning-text { flex: 1; opacity: 0.85; line-height: 1.5; }
+
+        .io-warning-close {
+            background: none;
+            border: none;
+            color: var(--text);
+            opacity: 0.4;
+            cursor: pointer;
+            font-size: 1.1rem;
+            padding: 0 2px;
+            flex-shrink: 0;
+            transition: opacity 0.15s;
+        }
+
+        .io-warning-close:hover { opacity: 0.9; }
+
+        /* === Leere Seite === */
+        .admin-empty {
+            text-align: center;
+            padding: 60px 20px;
+            opacity: 0.4;
+            font-size: 0.95rem;
+            letter-spacing: 1px;
+        }
+
+        .admin-empty-icon { font-size: 2.5rem; margin-bottom: 12px; }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>Forge</h1>
+    <div class="subtitle">Quiz-System &middot; Data Maintenance</div>
+</header>
+
+<div class="container">
+    <div id="adminIoWarning"></div>
+
+    <div class="admin-layout">
+        <nav class="admin-nav" id="adminNav">
+            <!-- wird durch AdminShell befüllt -->
+        </nav>
+        <main class="admin-content" id="adminContent">
+            <!-- wird durch AdminShell befüllt -->
+        </main>
+    </div>
+</div>
+
+</body>
+</html>

@@ -20,6 +20,49 @@
 - Globale Wrapper in `js/40-init-and-functions.js` leiten an Fragen2Plugin weiter
 - Gruppen-Dropdown hat "Neue Gruppe..."-Option (value `__new__`)
 
+## Fragen-ID-System (stabil, seit 2026-03)
+
+### Aktueller Stand (gemischt — Migration noch ausstehend)
+- **Neue Fragen** (ab jetzt): stabile ID `prefix_NNNNN` (z.B. `allg_00042`, `core_00007`)
+- **Bestehende Fragen** (380 Stück): noch Hash-IDs `Q_xxxxxxxx` — warten auf einmalige Migration
+- Die Migration wird über das **Admin-Tool** (`admin-tool.html`) ausgelöst, nicht automatisch
+
+### ID-Format
+- Präfix = erste 4 Buchstaben des `_fileGroup`-Namens, lowercase, nur a-z (Umlaute → ae/oe/ue)
+- Falls Gruppenname < 4 Buchstaben: alle verwenden
+- Nummer = 5-stellig nullgepaddert, fortlaufend pro Präfix
+- Beispiele: "Core" → `core_00001`, "Allgemeinwissen" → `allg_00042`, "BWL" → `bwl_00003`
+
+### Relevante Funktionen (`js/20-plugin-usermanagement.js`)
+- `getGroupPrefix(groupName)` → 4-Buchstaben-Präfix
+- `assignStableId(group, allQuestions)` → nächste freie ID für diese Gruppe
+- `hasStableId(id)` (`js/30-globals.js`) → prüft ob ID bereits stabil (nicht `Q_`, nicht rein numerisch)
+
+### Verhalten bei Fragen-Bearbeitung (`js/19-plugin-fragen2.js`)
+- Inhalt ändert sich → ID bleibt unverändert
+- Gruppe wechselt → neue stabile ID mit neuem Präfix wird automatisch vergeben
+- Admin kann ID manuell überschreiben (Feld im Edit-Formular) — hat immer Vorrang
+
+### `_contentHash`-Feld auf Fragen
+- Jede Frage hat `_contentHash: "Q_xxxxxxxx"` — der alte Hash, jetzt nur noch für Import-Duplikat-Erkennung
+- Wird in `normalizeQuestion` gesetzt, nie als primäre ID verwendet
+
+### Migration Hash → stabile ID (noch durchzuführen)
+**Voraussetzung:** Alle Fragen haben korrekte `_fileGroup`-Zuordnung.
+
+**Was die Migration tut:**
+1. Jede Frage mit `Q_...`-ID bekommt neue stabile ID basierend auf `_fileGroup`
+2. Mapping `Q_alt → prefix_neu` wird aufgebaut
+3. Alle User-`questionStats`-Keys werden umgeschrieben (alte Hash-Keys → neue stabile Keys)
+4. Einmalig, irreversibel
+
+**Tool:** `admin-tool.html` (eigenständige HTML-Seite, kein Build nötig)
+- Lädt Master-JSON + Player-JSONs
+- Zeigt Vorschau der Änderungen
+- Exportiert migrierte Dateien zum Download
+
+**Nach der Migration:** `_oldQuestionId`-Mechanismus und `buildMigrationMap` können vereinfacht/entfernt werden
+
 ## Imagemap-Editor (SVG-basiert)
 - **SVG-Overlays** statt div-Elementen (div-Overlays waren unsichtbar — Ursache nie geklärt)
 - Click-Handler direkt per `onclick` auf dem `<img>`, kein addEventListener+setTimeout
@@ -69,12 +112,25 @@
 `{ charges: number, unlocked: boolean }`
 
 ### questionStats{}-Struktur (pro questionId)
-`{ asked: number, correct: number, consecutiveCorrect: number, lastAsked: ISO-string }`
+`{ _q: string, asked: number, correct: number, consecutiveCorrect: number, lastAsked: ISO-string }`
+- `_q`: Fragetext-Ausschnitt (max. 60 Zeichen, kein HTML) — für Lesbarkeit in der JSON, wird bei jeder Beantwortung aktualisiert
+- Keys sind aktuell noch Hash-IDs (`Q_...`) bei bestehenden Usern — nach Migration stabile IDs
+
+### questionStats — bereinigte Feldnamen (seit 2026-03)
+Alte Felder `timesAnswered`, `timesCorrect`, `streakCooldownUntil` existieren nicht mehr im Code.
+`migrateUserQuestionStats()` konvertiert sie beim Laden automatisch → `asked`, `correct`.
 
 ### History-Einträge
 `{ date, correct, total, xp, score }`
 
+## Admin-Tool (`admin-tool.html`)
+- Eigenständige HTML-Datei, kein Build-System, keine Quiz-Abhängigkeiten
+- Zweck: Einmalige Daten-Migrationen und Admin-Aufgaben die nicht in die Haupt-App gehören
+- Aktuell implementiert: Hash-ID → Stabile-ID-Migration
+
 ## Offene Punkte
+- **Hash → Stabile ID Migration** ausführen (via `admin-tool.html`) sobald alle `_fileGroup`-Zuordnungen korrekt sind
+- Nach Migration: `buildMigrationMap` + `_oldQuestionId`-Logik vereinfachen
 - `used`-Feld in abilities komplett entfernen wenn alle User migriert sind
 - Admin-UI für earnPer/earnStat-Anpassung (Referenz hatte das)
 

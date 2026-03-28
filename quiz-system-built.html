@@ -4967,7 +4967,7 @@
                 document.getElementById('currentUserName').textContent = currentUser ? currentUser.name : '';
                 // Question ID info
                 const qidInfo = document.getElementById('quizQuestionIdInfo');
-                if (qidInfo) qidInfo.textContent = `#${q.displayNumber || '?'} · ${q.questionId || ''}`;
+                if (qidInfo) qidInfo.textContent = `[${q._fileGroup || 'Manuell'}] #${q.displayNumber || '?'} · ${q.questionId || ''}`;
                 // Media
                 const mediaEl = document.getElementById('questionMedia');
                 const mediaSrc = getMediaSource(q.media);
@@ -5169,6 +5169,7 @@
                     const qs = currentUser.questionStats[qid];
                     qs.asked++;
                     qs.lastAsked = new Date().toISOString();
+                    qs._q = (q.text || '').replace(/<[^>]*>/g, '').slice(0, 60);
                     if (isCorrect) { qs.correct++; qs.consecutiveCorrect = (qs.consecutiveCorrect || 0) + 1; }
                     else { qs.consecutiveCorrect = 0; }
                 }
@@ -7487,7 +7488,12 @@
                 h += '</select>';
                 h += '<input type="text" id="f2EditGroupInput_' + q.id + '" placeholder="Neuer Gruppenname..." style="display:none;flex-basis:100%;padding:6px 10px;background:rgba(255,255,255,0.1);border:2px solid rgba(255,255,255,0.2);border-radius:8px;color:var(--text);font-size:0.85rem;margin-top:4px;">';
                 h += '</div>';
-        
+
+                h += '<div style="display:flex;align-items:center;gap:8px;margin-top:8px;">';
+                h += '<label style="font-size:0.8rem;opacity:0.6;white-space:nowrap;">Fragen-ID:</label>';
+                h += '<input type="text" id="f2EditId_' + q.id + '" value="' + sanitizeHTML(q.questionId || '') + '" style="flex:1;padding:4px 8px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:6px;color:var(--text);font-size:0.78rem;font-family:monospace;" placeholder="prefix_00001">';
+                h += '</div>';
+
                 if (qType === 'multiple-choice') {
                     h += '<label style="font-size:0.85rem;font-weight:600;margin:12px 0 6px;display:block;">Antworten</label>';
                     (q.answers || []).forEach(function(a, i) {
@@ -7606,8 +7612,10 @@
                         var customEl = document.getElementById('f2EditGroupInput_' + qId);
                         gVal = customEl && customEl.value.trim() ? customEl.value.trim() : q._fileGroup;
                     }
+                    q._prevFileGroup = q._fileGroup; // für ID-Neuvergabe merken
                     q._fileGroup = gVal;
                 }
+                var idInputVal = (document.getElementById('f2EditId_' + qId) || {}).value || '';
                 var explEl = document.getElementById('f2EditExpl_' + qId);
                 if (explEl) q.explanation = explEl.value.trim() || null;
                 // Explanation media
@@ -7673,14 +7681,16 @@
                     }
                 }
 
-                // questionId nach Änderungen neu generieren, alte ID für Migration bewahren
-                if (typeof generateQuestionHash === 'function') {
-                    var newHash = generateQuestionHash(q);
-                    if (newHash !== q.questionId) {
-                        q._oldQuestionId = q.questionId;
-                        q.questionId = newHash;
-                        if (typeof buildMigrationMap === 'function') buildMigrationMap();
+                // Bei Gruppenänderung: neue stabile ID vergeben
+                if (q._fileGroup !== (q._prevFileGroup || q._fileGroup)) {
+                    if (typeof assignStableId === 'function') {
+                        q.questionId = assignStableId(q._fileGroup, questions);
                     }
+                }
+                delete q._prevFileGroup;
+                // Manuelle ID-Änderung (hat Vorrang, wird nach Gruppencheck angewendet)
+                if (idInputVal.trim() && idInputVal.trim() !== q.questionId) {
+                    q.questionId = idInputVal.trim();
                 }
 
                 this._editingId = null;
@@ -7883,7 +7893,7 @@
                     }
                 }
 
-                newQ.questionId = typeof generateQuestionHash === 'function' ? generateQuestionHash(newQ) : ('Q_' + newId);
+                newQ.questionId = typeof assignStableId === 'function' ? assignStableId(group, questions) : ('manu_' + String(newId).padStart(5,'0'));
         
                 if (typeof normalizeQuestion === 'function') {
                     var dn = displayNum;
@@ -8739,18 +8749,21 @@
                 // ── questionStats Auswertung ──────────────────────────────
                 const qs = user.questionStats || {};
                 const qids = Object.keys(qs);
-                const totalAsked = qids.reduce((s,k)=>s+(qs[k].timesAnswered||0),0);
-                const totalCorrect = qids.reduce((s,k)=>s+(qs[k].timesCorrect||0),0);
+                const qAsked  = k => qs[k].asked  ?? qs[k].timesAnswered ?? 0;
+                const qCorrect = k => qs[k].correct ?? qs[k].timesCorrect ?? 0;
+                const totalAsked = qids.reduce((s,k)=>s+qAsked(k),0);
+                const totalCorrect = qids.reduce((s,k)=>s+qCorrect(k),0);
                 const overallRate = totalAsked > 0 ? Math.round(totalCorrect/totalAsked*100) : 0;
-                const mastered = qids.filter(k=>(qs[k].timesAnswered||0)>=3 && Math.round((qs[k].timesCorrect||0)/(qs[k].timesAnswered||1)*100)>=80).length;
+                const mastered = qids.filter(k=>qAsked(k)>=3 && Math.round(qCorrect(k)/(qAsked(k)||1)*100)>=80).length;
 
                 // ── Prioritäts-Hilfsfunktion (ohne Zufall) ────────────────
                 const calcPrio = (qid) => {
                     const s = qs[qid];
-                    if (!s || (s.timesAnswered||0)===0) return 300;
+                    const a = qAsked(qid);
+                    if (!s || a===0) return 300;
                     let score = 100;
-                    score -= Math.log2(s.timesAnswered+1)*30;
-                    score += (1-(s.timesCorrect||0)/s.timesAnswered)*100;
+                    score -= Math.log2(a+1)*30;
+                    score += (1-qCorrect(qid)/a)*100;
                     if (s.lastAsked) score += Math.min(Math.floor((Date.now()-new Date(s.lastAsked))/86400000),30)*3;
                     return Math.max(0,Math.round(score));
                 };
@@ -8763,9 +8776,9 @@
                         qid,
                         displayNumber: q ? (q.displayNumber||'?') : '?',
                         text: q ? (q.text||'') : '(Frage nicht gefunden)',
-                        asked: s.timesAnswered||0,
-                        correct: s.timesCorrect||0,
-                        rate: (s.timesAnswered||0)>0 ? Math.round((s.timesCorrect||0)/(s.timesAnswered)*100) : -1,
+                        asked: qAsked(qid),
+                        correct: qCorrect(qid),
+                        rate: qAsked(qid)>0 ? Math.round(qCorrect(qid)/qAsked(qid)*100) : -1,
                         lastAsked: s.lastAsked ? new Date(s.lastAsked).toLocaleDateString('de-DE') : '–',
                         prio: calcPrio(qid)
                     };
@@ -8951,9 +8964,27 @@
             return 'Q_' + hashString(text + '|' + mediaFp);
         }
 
+        function getGroupPrefix(groupName) {
+            return (groupName || 'manu').replace(/[^a-zA-ZäöüÄÖÜ]/g, '')
+                .replace(/ä/gi,'a').replace(/ö/gi,'o').replace(/ü/gi,'u')
+                .toLowerCase().slice(0, 4) || 'manu';
+        }
+
+        function assignStableId(group, allQuestions) {
+            const prefix = getGroupPrefix(group);
+            let max = 0;
+            (allQuestions || questions).forEach(q => {
+                if (q.questionId && q.questionId.startsWith(prefix + '_')) {
+                    const n = parseInt(q.questionId.split('_')[1], 10);
+                    if (!isNaN(n) && n > max) max = n;
+                }
+            });
+            return prefix + '_' + String(max + 1).padStart(5, '0');
+        }
+
         // DISPLAY-NUMMER SYSTEM
         // Fortlaufende Nummern für die Anzeige (1, 2, 3, ...)
-        // questionId (Hash) bleibt intern für Stats/Duplikate
+        // questionId (stabile ID) bleibt intern für Stats/Duplikate
 
 
         function getNextDisplayNumber() {
@@ -9045,6 +9076,32 @@
     
             if (migrated) {
                 user.questionStats = newStats;
+            }
+
+            // Feldnamen-Migration: timesAnswered/timesCorrect → asked/correct
+            for (const id in user.questionStats) {
+                const s = user.questionStats[id];
+                if (s.timesAnswered !== undefined && s.asked === undefined) {
+                    s.asked   = s.timesAnswered;
+                    s.correct = s.timesCorrect || 0;
+                    delete s.timesAnswered;
+                    delete s.timesCorrect;
+                }
+                if (s.streakCooldownUntil !== undefined) {
+                    delete s.streakCooldownUntil;
+                }
+            }
+
+            // Orphan-Cleanup: Einträge ohne passende Frage entfernen
+            // (nur wenn Fragen bereits geladen sind)
+            if (typeof questions !== 'undefined' && questions.length > 0) {
+                const knownIds = new Set(questions.map(q => q.questionId));
+                for (const id in user.questionStats) {
+                    if (!knownIds.has(id)) {
+                        console.log(`[Migration] Orphan entfernt: User ${user.name}, ID ${id} (_q: ${user.questionStats[id]._q || '?'})`);
+                        delete user.questionStats[id];
+                    }
+                }
             }
         }
 
@@ -9250,19 +9307,33 @@
         syncToAppState();
 
 
+        function hasStableId(id) {
+            return id && !id.startsWith('Q_') && !/^\d+$/.test(String(id));
+        }
+
         function normalizeQuestion(q) {
             // Text der Frage
             const text = q.text || q.frage || '';
 
-            // Alte questionId für Migration speichern
+            // questionId bestimmen:
+            // - Stabile ID (kein Q_-Präfix, nicht rein numerisch): beibehalten
+            // - Q_-Präfix: beibehalten (Migration später)
+            // - Fehlt: neue stabile ID vergeben
             const oldQuestionId = q.questionId;
+            function resolveId() {
+                if (hasStableId(oldQuestionId)) return oldQuestionId;
+                if (oldQuestionId && oldQuestionId.startsWith('Q_')) return oldQuestionId;
+                return typeof assignStableId === 'function'
+                    ? assignStableId(q._fileGroup || 'Manuell', questions)
+                    : generateQuestionHash(q);
+            }
 
             // Imagemap-Frage?
             if (q.type === QUESTION_TYPES.IMAGEMAP) {
                 return {
                     id: q.id,
-                    questionId: oldQuestionId && oldQuestionId.startsWith('Q_') ? oldQuestionId : generateQuestionHash(q),
-                    _oldQuestionId: oldQuestionId,
+                    questionId: resolveId(),
+                    _contentHash: typeof generateQuestionHash === 'function' ? generateQuestionHash(q) : null,
                     displayNumber: typeof q.displayNumber === 'number' ? q.displayNumber : null,
                     text: text,
                     type: QUESTION_TYPES.IMAGEMAP,
@@ -9282,8 +9353,8 @@
                 const textAnswers = getCorrectTextAnswers(q);
                 return {
                     id: q.id,
-                    questionId: oldQuestionId && oldQuestionId.startsWith('Q_') ? oldQuestionId : generateQuestionHash(q),
-                    _oldQuestionId: oldQuestionId,
+                    questionId: resolveId(),
+                    _contentHash: typeof generateQuestionHash === 'function' ? generateQuestionHash(q) : null,
                     displayNumber: typeof q.displayNumber === 'number' ? q.displayNumber : null,
                     text: text,
                     type: QUESTION_TYPES.TEXT,
@@ -9323,8 +9394,8 @@
 
             return {
                 id: q.id,
-                questionId: oldQuestionId && oldQuestionId.startsWith('Q_') ? oldQuestionId : generateQuestionHash(q),
-                _oldQuestionId: oldQuestionId,
+                questionId: resolveId(),
+                _contentHash: typeof generateQuestionHash === 'function' ? generateQuestionHash(q) : null,
                 displayNumber: typeof q.displayNumber === 'number' ? q.displayNumber : null,
                 text: text,
                 type: QUESTION_TYPES.MULTIPLE_CHOICE,
@@ -10320,142 +10391,7 @@
 
 
 
-        function ensureQuestionStats(user) {
-            if (!user.questionStats) {
-                user.questionStats = {};
-            }
-        }
 
-
-        function getQuestionStatsForUser(user, questionId) {
-            ensureQuestionStats(user);
-            if (!user.questionStats[questionId]) {
-                // Neue Frage - noch nie beantwortet
-                return { timesAnswered: 0, timesCorrect: 0, lastAsked: null };
-            }
-            return user.questionStats[questionId];
-        }
-
-
-        function updateQuestionStats(user, questionId, wasCorrect) {
-            ensureQuestionStats(user);
-    
-            if (!user.questionStats[questionId]) {
-                user.questionStats[questionId] = {
-                    timesAnswered: 0,
-                    timesCorrect: 0,
-                    lastAsked: null
-                };
-            }
-    
-            const stats = user.questionStats[questionId];
-            stats.timesAnswered++;
-            if (wasCorrect) {
-                stats.timesCorrect++;
-                // Streak-Tracking: Korrekt in Folge zählen
-                stats.consecutiveCorrect = (stats.consecutiveCorrect || 0) + 1;
-                // Wenn Streak-Schwelle erreicht → Cooldown-Zeitstempel setzen
-                const sr = quizSettings.spacedRepetition || {};
-                const threshold = sr.streakThreshold || 3;
-                if (stats.consecutiveCorrect >= threshold) {
-                    stats.streakCooldownUntil = new Date(Date.now() + (sr.streakCooldown || 48) * 3600000).toISOString();
-                }
-            } else {
-                // Falsch beantwortet → Streak zurücksetzen
-                stats.consecutiveCorrect = 0;
-                stats.streakCooldownUntil = null;
-            }
-            stats.lastAsked = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
-        }
-
-
-        function calculateQuestionPriority(question, user) {
-            const stats = getQuestionStatsForUser(user, question.questionId);
-            const sr = quizSettings.spacedRepetition || {};
-            const randomness = (sr.randomness !== undefined ? sr.randomness : 40) / 100; // 0.0 – 1.0
-
-            // Wenn Frage N× korrekt in Folge → für X Stunden gesperrt
-            if (stats.streakCooldownUntil) {
-                const cooldownEnd = new Date(stats.streakCooldownUntil);
-                if (Date.now() < cooldownEnd.getTime()) {
-                    // Frage ist im Cooldown → minimale Priorität, aber nicht 0
-                    // (bei 100% Zufall soll sie trotzdem eine winzige Chance haben)
-                    return 1 + Math.random() * randomness * 10;
-                }
-                // Cooldown abgelaufen → Streak zurücksetzen, Frage wieder im Pool
-                stats.consecutiveCorrect = 0;
-                stats.streakCooldownUntil = null;
-            }
-
-            let srScore = 100;
-    
-            // FAKTOR 1: Noch nie beantwortet = hohe Priorität
-            if (stats.timesAnswered === 0) {
-                srScore += 200;
-            } else {
-                // FAKTOR 2: Weniger oft beantwortet = höhere Priorität
-                const answerPenalty = Math.log2(stats.timesAnswered + 1) * 30;
-                srScore -= answerPenalty;
-        
-                // FAKTOR 3: Niedrige Erfolgsrate = höhere Priorität
-                const successRate = stats.timesCorrect / stats.timesAnswered;
-                srScore += (1 - successRate) * 100;
-        
-                // FAKTOR 4: Länger nicht gestellt = höhere Priorität
-                if (stats.lastAsked) {
-                    const daysSince = Math.floor((new Date() - new Date(stats.lastAsked)) / 86400000);
-                    srScore += Math.min(daysSince, 30) * 3;
-                }
-            }
-
-            // randomness = 0.0 → priority = srScore (reines Spaced Repetition)
-            // randomness = 0.4 → priority = 60% SR + 40% Zufall (empfohlen)
-            // randomness = 1.0 → priority = reiner Zufall (alle Fragen gleich wahrscheinlich)
-            const baseScore = 100; // Mittelwert für "neutrale" Priorität
-            const randomScore = baseScore + (Math.random() - 0.5) * 200;
-            const priority = srScore * (1 - randomness) + randomScore * randomness;
-    
-            return priority;
-        }
-
-
-        function selectQuestionsForUser(activeQuestions, user, count) {
-            // Berechne Priorität für jede Frage
-            const questionsWithPriority = activeQuestions.map(q => ({
-                question: q,
-                priority: calculateQuestionPriority(q, user)
-            }));
-    
-            // GEWICHTETE ZUFALLSZIEHUNG statt hartem Top-N
-            // Fragen mit höherer Priorität werden WAHRSCHEINLICHER gewählt,
-            // aber auch niedrig-priorisierte haben eine Chance
-            const selectedQuestions = [];
-            const pool = [...questionsWithPriority];
-    
-            while (selectedQuestions.length < count && pool.length > 0) {
-                // Alle Prioritäten auf positive Werte normalisieren (min = 1)
-                const minP = Math.min(...pool.map(p => p.priority));
-                const shift = minP < 1 ? Math.abs(minP) + 1 : 0;
-        
-                // Gewichte berechnen: Priorität^2 für stärkere Bevorzugung
-                const weights = pool.map(p => Math.pow(p.priority + shift, 2));
-                const totalWeight = weights.reduce((sum, w) => sum + w, 0);
-        
-                // Gewichtete Zufallsauswahl
-                let r = Math.random() * totalWeight;
-                let chosenIdx = 0;
-                for (let i = 0; i < weights.length; i++) {
-                    r -= weights[i];
-                    if (r <= 0) { chosenIdx = i; break; }
-                }
-        
-                selectedQuestions.push(pool[chosenIdx].question);
-                pool.splice(chosenIdx, 1);
-            }
-    
-            // Mische die ausgewählten Fragen für Abwechslung in der Reihenfolge
-            return shuffleArray(selectedQuestions);
-        }
 
         // Initialize sample data
 
