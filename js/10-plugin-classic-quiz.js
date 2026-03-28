@@ -135,7 +135,7 @@ const ClassicQuizPlugin = {
         document.getElementById('currentUserName').textContent = currentUser ? currentUser.name : '';
         // Question ID info
         const qidInfo = document.getElementById('quizQuestionIdInfo');
-        if (qidInfo) qidInfo.textContent = `[${q._fileGroup || 'Manuell'}] #${q.displayNumber || '?'} · ${q.questionId || ''}`;
+        if (qidInfo) qidInfo.textContent = `[${q._fileGroup || 'Manuell'}] ${q.questionId || ''}`;
         // Media
         const mediaEl = document.getElementById('questionMedia');
         const mediaSrc = getMediaSource(q.media);

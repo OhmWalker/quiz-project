@@ -242,7 +242,6 @@ function _fmBuildExportQ(q) {
     const out = {
         id:               q.id,
         questionId:       q.questionId,
-        displayNumber:    q.displayNumber ?? null,
         text:             q.text,
         type:             q.type,
         active:           q.active !== false,

@@ -60,27 +60,25 @@ const Fragen2Plugin = {
         html += '<div style="padding:12px 15px;background:rgba(255,255,255,0.04);border-radius:12px;margin-bottom:15px;">';
         // Zeile 1: Suche + Sortierung
         html += '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px;">';
-        html += '<input class="f2-search" type="text" placeholder="🔍 Suche (Text, Antwort, ID... | #Nr, #5-20)" value="' + sanitizeHTML(this._searchTerm) + '" oninput="Fragen2Plugin._searchTerm=this.value;Fragen2Plugin._renderList()" id="f2SearchInput" style="flex:1;min-width:160px;">';
+        html += '<input class="f2-search" type="text" placeholder="🔍 Suche (Text, Antwort, ID...)" value="' + sanitizeHTML(this._searchTerm) + '" oninput="Fragen2Plugin._searchTerm=this.value;Fragen2Plugin._renderList()" id="f2SearchInput" style="flex:1;min-width:160px;">';
         html += '<select class="f2-sort-select" onchange="Fragen2Plugin._sortBy=this.value;Fragen2Plugin._renderList()" style="padding:7px 10px;">';
-        html += '<option value="number"' + (this._sortBy === 'number' ? ' selected' : '') + '>Nr.</option>';
         html += '<option value="alpha"' + (this._sortBy === 'alpha' ? ' selected' : '') + '>A–Z</option>';
         html += '<option value="group"' + (this._sortBy === 'group' ? ' selected' : '') + '>Gruppe</option>';
         html += '<option value="stats"' + (this._sortBy === 'stats' ? ' selected' : '') + '>Schwierigkeit</option>';
         html += '</select>';
         html += '</div>';
-        // Zeile 2: Nummern-Bereich + Batch-Aktionen
+        // Zeile 2: Präfix-Batch + Aktionen
         html += '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px;">';
-        html += '<input type="text" id="f2BatchInput" placeholder="🎯 Nr. 5, 10-15, 20-40" style="width:200px;padding:6px 10px;background:rgba(255,255,255,0.1);border:2px solid rgba(255,255,255,0.2);border-radius:8px;color:var(--text);font-size:0.82rem;">';
-        html += '<button class="btn btn-small" onclick="Fragen2Plugin._batchActivate(true)" title="Bereich aktivieren" style="padding:4px 10px;font-size:0.78rem;">✅ Aktiv</button>';
-        html += '<button class="btn btn-small btn-secondary" onclick="Fragen2Plugin._batchActivate(false)" title="Bereich deaktivieren" style="padding:4px 10px;font-size:0.78rem;">❌ Inaktiv</button>';
-        html += '<button class="btn btn-small" onclick="Fragen2Plugin._batchExport()" title="Bereich exportieren" style="padding:4px 10px;font-size:0.78rem;background:linear-gradient(135deg,#2980b9,#3498db);">📤 Export</button>';
+        html += '<input type="text" id="f2BatchInput" placeholder="🎯 ID-Präfix, z.B. allg, core" style="width:200px;padding:6px 10px;background:rgba(255,255,255,0.1);border:2px solid rgba(255,255,255,0.2);border-radius:8px;color:var(--text);font-size:0.82rem;">';
+        html += '<button class="btn btn-small" onclick="Fragen2Plugin._batchActivate(true)" title="Präfix aktivieren" style="padding:4px 10px;font-size:0.78rem;">✅ Aktiv</button>';
+        html += '<button class="btn btn-small btn-secondary" onclick="Fragen2Plugin._batchActivate(false)" title="Präfix deaktivieren" style="padding:4px 10px;font-size:0.78rem;">❌ Inaktiv</button>';
+        html += '<button class="btn btn-small" onclick="Fragen2Plugin._batchExport()" title="Präfix exportieren" style="padding:4px 10px;font-size:0.78rem;background:linear-gradient(135deg,#2980b9,#3498db);">📤 Export</button>';
         html += '</div>';
         // Zeile 3: Schnellaktionen
         html += '<div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center;padding-top:8px;border-top:1px solid rgba(255,255,255,0.06);">';
         html += '<button class="btn btn-small" onclick="Fragen2Plugin._allActivate(true)" title="Alle Fragen aktivieren" style="padding:4px 8px;font-size:0.75rem;">✅ Alle Aktivieren</button>';
         html += '<button class="btn btn-small btn-secondary" onclick="Fragen2Plugin._allActivate(false)" title="Alle Fragen deaktivieren" style="padding:4px 8px;font-size:0.75rem;">❌ Alle Deaktivieren</button>';
         html += '<button class="btn btn-small btn-secondary" onclick="Fragen2Plugin._invertActive()" title="Aktiv/Inaktiv tauschen" style="padding:4px 8px;font-size:0.75rem;">🔄 Invertieren</button>';
-        html += '<button class="btn btn-small" onclick="Fragen2Plugin._renumber()" title="Lückenlos 1,2,3... neu nummerieren" style="padding:4px 8px;font-size:0.75rem;">🔢 Nummerieren</button>';
         html += '<button class="btn btn-small btn-secondary" onclick="Fragen2Plugin._resetStats()" title="Fragen-Statistiken zurücksetzen" style="padding:4px 8px;font-size:0.75rem;">📊 Statistik Reset</button>';
         html += '</div>';
         // Zeile 4: Export/Import/Löschen
@@ -128,18 +126,10 @@ const Fragen2Plugin = {
         var self = this;
         return (questions || []).filter(function(q) {
             if (self._searchTerm) {
-                var t = self._searchTerm.trim();
-                if (t.charAt(0) === '#') {
-                    var nums = self._parseBatch(t.substring(1));
-                    if (nums.length === 0) return false;
-                    if (nums.indexOf(q.displayNumber) === -1) return false;
-                } else {
-                    t = t.toLowerCase();
-                    if (!(q.text || '').toLowerCase().includes(t) &&
-                        !(q.questionId || '').toLowerCase().includes(t) &&
-                        !(q.answers || []).some(function(a) { return (a.text || '').toLowerCase().includes(t); }) &&
-                        !String(q.displayNumber || '').includes(t)) return false;
-                }
+                var t = self._searchTerm.trim().toLowerCase();
+                if (!(q.text || '').toLowerCase().includes(t) &&
+                    !(q.questionId || '').toLowerCase().includes(t) &&
+                    !(q.answers || []).some(function(a) { return (a.text || '').toLowerCase().includes(t); })) return false;
             }
             if (self._typeFilter !== 'all' && (q.type || 'multiple-choice') !== self._typeFilter) return false;
             if (self._statusFilter === 'active' && q.active === false) return false;
@@ -251,7 +241,6 @@ const Fragen2Plugin = {
     _renderCard(q) {
         var isActive = q.active !== false;
         var qType = q.type || 'multiple-choice';
-        var displayNum = q.displayNumber || '?';
         var questionId = q.questionId || '???';
         var mediaSrc = typeof getMediaSource === 'function' ? getMediaSource(q.media) : null;
         var isExpanded = this._expandedCards.has(q.id);
@@ -265,7 +254,6 @@ const Fragen2Plugin = {
         h += '<div class="f2-card-header">';
         h += '<div style="display:flex;align-items:center;gap:8px;">';
         h += '<input type="checkbox" ' + (isActive ? 'checked' : '') + ' onchange="Fragen2Plugin._toggleActive(' + q.id + ')" style="width:16px;height:16px;cursor:pointer;accent-color:var(--accent);">';
-        h += '<span class="f2-card-num">#' + displayNum + '</span>';
         h += '<span class="f2-card-hash">' + questionId + '</span>';
         h += '</div>';
         h += '<div style="display:flex;align-items:center;gap:6px;">';
@@ -365,7 +353,7 @@ const Fragen2Plugin = {
         
         var h = '<div class="f2-card" id="f2Edit_' + q.id + '" style="border-color:var(--accent);background:rgba(247,184,1,0.05);">';
         h += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">';
-        h += '<strong style="color:var(--accent);">✏️ Frage #' + (q.displayNumber || '?') + ' bearbeiten</strong>';
+        h += '<strong style="color:var(--accent);">✏️ Frage ' + (q.questionId || '?') + ' bearbeiten</strong>';
         h += '<button class="btn btn-small btn-secondary" onclick="Fragen2Plugin._cancelEdit()">✕ Abbrechen</button>';
         h += '</div>';
         
@@ -589,7 +577,7 @@ const Fragen2Plugin = {
 
         this._editingId = null;
         this._renderList();
-        Toast.show('Frage #' + (q.displayNumber || '?') + ' gespeichert!', 'success');
+        Toast.show('Frage ' + (q.questionId || '?') + ' gespeichert!', 'success');
     },
     
     // ══════════════════════════════════════
@@ -726,12 +714,10 @@ const Fragen2Plugin = {
         var hintMediaEl = document.getElementById('f2NewHintMedia');
         var hintMedia = (hintMediaEl && hintMediaEl.value.trim()) ? { type: 'image', path: hintMediaEl.value.trim() } : null;
         var newId = Date.now() + Math.floor(Math.random() * 1000);
-        var displayNum = typeof getNextDisplayNumber === 'function' ? getNextDisplayNumber() : (questions.length + 1);
         var ansCount = (typeof CONFIG !== 'undefined' && CONFIG.QUIZ && CONFIG.QUIZ.DEFAULT_ANSWER_COUNT) ? CONFIG.QUIZ.DEFAULT_ANSWER_COUNT : 4;
 
         var newQ = {
             id: newId,
-            displayNumber: displayNum,
             text: text,
             active: true,
             _fileGroup: group,
@@ -788,18 +774,16 @@ const Fragen2Plugin = {
         }
 
         newQ.questionId = typeof assignStableId === 'function' ? assignStableId(group, questions) : ('manu_' + String(newId).padStart(5,'0'));
-        
+
         if (typeof normalizeQuestion === 'function') {
-            var dn = displayNum;
             var fg = group;
             newQ = normalizeQuestion(newQ);
-            newQ.displayNumber = dn;
             newQ._fileGroup = fg;
         }
-        
+
         questions.push(newQ);
         this._showNewForm = false;
-        Toast.show('Frage #' + displayNum + ' erstellt!', 'success');
+        Toast.show('Frage ' + newQ.questionId + ' erstellt!', 'success');
         this.render();
     },
     
@@ -814,14 +798,14 @@ const Fragen2Plugin = {
                 var gA = (a._fileGroup || 'Manuell').toLowerCase();
                 var gB = (b._fileGroup || 'Manuell').toLowerCase();
                 if (gA !== gB) return gA.localeCompare(gB);
-                return (a.displayNumber || 99999) - (b.displayNumber || 99999);
+                return (a.questionId || '').localeCompare(b.questionId || '');
             }
             if (self._sortBy === 'stats') {
                 var sA = typeof calculateQuestionStats === 'function' ? calculateQuestionStats(a.questionId) : null;
                 var sB = typeof calculateQuestionStats === 'function' ? calculateQuestionStats(b.questionId) : null;
                 return (sA ? sA.percentage : 999) - (sB ? sB.percentage : 999);
             }
-            return (a.displayNumber || 99999) - (b.displayNumber || 99999);
+            return (a.questionId || '').localeCompare(b.questionId || '');
         });
     },
     
@@ -873,7 +857,7 @@ const Fragen2Plugin = {
     _delete(qId) {
         var q = questions.find(function(qq) { return qq.id === qId; });
         if (!q) return;
-        if (!confirm('Frage #' + (q.displayNumber || '?') + ' löschen?\n\n"' + (q.text || '').substring(0, 80) + '..."')) return;
+        if (!confirm('Frage ' + (q.questionId || '?') + ' löschen?\n\n"' + (q.text || '').substring(0, 80) + '..."')) return;
         var idx = questions.indexOf(q);
         if (idx > -1) questions.splice(idx, 1);
         this._renderList();
@@ -1038,34 +1022,26 @@ const Fragen2Plugin = {
     // ══════════════════════════════════════
     // BATCH & AKTIONEN
     // ══════════════════════════════════════
-    _parseBatch(input) {
-        var nums = [];
-        input.split(',').map(function(s) { return s.trim(); }).forEach(function(part) {
-            if (part.includes('-')) {
-                var range = part.split('-').map(function(s) { return parseInt(s.trim()); });
-                if (!isNaN(range[0]) && !isNaN(range[1]) && range[0] <= range[1]) {
-                    for (var i = range[0]; i <= range[1]; i++) nums.push(i);
-                }
-            } else { var num = parseInt(part); if (!isNaN(num)) nums.push(num); }
-        });
-        return [...new Set(nums)];
+    _parsePrefixes(input) {
+        return input.split(',').map(function(s) { return s.trim().toLowerCase(); }).filter(function(s) { return s.length > 0; });
     },
-    
+
     _batchActivate(activate) {
         var input = document.getElementById('f2BatchInput');
-        if (!input || !input.value.trim()) { Toast.show('Bitte Nummern eingeben! z.B. 5, 10-15, 20-40', 'warning'); return; }
-        var nums = this._parseBatch(input.value);
-        if (nums.length === 0) { Toast.show('Keine gültigen Nummern!', 'warning'); return; }
-        var count = 0, notFound = [];
-        nums.forEach(function(n) {
-            var q = questions.find(function(qq) { return qq.displayNumber === n; });
-            if (q) { q.active = activate; count++; } else { notFound.push(n); }
+        if (!input || !input.value.trim()) { Toast.show('Bitte ID-Präfix eingeben, z.B. allg, core', 'warning'); return; }
+        var prefixes = this._parsePrefixes(input.value);
+        if (prefixes.length === 0) { Toast.show('Keine gültigen Präfixe!', 'warning'); return; }
+        var count = 0;
+        questions.forEach(function(q) {
+            var qid = (q.questionId || '').toLowerCase();
+            if (prefixes.some(function(p) { return qid.startsWith(p); })) {
+                q.active = activate;
+                count++;
+            }
         });
         input.value = '';
         this._renderList();
-        var msg = activate ? '✅ ' + count + ' Frage(n) aktiviert!' : '❌ ' + count + ' Frage(n) deaktiviert!';
-        if (notFound.length > 0 && notFound.length <= 10) msg += '\nNicht gefunden: ' + notFound.join(', ');
-        Toast.show(msg, 'success');
+        Toast.show(activate ? '✅ ' + count + ' Frage(n) aktiviert!' : '❌ ' + count + ' Frage(n) deaktiviert!', 'success');
     },
     
     _allActivate(activate) {
@@ -1081,14 +1057,6 @@ const Fragen2Plugin = {
         this._renderList();
         this.render();
         Toast.show('🔄 Umgekehrt! Jetzt aktiv: ' + activeCount + '/' + questions.length, 'info');
-    },
-    
-    _renumber() {
-        if (!confirm('Alle Fragen lückenlos 1, 2, 3, ... neu nummerieren?')) return;
-        var sorted = questions.slice().sort(function(a, b) { return (a.displayNumber || 99999) - (b.displayNumber || 99999); });
-        sorted.forEach(function(q, idx) { q.displayNumber = idx + 1; });
-        this.render();
-        Toast.show('🔢 ' + questions.length + ' Fragen neu nummeriert!', 'success');
     },
     
     _resetStats() {
@@ -1113,7 +1081,7 @@ const Fragen2Plugin = {
     // ── Export ──
     _buildExportQ(q) {
         var exportQ = {
-            id: q.id, questionId: q.questionId, displayNumber: q.displayNumber || null,
+            id: q.id, questionId: q.questionId,
             text: q.text, type: q.type, active: q.active !== false,
             media: q.media, explanation: q.explanation || null,
             explanationMedia: q.explanationMedia || null,
@@ -1178,22 +1146,24 @@ const Fragen2Plugin = {
     
     _batchExport() {
         var input = document.getElementById('f2BatchInput');
-        if (!input || !input.value.trim()) { Toast.show('Bitte Nummern-Bereich eingeben! z.B. 30-110', 'warning'); return; }
-        var nums = this._parseBatch(input.value);
-        if (nums.length === 0) { Toast.show('Keine gültigen Nummern!', 'warning'); return; }
-        var numsSet = new Set(nums);
-        var selected = questions.filter(function(q) { return numsSet.has(q.displayNumber); });
-        if (selected.length === 0) { Toast.show('Keine Fragen in diesem Bereich gefunden!', 'warning'); return; }
-        var rangeLabel = input.value.trim().replace(/\s+/g, '').replace(/,/g, '_');
+        if (!input || !input.value.trim()) { Toast.show('Bitte ID-Präfix eingeben, z.B. allg, core', 'warning'); return; }
+        var prefixes = this._parsePrefixes(input.value);
+        if (prefixes.length === 0) { Toast.show('Keine gültigen Präfixe!', 'warning'); return; }
+        var selected = questions.filter(function(q) {
+            var qid = (q.questionId || '').toLowerCase();
+            return prefixes.some(function(p) { return qid.startsWith(p); });
+        });
+        if (selected.length === 0) { Toast.show('Keine Fragen mit diesem Präfix gefunden!', 'warning'); return; }
+        var label = prefixes.join('_');
         var self = this;
         var data = {
-            version: '1.0', theme: 'Bereich_' + rangeLabel,
+            version: '1.0', theme: label,
             created: new Date().toISOString(), lastModified: new Date().toISOString(),
             questions: selected.map(function(q) { return self._buildExportQ(q); })
         };
-        this._downloadJSON(data, '03_questions_Nr' + rangeLabel + '_' + this._timestamp() + '.json');
+        this._downloadJSON(data, '03_questions_' + label + '_' + this._timestamp() + '.json');
         input.value = '';
-        Toast.show('📤 ' + selected.length + ' Fragen (Nr. ' + rangeLabel + ') exportiert!', 'success');
+        Toast.show('📤 ' + selected.length + ' Fragen (' + label + ') exportiert!', 'success');
     },
     
     // ── Import ──

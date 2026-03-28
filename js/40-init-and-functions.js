@@ -137,16 +137,16 @@ function getNextAvailableQuestionId() {
 
 function initializeSampleQuestions() {
     questions = [
-        { displayNumber: 1, questionId: "001", id: Date.now() + 1, active: true, text: "Welcher Fluss wird traditionell als der längste der Welt bezeichnet? (Hinweis: Die Messung ist wissenschaftlich umstritten)", answers: [{ text: "Nil", correct: true }, { text: "Amazonas", correct: true }, { text: "Jangtse", correct: false }, { text: "Mississippi", correct: false }], media: null },
-        { displayNumber: 2, questionId: "002", id: Date.now() + 2, active: true, text: "In welchem Jahr fiel die Berliner Mauer?", answers: [{ text: "1987", correct: false }, { text: "1989", correct: true }, { text: "1990", correct: false }, { text: "1991", correct: false }], media: null },
-        { displayNumber: 3, questionId: "003", id: Date.now() + 3, active: true, text: "Wie viele Planeten hat unser Sonnensystem?", answers: [{ text: "7", correct: false }, { text: "8", correct: true }, { text: "9", correct: false }, { text: "10", correct: false }], media: null },
-        { displayNumber: 4, questionId: "004", id: Date.now() + 4, active: true, text: "Welches ist das größte Land der Erde?", answers: [{ text: "Kanada", correct: false }, { text: "China", correct: false }, { text: "USA", correct: false }, { text: "Russland", correct: true }], media: null },
-        { displayNumber: 5, questionId: "005", id: Date.now() + 5, active: true, text: "Wer malte die Mona Lisa?", answers: [{ text: "Michelangelo", correct: false }, { text: "Leonardo da Vinci", correct: true }, { text: "Raphael", correct: false }, { text: "Donatello", correct: false }], media: null },
-        { displayNumber: 6, questionId: "006", id: Date.now() + 6, active: true, text: "Wie viele Herzen hat ein Oktopus?", answers: [{ text: "1", correct: false }, { text: "2", correct: false }, { text: "3", correct: true }, { text: "4", correct: false }], media: null },
-        { displayNumber: 7, questionId: "007", id: Date.now() + 7, active: true, text: "Welche Sprache wird in Brasilien gesprochen?", answers: [{ text: "Spanisch", correct: false }, { text: "Portugiesisch", correct: true }, { text: "Französisch", correct: false }, { text: "Italienisch", correct: false }], media: null },
-        { displayNumber: 8, questionId: "008", id: Date.now() + 8, active: true, text: "Was ist die Hauptstadt von Australien?", answers: [{ text: "Sydney", correct: false }, { text: "Melbourne", correct: false }, { text: "Canberra", correct: true }, { text: "Brisbane", correct: false }], media: null },
-        { displayNumber: 9, questionId: "009", id: Date.now() + 9, active: true, text: "Wie viele Zähne hat ein erwachsener Mensch?", answers: [{ text: "28", correct: false }, { text: "30", correct: false }, { text: "32", correct: true }, { text: "34", correct: false }], media: null },
-        { displayNumber: 10, questionId: "010", id: Date.now() + 10, active: true, text: "Welches ist das schnellste Landtier?", answers: [{ text: "Löwe", correct: false }, { text: "Gepard", correct: true }, { text: "Gazelle", correct: false }, { text: "Windhund", correct: false }], media: null }
+        { questionId: "001", id: Date.now() + 1, active: true, text: "Welcher Fluss wird traditionell als der längste der Welt bezeichnet? (Hinweis: Die Messung ist wissenschaftlich umstritten)", answers: [{ text: "Nil", correct: true }, { text: "Amazonas", correct: true }, { text: "Jangtse", correct: false }, { text: "Mississippi", correct: false }], media: null },
+        { questionId: "002", id: Date.now() + 2, active: true, text: "In welchem Jahr fiel die Berliner Mauer?", answers: [{ text: "1987", correct: false }, { text: "1989", correct: true }, { text: "1990", correct: false }, { text: "1991", correct: false }], media: null },
+        { questionId: "003", id: Date.now() + 3, active: true, text: "Wie viele Planeten hat unser Sonnensystem?", answers: [{ text: "7", correct: false }, { text: "8", correct: true }, { text: "9", correct: false }, { text: "10", correct: false }], media: null },
+        { questionId: "004", id: Date.now() + 4, active: true, text: "Welches ist das größte Land der Erde?", answers: [{ text: "Kanada", correct: false }, { text: "China", correct: false }, { text: "USA", correct: false }, { text: "Russland", correct: true }], media: null },
+        { questionId: "005", id: Date.now() + 5, active: true, text: "Wer malte die Mona Lisa?", answers: [{ text: "Michelangelo", correct: false }, { text: "Leonardo da Vinci", correct: true }, { text: "Raphael", correct: false }, { text: "Donatello", correct: false }], media: null },
+        { questionId: "006", id: Date.now() + 6, active: true, text: "Wie viele Herzen hat ein Oktopus?", answers: [{ text: "1", correct: false }, { text: "2", correct: false }, { text: "3", correct: true }, { text: "4", correct: false }], media: null },
+        { questionId: "007", id: Date.now() + 7, active: true, text: "Welche Sprache wird in Brasilien gesprochen?", answers: [{ text: "Spanisch", correct: false }, { text: "Portugiesisch", correct: true }, { text: "Französisch", correct: false }, { text: "Italienisch", correct: false }], media: null },
+        { questionId: "008", id: Date.now() + 8, active: true, text: "Was ist die Hauptstadt von Australien?", answers: [{ text: "Sydney", correct: false }, { text: "Melbourne", correct: false }, { text: "Canberra", correct: true }, { text: "Brisbane", correct: false }], media: null },
+        { questionId: "009", id: Date.now() + 9, active: true, text: "Wie viele Zähne hat ein erwachsener Mensch?", answers: [{ text: "28", correct: false }, { text: "30", correct: false }, { text: "32", correct: true }, { text: "34", correct: false }], media: null },
+        { questionId: "010", id: Date.now() + 10, active: true, text: "Welches ist das schnellste Landtier?", answers: [{ text: "Löwe", correct: false }, { text: "Gepard", correct: true }, { text: "Gazelle", correct: false }, { text: "Windhund", correct: false }], media: null }
     ];
 }
 
@@ -185,6 +185,7 @@ function showScreen(screenId) {
         screen.classList.remove('active');
     });
     document.getElementById(screenId).classList.add('active');
+    window.scrollTo(0, 0);
 }
 
 function showAdminSection(section) {
@@ -1507,9 +1508,6 @@ function createNewDataFile() {
         if (!user.questionStats) user.questionStats = {};
     });
 
-            // Assign display numbers
-            assignDisplayNumbers();
-    
     ensureSettingsDefaults(quizSettings);
     
     dataLoaded = true;

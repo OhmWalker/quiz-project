@@ -21,6 +21,7 @@
 - Geometrie-Funktionen (checkImagemapHit, pointInPolygon etc.) in Fragen2Plugin
 - Globale Wrapper in `js/40-init-and-functions.js` leiten an Fragen2Plugin weiter
 - Gruppen-Dropdown hat "Neue Gruppe..."-Option (value `__new__`)
+- Batch-Aktionen (Aktivieren/Deaktivieren/Export) arbeiten mit **ID-Präfix** (z.B. `allg`, `core`) — nicht mehr mit Nummern-Bereichen
 
 ## Fragen-ID-System (stabil, seit 2026-03)
 
@@ -142,7 +143,7 @@ Reihenfolge in der Nav (von oben nach unten):
 | Tab | Datei | Funktion |
 |---|---|---|
 | Datei | `20-admin-datei.js` | Ordner laden (Master-JSON + Spieler-JSONs) |
-| Fragen | `25-forge-fragen.js` | Fragen erstellen/bearbeiten (MC, Text, Bildklick) + Export |
+| Fragen | `25-forge-fragen.js` | Fragen erstellen/bearbeiten (MC, Text, Bildklick) + Export; Klick auf Zeile klappt Inline-Edit auf; ID editierbar mit Duplikat-Prüfung; 📂-Buttons für Medien-Pfade |
 | Nutzer | `30-admin-nutzer.js` | Umbenennen, Übersicht |
 | Einstellungen | `40-admin-einstellungen.js` | earnPer/earnStat für Fähigkeiten |
 | *(Trennlinie)* | `45-admin-separator.js` | `AdminShell.registerSeparator()` |

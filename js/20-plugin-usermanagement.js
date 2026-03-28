@@ -74,7 +74,7 @@ const UserManagementPlugin = {
             const q = (typeof questions !== 'undefined') ? questions.find(q=>q.questionId===qid) : null;
             return {
                 qid,
-                displayNumber: q ? (q.displayNumber||'?') : '?',
+                qidDisplay: q ? (q.questionId||'?') : '?',
                 text: q ? (q.text||'') : '(Frage nicht gefunden)',
                 asked: qAsked(qid),
                 correct: qCorrect(qid),
@@ -157,7 +157,7 @@ const UserManagementPlugin = {
                     ${statsRows.map(r=>`
                     <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
                         <td style="padding:10px;">
-                            <span style="color:var(--accent);font-weight:700;">#${r.displayNumber}</span>
+                            <span style="color:var(--accent);font-weight:700;font-size:0.82rem;font-family:monospace">${r.qidDisplay}</span>
                             <div style="font-size:0.8rem;opacity:0.55;margin-top:2px;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${sanitizeHTML(r.text.substring(0,80)+(r.text.length>80?'…':''))}</div>
                         </td>
                         <td style="padding:10px;text-align:center;">${r.asked}x</td>
@@ -282,69 +282,6 @@ function assignStableId(group, allQuestions) {
     return prefix + '_' + String(max + 1).padStart(5, '0');
 }
 
-// DISPLAY-NUMMER SYSTEM
-// Fortlaufende Nummern für die Anzeige (1, 2, 3, ...)
-// questionId (stabile ID) bleibt intern für Stats/Duplikate
-
-
-function getNextDisplayNumber() {
-    const usedNumbers = new Set(questions.map(q => q.displayNumber).filter(n => typeof n === 'number'));
-    let next = 1;
-    while (usedNumbers.has(next)) next++;
-    return next;
-}
-
-
-function assignDisplayNumbers() {
-    // Schritt 1+2: Versuche alte numerische IDs als displayNumber zu übernehmen
-    questions.forEach(q => {
-        if (typeof q.displayNumber === 'number') return;
-        if (q._oldQuestionId && /^\d+$/.test(String(q._oldQuestionId))) {
-            q.displayNumber = parseInt(String(q._oldQuestionId), 10);
-            return;
-        }
-        if (q.questionId && /^\d+$/.test(String(q.questionId))) {
-            q.displayNumber = parseInt(String(q.questionId), 10);
-            return;
-        }
-    });
-
-    // Schritt 3: Doppelte displayNumbers auflösen
-    const seen = {};
-    questions.forEach(q => {
-        if (typeof q.displayNumber !== 'number') return;
-        if (seen[q.displayNumber]) {
-            seen[q.displayNumber].displayNumber = null;
-            q.displayNumber = null;
-        } else {
-            seen[q.displayNumber] = q;
-        }
-    });
-
-    // Schritt 4: Vergib nächste freie Nummer an alle ohne Nummer
-    const usedNumbers = new Set(questions.map(q => q.displayNumber).filter(n => typeof n === 'number'));
-    let next = 1;
-    questions.forEach(q => {
-        if (typeof q.displayNumber === 'number') return;
-        while (usedNumbers.has(next)) next++;
-        q.displayNumber = next;
-        usedNumbers.add(next);
-        next++;
-    });
-}
-
-
-function renumberAllQuestions() {
-    const sorted = [...questions].sort((a, b) => a.id - b.id);
-    sorted.forEach((q, idx) => {
-        q.displayNumber = idx + 1;
-    });
-}
-
-
-function findQuestionByDisplayNumber(num) {
-    return questions.find(q => q.displayNumber === num);
-}
 
 let questionIdMigrationMap = {};
 

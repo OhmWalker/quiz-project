@@ -3227,7 +3227,7 @@
             </div>
             <div style="margin-top: 15px; text-align: center;">
                 <button class="btn btn-small btn-secondary" id="abandonQuizBtn" data-action="abandonQuiz" title="Quiz vorzeitig beenden (Esc)" style="padding:6px 18px;font-size:0.82rem;opacity:0.5;transition:opacity 0.2s;">✕ Beenden <span style="opacity: 0.6; font-size: 0.8em;">(Esc)</span></button>
-                <div id="quizQuestionIdInfo" style="margin-top:6px;font-size:0.7rem;opacity:0.25;color:var(--text);user-select:text;"></div>
+                <div id="quizQuestionIdInfo" style="margin-top:6px;font-size:0.82rem;opacity:0.65;color:var(--text);user-select:text;"></div>
             </div>
         </div>
     </div>
@@ -4972,7 +4972,7 @@
                 document.getElementById('currentUserName').textContent = currentUser ? currentUser.name : '';
                 // Question ID info
                 const qidInfo = document.getElementById('quizQuestionIdInfo');
-                if (qidInfo) qidInfo.textContent = `[${q._fileGroup || 'Manuell'}] #${q.displayNumber || '?'} · ${q.questionId || ''}`;
+                if (qidInfo) qidInfo.textContent = `[${q._fileGroup || 'Manuell'}] ${q.questionId || ''}`;
                 // Media
                 const mediaEl = document.getElementById('questionMedia');
                 const mediaSrc = getMediaSource(q.media);
@@ -7211,27 +7211,25 @@
                 html += '<div style="padding:12px 15px;background:rgba(255,255,255,0.04);border-radius:12px;margin-bottom:15px;">';
                 // Zeile 1: Suche + Sortierung
                 html += '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px;">';
-                html += '<input class="f2-search" type="text" placeholder="🔍 Suche (Text, Antwort, ID... | #Nr, #5-20)" value="' + sanitizeHTML(this._searchTerm) + '" oninput="Fragen2Plugin._searchTerm=this.value;Fragen2Plugin._renderList()" id="f2SearchInput" style="flex:1;min-width:160px;">';
+                html += '<input class="f2-search" type="text" placeholder="🔍 Suche (Text, Antwort, ID...)" value="' + sanitizeHTML(this._searchTerm) + '" oninput="Fragen2Plugin._searchTerm=this.value;Fragen2Plugin._renderList()" id="f2SearchInput" style="flex:1;min-width:160px;">';
                 html += '<select class="f2-sort-select" onchange="Fragen2Plugin._sortBy=this.value;Fragen2Plugin._renderList()" style="padding:7px 10px;">';
-                html += '<option value="number"' + (this._sortBy === 'number' ? ' selected' : '') + '>Nr.</option>';
                 html += '<option value="alpha"' + (this._sortBy === 'alpha' ? ' selected' : '') + '>A–Z</option>';
                 html += '<option value="group"' + (this._sortBy === 'group' ? ' selected' : '') + '>Gruppe</option>';
                 html += '<option value="stats"' + (this._sortBy === 'stats' ? ' selected' : '') + '>Schwierigkeit</option>';
                 html += '</select>';
                 html += '</div>';
-                // Zeile 2: Nummern-Bereich + Batch-Aktionen
+                // Zeile 2: Präfix-Batch + Aktionen
                 html += '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px;">';
-                html += '<input type="text" id="f2BatchInput" placeholder="🎯 Nr. 5, 10-15, 20-40" style="width:200px;padding:6px 10px;background:rgba(255,255,255,0.1);border:2px solid rgba(255,255,255,0.2);border-radius:8px;color:var(--text);font-size:0.82rem;">';
-                html += '<button class="btn btn-small" onclick="Fragen2Plugin._batchActivate(true)" title="Bereich aktivieren" style="padding:4px 10px;font-size:0.78rem;">✅ Aktiv</button>';
-                html += '<button class="btn btn-small btn-secondary" onclick="Fragen2Plugin._batchActivate(false)" title="Bereich deaktivieren" style="padding:4px 10px;font-size:0.78rem;">❌ Inaktiv</button>';
-                html += '<button class="btn btn-small" onclick="Fragen2Plugin._batchExport()" title="Bereich exportieren" style="padding:4px 10px;font-size:0.78rem;background:linear-gradient(135deg,#2980b9,#3498db);">📤 Export</button>';
+                html += '<input type="text" id="f2BatchInput" placeholder="🎯 ID-Präfix, z.B. allg, core" style="width:200px;padding:6px 10px;background:rgba(255,255,255,0.1);border:2px solid rgba(255,255,255,0.2);border-radius:8px;color:var(--text);font-size:0.82rem;">';
+                html += '<button class="btn btn-small" onclick="Fragen2Plugin._batchActivate(true)" title="Präfix aktivieren" style="padding:4px 10px;font-size:0.78rem;">✅ Aktiv</button>';
+                html += '<button class="btn btn-small btn-secondary" onclick="Fragen2Plugin._batchActivate(false)" title="Präfix deaktivieren" style="padding:4px 10px;font-size:0.78rem;">❌ Inaktiv</button>';
+                html += '<button class="btn btn-small" onclick="Fragen2Plugin._batchExport()" title="Präfix exportieren" style="padding:4px 10px;font-size:0.78rem;background:linear-gradient(135deg,#2980b9,#3498db);">📤 Export</button>';
                 html += '</div>';
                 // Zeile 3: Schnellaktionen
                 html += '<div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center;padding-top:8px;border-top:1px solid rgba(255,255,255,0.06);">';
                 html += '<button class="btn btn-small" onclick="Fragen2Plugin._allActivate(true)" title="Alle Fragen aktivieren" style="padding:4px 8px;font-size:0.75rem;">✅ Alle Aktivieren</button>';
                 html += '<button class="btn btn-small btn-secondary" onclick="Fragen2Plugin._allActivate(false)" title="Alle Fragen deaktivieren" style="padding:4px 8px;font-size:0.75rem;">❌ Alle Deaktivieren</button>';
                 html += '<button class="btn btn-small btn-secondary" onclick="Fragen2Plugin._invertActive()" title="Aktiv/Inaktiv tauschen" style="padding:4px 8px;font-size:0.75rem;">🔄 Invertieren</button>';
-                html += '<button class="btn btn-small" onclick="Fragen2Plugin._renumber()" title="Lückenlos 1,2,3... neu nummerieren" style="padding:4px 8px;font-size:0.75rem;">🔢 Nummerieren</button>';
                 html += '<button class="btn btn-small btn-secondary" onclick="Fragen2Plugin._resetStats()" title="Fragen-Statistiken zurücksetzen" style="padding:4px 8px;font-size:0.75rem;">📊 Statistik Reset</button>';
                 html += '</div>';
                 // Zeile 4: Export/Import/Löschen
@@ -7279,18 +7277,10 @@
                 var self = this;
                 return (questions || []).filter(function(q) {
                     if (self._searchTerm) {
-                        var t = self._searchTerm.trim();
-                        if (t.charAt(0) === '#') {
-                            var nums = self._parseBatch(t.substring(1));
-                            if (nums.length === 0) return false;
-                            if (nums.indexOf(q.displayNumber) === -1) return false;
-                        } else {
-                            t = t.toLowerCase();
-                            if (!(q.text || '').toLowerCase().includes(t) &&
-                                !(q.questionId || '').toLowerCase().includes(t) &&
-                                !(q.answers || []).some(function(a) { return (a.text || '').toLowerCase().includes(t); }) &&
-                                !String(q.displayNumber || '').includes(t)) return false;
-                        }
+                        var t = self._searchTerm.trim().toLowerCase();
+                        if (!(q.text || '').toLowerCase().includes(t) &&
+                            !(q.questionId || '').toLowerCase().includes(t) &&
+                            !(q.answers || []).some(function(a) { return (a.text || '').toLowerCase().includes(t); })) return false;
                     }
                     if (self._typeFilter !== 'all' && (q.type || 'multiple-choice') !== self._typeFilter) return false;
                     if (self._statusFilter === 'active' && q.active === false) return false;
@@ -7402,7 +7392,6 @@
             _renderCard(q) {
                 var isActive = q.active !== false;
                 var qType = q.type || 'multiple-choice';
-                var displayNum = q.displayNumber || '?';
                 var questionId = q.questionId || '???';
                 var mediaSrc = typeof getMediaSource === 'function' ? getMediaSource(q.media) : null;
                 var isExpanded = this._expandedCards.has(q.id);
@@ -7416,7 +7405,6 @@
                 h += '<div class="f2-card-header">';
                 h += '<div style="display:flex;align-items:center;gap:8px;">';
                 h += '<input type="checkbox" ' + (isActive ? 'checked' : '') + ' onchange="Fragen2Plugin._toggleActive(' + q.id + ')" style="width:16px;height:16px;cursor:pointer;accent-color:var(--accent);">';
-                h += '<span class="f2-card-num">#' + displayNum + '</span>';
                 h += '<span class="f2-card-hash">' + questionId + '</span>';
                 h += '</div>';
                 h += '<div style="display:flex;align-items:center;gap:6px;">';
@@ -7516,7 +7504,7 @@
         
                 var h = '<div class="f2-card" id="f2Edit_' + q.id + '" style="border-color:var(--accent);background:rgba(247,184,1,0.05);">';
                 h += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">';
-                h += '<strong style="color:var(--accent);">✏️ Frage #' + (q.displayNumber || '?') + ' bearbeiten</strong>';
+                h += '<strong style="color:var(--accent);">✏️ Frage ' + (q.questionId || '?') + ' bearbeiten</strong>';
                 h += '<button class="btn btn-small btn-secondary" onclick="Fragen2Plugin._cancelEdit()">✕ Abbrechen</button>';
                 h += '</div>';
         
@@ -7740,7 +7728,7 @@
 
                 this._editingId = null;
                 this._renderList();
-                Toast.show('Frage #' + (q.displayNumber || '?') + ' gespeichert!', 'success');
+                Toast.show('Frage ' + (q.questionId || '?') + ' gespeichert!', 'success');
             },
     
             // ══════════════════════════════════════
@@ -7877,12 +7865,10 @@
                 var hintMediaEl = document.getElementById('f2NewHintMedia');
                 var hintMedia = (hintMediaEl && hintMediaEl.value.trim()) ? { type: 'image', path: hintMediaEl.value.trim() } : null;
                 var newId = Date.now() + Math.floor(Math.random() * 1000);
-                var displayNum = typeof getNextDisplayNumber === 'function' ? getNextDisplayNumber() : (questions.length + 1);
                 var ansCount = (typeof CONFIG !== 'undefined' && CONFIG.QUIZ && CONFIG.QUIZ.DEFAULT_ANSWER_COUNT) ? CONFIG.QUIZ.DEFAULT_ANSWER_COUNT : 4;
 
                 var newQ = {
                     id: newId,
-                    displayNumber: displayNum,
                     text: text,
                     active: true,
                     _fileGroup: group,
@@ -7939,18 +7925,16 @@
                 }
 
                 newQ.questionId = typeof assignStableId === 'function' ? assignStableId(group, questions) : ('manu_' + String(newId).padStart(5,'0'));
-        
+
                 if (typeof normalizeQuestion === 'function') {
-                    var dn = displayNum;
                     var fg = group;
                     newQ = normalizeQuestion(newQ);
-                    newQ.displayNumber = dn;
                     newQ._fileGroup = fg;
                 }
-        
+
                 questions.push(newQ);
                 this._showNewForm = false;
-                Toast.show('Frage #' + displayNum + ' erstellt!', 'success');
+                Toast.show('Frage ' + newQ.questionId + ' erstellt!', 'success');
                 this.render();
             },
     
@@ -7965,14 +7949,14 @@
                         var gA = (a._fileGroup || 'Manuell').toLowerCase();
                         var gB = (b._fileGroup || 'Manuell').toLowerCase();
                         if (gA !== gB) return gA.localeCompare(gB);
-                        return (a.displayNumber || 99999) - (b.displayNumber || 99999);
+                        return (a.questionId || '').localeCompare(b.questionId || '');
                     }
                     if (self._sortBy === 'stats') {
                         var sA = typeof calculateQuestionStats === 'function' ? calculateQuestionStats(a.questionId) : null;
                         var sB = typeof calculateQuestionStats === 'function' ? calculateQuestionStats(b.questionId) : null;
                         return (sA ? sA.percentage : 999) - (sB ? sB.percentage : 999);
                     }
-                    return (a.displayNumber || 99999) - (b.displayNumber || 99999);
+                    return (a.questionId || '').localeCompare(b.questionId || '');
                 });
             },
     
@@ -8024,7 +8008,7 @@
             _delete(qId) {
                 var q = questions.find(function(qq) { return qq.id === qId; });
                 if (!q) return;
-                if (!confirm('Frage #' + (q.displayNumber || '?') + ' löschen?\n\n"' + (q.text || '').substring(0, 80) + '..."')) return;
+                if (!confirm('Frage ' + (q.questionId || '?') + ' löschen?\n\n"' + (q.text || '').substring(0, 80) + '..."')) return;
                 var idx = questions.indexOf(q);
                 if (idx > -1) questions.splice(idx, 1);
                 this._renderList();
@@ -8189,34 +8173,26 @@
             // ══════════════════════════════════════
             // BATCH & AKTIONEN
             // ══════════════════════════════════════
-            _parseBatch(input) {
-                var nums = [];
-                input.split(',').map(function(s) { return s.trim(); }).forEach(function(part) {
-                    if (part.includes('-')) {
-                        var range = part.split('-').map(function(s) { return parseInt(s.trim()); });
-                        if (!isNaN(range[0]) && !isNaN(range[1]) && range[0] <= range[1]) {
-                            for (var i = range[0]; i <= range[1]; i++) nums.push(i);
-                        }
-                    } else { var num = parseInt(part); if (!isNaN(num)) nums.push(num); }
-                });
-                return [...new Set(nums)];
+            _parsePrefixes(input) {
+                return input.split(',').map(function(s) { return s.trim().toLowerCase(); }).filter(function(s) { return s.length > 0; });
             },
-    
+
             _batchActivate(activate) {
                 var input = document.getElementById('f2BatchInput');
-                if (!input || !input.value.trim()) { Toast.show('Bitte Nummern eingeben! z.B. 5, 10-15, 20-40', 'warning'); return; }
-                var nums = this._parseBatch(input.value);
-                if (nums.length === 0) { Toast.show('Keine gültigen Nummern!', 'warning'); return; }
-                var count = 0, notFound = [];
-                nums.forEach(function(n) {
-                    var q = questions.find(function(qq) { return qq.displayNumber === n; });
-                    if (q) { q.active = activate; count++; } else { notFound.push(n); }
+                if (!input || !input.value.trim()) { Toast.show('Bitte ID-Präfix eingeben, z.B. allg, core', 'warning'); return; }
+                var prefixes = this._parsePrefixes(input.value);
+                if (prefixes.length === 0) { Toast.show('Keine gültigen Präfixe!', 'warning'); return; }
+                var count = 0;
+                questions.forEach(function(q) {
+                    var qid = (q.questionId || '').toLowerCase();
+                    if (prefixes.some(function(p) { return qid.startsWith(p); })) {
+                        q.active = activate;
+                        count++;
+                    }
                 });
                 input.value = '';
                 this._renderList();
-                var msg = activate ? '✅ ' + count + ' Frage(n) aktiviert!' : '❌ ' + count + ' Frage(n) deaktiviert!';
-                if (notFound.length > 0 && notFound.length <= 10) msg += '\nNicht gefunden: ' + notFound.join(', ');
-                Toast.show(msg, 'success');
+                Toast.show(activate ? '✅ ' + count + ' Frage(n) aktiviert!' : '❌ ' + count + ' Frage(n) deaktiviert!', 'success');
             },
     
             _allActivate(activate) {
@@ -8232,14 +8208,6 @@
                 this._renderList();
                 this.render();
                 Toast.show('🔄 Umgekehrt! Jetzt aktiv: ' + activeCount + '/' + questions.length, 'info');
-            },
-    
-            _renumber() {
-                if (!confirm('Alle Fragen lückenlos 1, 2, 3, ... neu nummerieren?')) return;
-                var sorted = questions.slice().sort(function(a, b) { return (a.displayNumber || 99999) - (b.displayNumber || 99999); });
-                sorted.forEach(function(q, idx) { q.displayNumber = idx + 1; });
-                this.render();
-                Toast.show('🔢 ' + questions.length + ' Fragen neu nummeriert!', 'success');
             },
     
             _resetStats() {
@@ -8264,7 +8232,7 @@
             // ── Export ──
             _buildExportQ(q) {
                 var exportQ = {
-                    id: q.id, questionId: q.questionId, displayNumber: q.displayNumber || null,
+                    id: q.id, questionId: q.questionId,
                     text: q.text, type: q.type, active: q.active !== false,
                     media: q.media, explanation: q.explanation || null,
                     explanationMedia: q.explanationMedia || null,
@@ -8329,22 +8297,24 @@
     
             _batchExport() {
                 var input = document.getElementById('f2BatchInput');
-                if (!input || !input.value.trim()) { Toast.show('Bitte Nummern-Bereich eingeben! z.B. 30-110', 'warning'); return; }
-                var nums = this._parseBatch(input.value);
-                if (nums.length === 0) { Toast.show('Keine gültigen Nummern!', 'warning'); return; }
-                var numsSet = new Set(nums);
-                var selected = questions.filter(function(q) { return numsSet.has(q.displayNumber); });
-                if (selected.length === 0) { Toast.show('Keine Fragen in diesem Bereich gefunden!', 'warning'); return; }
-                var rangeLabel = input.value.trim().replace(/\s+/g, '').replace(/,/g, '_');
+                if (!input || !input.value.trim()) { Toast.show('Bitte ID-Präfix eingeben, z.B. allg, core', 'warning'); return; }
+                var prefixes = this._parsePrefixes(input.value);
+                if (prefixes.length === 0) { Toast.show('Keine gültigen Präfixe!', 'warning'); return; }
+                var selected = questions.filter(function(q) {
+                    var qid = (q.questionId || '').toLowerCase();
+                    return prefixes.some(function(p) { return qid.startsWith(p); });
+                });
+                if (selected.length === 0) { Toast.show('Keine Fragen mit diesem Präfix gefunden!', 'warning'); return; }
+                var label = prefixes.join('_');
                 var self = this;
                 var data = {
-                    version: '1.0', theme: 'Bereich_' + rangeLabel,
+                    version: '1.0', theme: label,
                     created: new Date().toISOString(), lastModified: new Date().toISOString(),
                     questions: selected.map(function(q) { return self._buildExportQ(q); })
                 };
-                this._downloadJSON(data, '03_questions_Nr' + rangeLabel + '_' + this._timestamp() + '.json');
+                this._downloadJSON(data, '03_questions_' + label + '_' + this._timestamp() + '.json');
                 input.value = '';
-                Toast.show('📤 ' + selected.length + ' Fragen (Nr. ' + rangeLabel + ') exportiert!', 'success');
+                Toast.show('📤 ' + selected.length + ' Fragen (' + label + ') exportiert!', 'success');
             },
     
             // ── Import ──
@@ -8819,7 +8789,7 @@
                     const q = (typeof questions !== 'undefined') ? questions.find(q=>q.questionId===qid) : null;
                     return {
                         qid,
-                        displayNumber: q ? (q.displayNumber||'?') : '?',
+                        qidDisplay: q ? (q.questionId||'?') : '?',
                         text: q ? (q.text||'') : '(Frage nicht gefunden)',
                         asked: qAsked(qid),
                         correct: qCorrect(qid),
@@ -8902,7 +8872,7 @@
                             ${statsRows.map(r=>`
                             <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
                                 <td style="padding:10px;">
-                                    <span style="color:var(--accent);font-weight:700;">#${r.displayNumber}</span>
+                                    <span style="color:var(--accent);font-weight:700;font-size:0.82rem;font-family:monospace">${r.qidDisplay}</span>
                                     <div style="font-size:0.8rem;opacity:0.55;margin-top:2px;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${sanitizeHTML(r.text.substring(0,80)+(r.text.length>80?'…':''))}</div>
                                 </td>
                                 <td style="padding:10px;text-align:center;">${r.asked}x</td>
@@ -9027,69 +8997,6 @@
             return prefix + '_' + String(max + 1).padStart(5, '0');
         }
 
-        // DISPLAY-NUMMER SYSTEM
-        // Fortlaufende Nummern für die Anzeige (1, 2, 3, ...)
-        // questionId (stabile ID) bleibt intern für Stats/Duplikate
-
-
-        function getNextDisplayNumber() {
-            const usedNumbers = new Set(questions.map(q => q.displayNumber).filter(n => typeof n === 'number'));
-            let next = 1;
-            while (usedNumbers.has(next)) next++;
-            return next;
-        }
-
-
-        function assignDisplayNumbers() {
-            // Schritt 1+2: Versuche alte numerische IDs als displayNumber zu übernehmen
-            questions.forEach(q => {
-                if (typeof q.displayNumber === 'number') return;
-                if (q._oldQuestionId && /^\d+$/.test(String(q._oldQuestionId))) {
-                    q.displayNumber = parseInt(String(q._oldQuestionId), 10);
-                    return;
-                }
-                if (q.questionId && /^\d+$/.test(String(q.questionId))) {
-                    q.displayNumber = parseInt(String(q.questionId), 10);
-                    return;
-                }
-            });
-
-            // Schritt 3: Doppelte displayNumbers auflösen
-            const seen = {};
-            questions.forEach(q => {
-                if (typeof q.displayNumber !== 'number') return;
-                if (seen[q.displayNumber]) {
-                    seen[q.displayNumber].displayNumber = null;
-                    q.displayNumber = null;
-                } else {
-                    seen[q.displayNumber] = q;
-                }
-            });
-
-            // Schritt 4: Vergib nächste freie Nummer an alle ohne Nummer
-            const usedNumbers = new Set(questions.map(q => q.displayNumber).filter(n => typeof n === 'number'));
-            let next = 1;
-            questions.forEach(q => {
-                if (typeof q.displayNumber === 'number') return;
-                while (usedNumbers.has(next)) next++;
-                q.displayNumber = next;
-                usedNumbers.add(next);
-                next++;
-            });
-        }
-
-
-        function renumberAllQuestions() {
-            const sorted = [...questions].sort((a, b) => a.id - b.id);
-            sorted.forEach((q, idx) => {
-                q.displayNumber = idx + 1;
-            });
-        }
-
-
-        function findQuestionByDisplayNumber(num) {
-            return questions.find(q => q.displayNumber === num);
-        }
 
         let questionIdMigrationMap = {};
 
@@ -9379,7 +9286,6 @@
                     id: q.id,
                     questionId: resolveId(),
                     _contentHash: typeof generateQuestionHash === 'function' ? generateQuestionHash(q) : null,
-                    displayNumber: typeof q.displayNumber === 'number' ? q.displayNumber : null,
                     text: text,
                     type: QUESTION_TYPES.IMAGEMAP,
                     targets: q.targets || (q.target ? [q.target] : []),
@@ -9400,7 +9306,6 @@
                     id: q.id,
                     questionId: resolveId(),
                     _contentHash: typeof generateQuestionHash === 'function' ? generateQuestionHash(q) : null,
-                    displayNumber: typeof q.displayNumber === 'number' ? q.displayNumber : null,
                     text: text,
                     type: QUESTION_TYPES.TEXT,
                     answers: [{ type: QUESTION_TYPES.TEXT, correctAnswers: textAnswers }],
@@ -9441,7 +9346,6 @@
                 id: q.id,
                 questionId: resolveId(),
                 _contentHash: typeof generateQuestionHash === 'function' ? generateQuestionHash(q) : null,
-                displayNumber: typeof q.displayNumber === 'number' ? q.displayNumber : null,
                 text: text,
                 type: QUESTION_TYPES.MULTIPLE_CHOICE,
                 answers: answers,
@@ -10442,16 +10346,16 @@
 
         function initializeSampleQuestions() {
             questions = [
-                { displayNumber: 1, questionId: "001", id: Date.now() + 1, active: true, text: "Welcher Fluss wird traditionell als der längste der Welt bezeichnet? (Hinweis: Die Messung ist wissenschaftlich umstritten)", answers: [{ text: "Nil", correct: true }, { text: "Amazonas", correct: true }, { text: "Jangtse", correct: false }, { text: "Mississippi", correct: false }], media: null },
-                { displayNumber: 2, questionId: "002", id: Date.now() + 2, active: true, text: "In welchem Jahr fiel die Berliner Mauer?", answers: [{ text: "1987", correct: false }, { text: "1989", correct: true }, { text: "1990", correct: false }, { text: "1991", correct: false }], media: null },
-                { displayNumber: 3, questionId: "003", id: Date.now() + 3, active: true, text: "Wie viele Planeten hat unser Sonnensystem?", answers: [{ text: "7", correct: false }, { text: "8", correct: true }, { text: "9", correct: false }, { text: "10", correct: false }], media: null },
-                { displayNumber: 4, questionId: "004", id: Date.now() + 4, active: true, text: "Welches ist das größte Land der Erde?", answers: [{ text: "Kanada", correct: false }, { text: "China", correct: false }, { text: "USA", correct: false }, { text: "Russland", correct: true }], media: null },
-                { displayNumber: 5, questionId: "005", id: Date.now() + 5, active: true, text: "Wer malte die Mona Lisa?", answers: [{ text: "Michelangelo", correct: false }, { text: "Leonardo da Vinci", correct: true }, { text: "Raphael", correct: false }, { text: "Donatello", correct: false }], media: null },
-                { displayNumber: 6, questionId: "006", id: Date.now() + 6, active: true, text: "Wie viele Herzen hat ein Oktopus?", answers: [{ text: "1", correct: false }, { text: "2", correct: false }, { text: "3", correct: true }, { text: "4", correct: false }], media: null },
-                { displayNumber: 7, questionId: "007", id: Date.now() + 7, active: true, text: "Welche Sprache wird in Brasilien gesprochen?", answers: [{ text: "Spanisch", correct: false }, { text: "Portugiesisch", correct: true }, { text: "Französisch", correct: false }, { text: "Italienisch", correct: false }], media: null },
-                { displayNumber: 8, questionId: "008", id: Date.now() + 8, active: true, text: "Was ist die Hauptstadt von Australien?", answers: [{ text: "Sydney", correct: false }, { text: "Melbourne", correct: false }, { text: "Canberra", correct: true }, { text: "Brisbane", correct: false }], media: null },
-                { displayNumber: 9, questionId: "009", id: Date.now() + 9, active: true, text: "Wie viele Zähne hat ein erwachsener Mensch?", answers: [{ text: "28", correct: false }, { text: "30", correct: false }, { text: "32", correct: true }, { text: "34", correct: false }], media: null },
-                { displayNumber: 10, questionId: "010", id: Date.now() + 10, active: true, text: "Welches ist das schnellste Landtier?", answers: [{ text: "Löwe", correct: false }, { text: "Gepard", correct: true }, { text: "Gazelle", correct: false }, { text: "Windhund", correct: false }], media: null }
+                { questionId: "001", id: Date.now() + 1, active: true, text: "Welcher Fluss wird traditionell als der längste der Welt bezeichnet? (Hinweis: Die Messung ist wissenschaftlich umstritten)", answers: [{ text: "Nil", correct: true }, { text: "Amazonas", correct: true }, { text: "Jangtse", correct: false }, { text: "Mississippi", correct: false }], media: null },
+                { questionId: "002", id: Date.now() + 2, active: true, text: "In welchem Jahr fiel die Berliner Mauer?", answers: [{ text: "1987", correct: false }, { text: "1989", correct: true }, { text: "1990", correct: false }, { text: "1991", correct: false }], media: null },
+                { questionId: "003", id: Date.now() + 3, active: true, text: "Wie viele Planeten hat unser Sonnensystem?", answers: [{ text: "7", correct: false }, { text: "8", correct: true }, { text: "9", correct: false }, { text: "10", correct: false }], media: null },
+                { questionId: "004", id: Date.now() + 4, active: true, text: "Welches ist das größte Land der Erde?", answers: [{ text: "Kanada", correct: false }, { text: "China", correct: false }, { text: "USA", correct: false }, { text: "Russland", correct: true }], media: null },
+                { questionId: "005", id: Date.now() + 5, active: true, text: "Wer malte die Mona Lisa?", answers: [{ text: "Michelangelo", correct: false }, { text: "Leonardo da Vinci", correct: true }, { text: "Raphael", correct: false }, { text: "Donatello", correct: false }], media: null },
+                { questionId: "006", id: Date.now() + 6, active: true, text: "Wie viele Herzen hat ein Oktopus?", answers: [{ text: "1", correct: false }, { text: "2", correct: false }, { text: "3", correct: true }, { text: "4", correct: false }], media: null },
+                { questionId: "007", id: Date.now() + 7, active: true, text: "Welche Sprache wird in Brasilien gesprochen?", answers: [{ text: "Spanisch", correct: false }, { text: "Portugiesisch", correct: true }, { text: "Französisch", correct: false }, { text: "Italienisch", correct: false }], media: null },
+                { questionId: "008", id: Date.now() + 8, active: true, text: "Was ist die Hauptstadt von Australien?", answers: [{ text: "Sydney", correct: false }, { text: "Melbourne", correct: false }, { text: "Canberra", correct: true }, { text: "Brisbane", correct: false }], media: null },
+                { questionId: "009", id: Date.now() + 9, active: true, text: "Wie viele Zähne hat ein erwachsener Mensch?", answers: [{ text: "28", correct: false }, { text: "30", correct: false }, { text: "32", correct: true }, { text: "34", correct: false }], media: null },
+                { questionId: "010", id: Date.now() + 10, active: true, text: "Welches ist das schnellste Landtier?", answers: [{ text: "Löwe", correct: false }, { text: "Gepard", correct: true }, { text: "Gazelle", correct: false }, { text: "Windhund", correct: false }], media: null }
             ];
         }
 
@@ -10490,6 +10394,7 @@
                 screen.classList.remove('active');
             });
             document.getElementById(screenId).classList.add('active');
+            window.scrollTo(0, 0);
         }
 
         function showAdminSection(section) {
@@ -11812,9 +11717,6 @@
                 if (!user.questionStats) user.questionStats = {};
             });
 
-                    // Assign display numbers
-                    assignDisplayNumbers();
-    
             ensureSettingsDefaults(quizSettings);
     
             dataLoaded = true;

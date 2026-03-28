@@ -49,7 +49,7 @@ function _fqRenderList(container) {
         const header = `
         <tr style="background:var(--overlay-8);cursor:pointer;user-select:none"
             onclick="_fqToggleGroup('${escapedG}')">
-            <td colspan="6" style="padding:10px 14px;font-weight:600;font-size:0.9rem">
+            <td colspan="5" style="padding:10px 14px;font-weight:600;font-size:0.9rem">
                 <span style="opacity:0.6;margin-right:8px;font-size:0.8rem">${arrow}</span>
                 ${escapedG}
                 <span style="opacity:0.45;font-size:0.8rem;margin-left:8px">(${groupQs.length})</span>
@@ -58,19 +58,21 @@ function _fqRenderList(container) {
 
         if (!isOpen) return header;
 
-        const qRows = groupQs.map(({ q, idx }) => `
-        <tr>
-            <td style="opacity:0.45;width:40px">${q.displayNumber ?? '—'}</td>
-            <td style="width:28px;text-align:center" title="${q.type}">${typeIcon(q.type)}</td>
-            <td style="max-width:380px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">${_fqEsc(q.text)}</td>
+        const qRows = groupQs.map(({ q, idx }) => {
+            const expanded = _fqEditIdx === idx;
+            const rowBg    = expanded ? 'background:rgba(247,184,1,0.07);' : '';
+            const rowArrow = expanded ? '▼' : '▶';
+            const mainRow  = `
+        <tr style="${rowBg}cursor:pointer;user-select:none" onclick="_fqOpenEdit(${idx})">
+            <td style="width:28px;text-align:center;opacity:0.6" title="${q.type}">${typeIcon(q.type)}</td>
+            <td style="max-width:360px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">${_fqEsc(q.text)}</td>
             <td class="td-muted td-nowrap" style="font-size:0.82rem">${_fqEsc(q._fileGroup || 'Manuell')}</td>
-            <td style="opacity:0.4;font-size:0.78rem">${q.questionId || '—'}</td>
-            <td style="width:36px;text-align:center">
-                <button class="btn btn-small btn-secondary" onclick="_fqOpenEdit(${idx})"
-                    style="padding:3px 8px;font-size:0.8rem;background:var(--overlay-10);box-shadow:none"
-                    title="Bearbeiten">✏</button>
-            </td>
-        </tr>`).join('');
+            <td style="opacity:0.55;font-size:0.78rem;font-family:monospace">${q.questionId || '—'}</td>
+            <td style="width:20px;text-align:center;opacity:0.4;font-size:0.7rem">${rowArrow}</td>
+        </tr>`;
+            if (!expanded) return mainRow;
+            return mainRow + `<tr><td colspan="5" style="padding:0">${_fqBuildInlineHTML(idx)}</td></tr>`;
+        }).join('');
 
         return header + qRows;
     }).join('');
@@ -94,8 +96,7 @@ function _fqRenderList(container) {
             <table class="info-table" style="font-size:0.88rem;margin:0">
                 <thead>
                     <tr style="opacity:0.5;font-size:0.78rem;text-transform:uppercase;letter-spacing:1px;background:var(--overlay-5)">
-                        <td style="padding:10px 8px">#</td>
-                        <td></td>
+                        <td style="padding:10px 8px;width:28px"></td>
                         <td style="padding:10px 8px">Frage</td>
                         <td style="padding:10px 8px">Gruppe</td>
                         <td style="padding:10px 8px">ID</td>
@@ -103,7 +104,7 @@ function _fqRenderList(container) {
                     </tr>
                 </thead>
                 <tbody>
-                    ${tableRows || '<tr><td colspan="6" style="text-align:center;padding:30px;opacity:0.4">Keine Fragen geladen</td></tr>'}
+                    ${tableRows || '<tr><td colspan="5" style="text-align:center;padding:30px;opacity:0.4">Keine Fragen geladen</td></tr>'}
                 </tbody>
             </table>
         </div>`;
@@ -118,7 +119,134 @@ function _fqToggleGroup(groupName) {
     AdminShell.showPanel('fragen');
 }
 
-// ── Formular ──────────────────────────────────────────────────────────────────
+// ── Inline-Edit-Form ──────────────────────────────────────────────────────────
+
+function _fqBuildInlineHTML(idx) {
+    const q      = questions[idx];
+    const isMC   = _fqFormType === QUESTION_TYPES.MULTIPLE_CHOICE;
+    const isText = _fqFormType === QUESTION_TYPES.TEXT;
+    const isIm   = _fqFormType === QUESTION_TYPES.IMAGEMAP;
+    const groups = [...new Set(questions.map(q => q._fileGroup || 'Manuell'))].sort();
+    const curGroup = q._fileGroup || 'Manuell';
+
+    const groupOptions = groups.map(g =>
+        `<option value="${_fqEsc(g)}" ${curGroup === g ? 'selected' : ''}>${_fqEsc(g)}</option>`
+    ).join('');
+
+    const suggestedId = _fqEsc(q.questionId || '');
+
+    let answerFields;
+    if (isMC) {
+        const mcAnswers = (q.type === QUESTION_TYPES.MULTIPLE_CHOICE ? q.answers : null) || [];
+        answerFields = Array.from({ length: 4 }, (_, i) => {
+            const a = mcAnswers[i] || { text: '', correct: false };
+            return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
+                <input type="checkbox" id="fqCorr_${i}" style="width:auto;margin:0;flex-shrink:0" ${a.correct ? 'checked' : ''}>
+                <input type="text" id="fqAns_${i}" placeholder="Antwort ${i + 1}" value="${_fqEsc(a.text)}" style="margin:0;flex:1;padding:6px 10px;font-size:0.88rem">
+            </div>`;
+        }).join('');
+    } else if (isText) {
+        const textVal = (q.type === QUESTION_TYPES.TEXT) ? getCorrectTextAnswers(q).join('\n') : '';
+        answerFields = `<textarea id="fqTextAns" rows="3" placeholder="Eine korrekte Antwort pro Zeile" style="margin:0;resize:vertical;font-size:0.88rem">${_fqEsc(textVal)}</textarea>`;
+    } else {
+        answerFields = _fqImBuildHTML();
+    }
+
+    const mediaPath     = (!isIm && q.media?.path)               ? _fqEsc(q.media.path)               : '';
+    const explText      = _fqEsc(q.explanation || '');
+    const explMediaPath = _fqEsc(q.explanationMedia?.path || '');
+    const hintText      = _fqEsc(q.hint || '');
+    const hintMediaPath = _fqEsc(q.hintMedia?.path || '');
+
+    const mediaSection = isIm ? '' : `
+        <details style="margin-top:8px" ${mediaPath ? 'open' : ''}>
+            <summary style="cursor:pointer;opacity:0.7;font-size:0.82rem;padding:4px 0">Bild / Media (optional)</summary>
+            <div style="display:flex;gap:6px;align-items:center;margin-top:4px">
+                <input type="text" id="fqMedia" value="${mediaPath}" placeholder="Pfad, z.B. medien/bild.jpg" style="margin:0;flex:1;font-size:0.88rem">
+                <input type="file" id="fqMediaFile" accept="image/*" style="display:none" onchange="_fqHandleMediaBrowse(event,'fqMedia')">
+                <button class="btn btn-small btn-secondary" onclick="document.getElementById('fqMediaFile').click()" style="white-space:nowrap;padding:4px 8px;font-size:0.78rem;background:var(--overlay-10);box-shadow:none">📂</button>
+            </div>
+        </details>`;
+
+    return `
+    <div onclick="event.stopPropagation()" style="padding:16px 20px;background:rgba(247,184,1,0.04);border-left:3px solid var(--accent)">
+        <!-- Typ -->
+        <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
+            <button class="btn btn-small ${isMC ? '' : 'btn-secondary'}" onclick="_fqSetType('${QUESTION_TYPES.MULTIPLE_CHOICE}')" style="${isMC ? '' : 'background:var(--overlay-10);box-shadow:none'}">☑ MC</button>
+            <button class="btn btn-small ${isText ? '' : 'btn-secondary'}" onclick="_fqSetType('${QUESTION_TYPES.TEXT}')" style="${isText ? '' : 'background:var(--overlay-10);box-shadow:none'}">📝 Text</button>
+            <button class="btn btn-small ${isIm ? '' : 'btn-secondary'}" onclick="_fqSetType('${QUESTION_TYPES.IMAGEMAP}')" style="${isIm ? '' : 'background:var(--overlay-10);box-shadow:none'}">🗺 Bild</button>
+        </div>
+        <!-- Fragetext -->
+        <textarea id="fqText" rows="2" placeholder="Fragetext…" style="margin:0 0 8px;resize:vertical;font-size:0.9rem">${_fqEsc(q.text || '')}</textarea>
+        <!-- Gruppe + ID -->
+        <div style="display:flex;gap:10px;margin-bottom:8px;flex-wrap:wrap">
+            <div style="flex:1;min-width:140px">
+                <label style="font-size:0.78rem;opacity:0.6;display:block;margin-bottom:2px">Gruppe</label>
+                <select id="fqGroup" onchange="_fqToggleNewGroup(this.value);_fqUpdateIdSuggestion()" style="margin:0;width:100%">
+                    ${groupOptions}
+                    <option value="__new__">+ Neue Gruppe…</option>
+                </select>
+                <input type="text" id="fqGroupNew" placeholder="Neuer Gruppenname" oninput="_fqUpdateIdSuggestion()" style="display:none;margin:3px 0 0;font-size:0.88rem">
+            </div>
+            <div style="flex:1;min-width:140px">
+                <label style="font-size:0.78rem;opacity:0.6;display:block;margin-bottom:2px">Fragen-ID</label>
+                <input type="text" id="fqQuestionId" value="${suggestedId}" placeholder="prefix_00001" style="margin:0;font-family:monospace;font-size:0.88rem;width:100%">
+                <div id="fqIdHint" style="font-size:0.72rem;opacity:0.5;margin-top:2px;min-height:1em"></div>
+            </div>
+        </div>
+        <!-- Antworten -->
+        <label style="font-size:0.82rem;font-weight:600;display:block;margin-bottom:4px">${isMC ? 'Antworten (✓ = korrekt)' : isText ? 'Korrekte Antworten' : 'Zielzonen'}</label>
+        <div id="fqAnswers">${answerFields}</div>
+        ${mediaSection}
+        <!-- Erklärung -->
+        <details style="margin-top:8px" ${(explText || explMediaPath) ? 'open' : ''}>
+            <summary style="cursor:pointer;opacity:0.7;font-size:0.82rem;padding:4px 0">Erklärung (optional)</summary>
+            <textarea id="fqExpl" rows="2" placeholder="Erklärungstext nach der Antwort" style="margin:4px 0;resize:vertical;font-size:0.88rem">${explText}</textarea>
+            <div style="display:flex;gap:6px;align-items:center">
+                <input type="text" id="fqExplMedia" value="${explMediaPath}" placeholder="Pfad zum Erklärungs-Bild" style="margin:0;flex:1;font-size:0.82rem">
+                <input type="file" id="fqExplMediaFile" accept="image/*" style="display:none" onchange="_fqHandleMediaBrowse(event,'fqExplMedia')">
+                <button class="btn btn-small btn-secondary" onclick="document.getElementById('fqExplMediaFile').click()" style="padding:4px 8px;font-size:0.78rem;background:var(--overlay-10);box-shadow:none">📂</button>
+            </div>
+        </details>
+        <!-- Hinweis -->
+        <details style="margin-top:6px" ${(hintText || hintMediaPath) ? 'open' : ''}>
+            <summary style="cursor:pointer;opacity:0.7;font-size:0.82rem;padding:4px 0">Hinweis (optional)</summary>
+            <textarea id="fqHint" rows="2" placeholder="Hinweistext für Hint-Fähigkeit" style="margin:4px 0;resize:vertical;font-size:0.88rem">${hintText}</textarea>
+            <div style="display:flex;gap:6px;align-items:center">
+                <input type="text" id="fqHintMedia" value="${hintMediaPath}" placeholder="Pfad zum Hinweis-Bild" style="margin:0;flex:1;font-size:0.82rem">
+                <input type="file" id="fqHintMediaFile" accept="image/*" style="display:none" onchange="_fqHandleMediaBrowse(event,'fqHintMedia')">
+                <button class="btn btn-small btn-secondary" onclick="document.getElementById('fqHintMediaFile').click()" style="padding:4px 8px;font-size:0.78rem;background:var(--overlay-10);box-shadow:none">📂</button>
+            </div>
+        </details>
+        <!-- Buttons -->
+        <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;align-items:center">
+            <button class="btn btn-small" onclick="_fqSave()" style="padding:6px 20px">💾 Speichern</button>
+            <button class="btn btn-small btn-secondary" onclick="_fqCloseForm()" style="background:var(--overlay-10);box-shadow:none">Abbrechen</button>
+            <button class="btn btn-small btn-secondary" onclick="_fqDeleteInline(${idx})" style="margin-left:auto;background:rgba(231,76,60,0.12);color:#e74c3c;border-color:rgba(231,76,60,0.3);box-shadow:none">🗑 Löschen</button>
+        </div>
+    </div>`;
+}
+
+function _fqDeleteInline(idx) {
+    const q = questions[idx];
+    if (!q) return;
+    if (!confirm('Frage "' + _fqEsc((q.text || '').substring(0, 60)) + '" löschen?')) return;
+    questions.splice(idx, 1);
+    _fqEditIdx = -1;
+    AdminShell.showPanel('fragen');
+}
+
+function _fqHandleMediaBrowse(event, targetInputId) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const relativePath = file.webkitRelativePath
+        ? 'medien/' + file.webkitRelativePath
+        : 'medien/' + file.name;
+    const el = document.getElementById(targetInputId);
+    if (el) el.value = relativePath;
+}
+
+// ── Formular (Neue Frage) ──────────────────────────────────────────────────────
 
 function _fqOpenForm() {
     _fqEditIdx  = -1;
@@ -129,10 +257,15 @@ function _fqOpenForm() {
 }
 
 function _fqOpenEdit(idx) {
+    if (_fqEditIdx === idx) {
+        _fqEditIdx = -1;
+        AdminShell.showPanel('fragen');
+        return;
+    }
     const q = questions[idx];
     if (!q) return;
     _fqEditIdx  = idx;
-    _fqShowForm = true;
+    _fqShowForm = false;
     _fqFormType = q.type || QUESTION_TYPES.MULTIPLE_CHOICE;
     _fqImReset();
     if (q.type === QUESTION_TYPES.IMAGEMAP) {
@@ -141,6 +274,7 @@ function _fqOpenEdit(idx) {
         _fqImImageSrc = _fqImPathVal || null;
     }
     AdminShell.showPanel('fragen');
+    if (q.type === QUESTION_TYPES.IMAGEMAP) _fqImRedraw();
 }
 
 function _fqCloseForm() {
@@ -153,6 +287,7 @@ function _fqSetType(type) {
     _fqFormType = type;
     if (type === QUESTION_TYPES.IMAGEMAP) _fqImReset();
     AdminShell.showPanel('fragen');
+    if (type === QUESTION_TYPES.IMAGEMAP) _fqImRedraw();
 }
 
 function _fqRenderForm(container) {
@@ -171,6 +306,10 @@ function _fqRenderForm(container) {
     const prefillExplMedia = _fqEsc(eq?.explanationMedia?.path || '');
     const prefillHint      = _fqEsc(eq?.hint || '');
     const prefillHintMedia = _fqEsc(eq?.hintMedia?.path || '');
+
+    // ID-Feld: bei Edit aktuelle ID, bei Neu vorgeschlagene ID
+    const currentGroup = prefillGroup || (groups[0] || 'Manuell');
+    const suggestedId  = isEdit ? _fqEsc(eq.questionId || '') : _fqEsc(_fmAssignStableId(currentGroup, questions));
 
     const groupOptions = groups.map(g =>
         `<option value="${_fqEsc(g)}" ${prefillGroup === g ? 'selected' : ''}>${_fqEsc(g)}</option>`
@@ -208,9 +347,18 @@ function _fqRenderForm(container) {
                 <summary style="cursor:pointer;opacity:0.7;font-size:0.85rem;padding:4px 0">
                     Bild / Media (optional)
                 </summary>
-                <input type="text" id="fqMedia" value="${prefillMedia}"
-                    placeholder="Pfad zur Bilddatei, z.B. bilder/frage01.jpg"
-                    style="margin:8px 0 0;font-size:0.9rem">
+                <div style="display:flex;gap:6px;align-items:center;margin-top:6px">
+                    <input type="text" id="fqMedia" value="${prefillMedia}"
+                        placeholder="Pfad zur Bilddatei, z.B. bilder/frage01.jpg"
+                        style="margin:0;flex:1;font-size:0.9rem">
+                    <input type="file" id="fqMediaFile" accept="image/*" style="display:none"
+                        onchange="_fqHandleMediaBrowse(event,'fqMedia')">
+                    <button class="btn btn-small btn-secondary"
+                        onclick="document.getElementById('fqMediaFile').click()"
+                        style="white-space:nowrap;padding:4px 10px;font-size:0.8rem;background:var(--overlay-10);box-shadow:none">
+                        📂 Durchsuchen
+                    </button>
+                </div>
             </details>`;
 
     container.innerHTML = `
@@ -221,7 +369,6 @@ function _fqRenderForm(container) {
                     ← Zurück
                 </button>
                 <h2 style="margin:0;font-size:1.2rem">${isEdit ? 'Frage bearbeiten' : 'Neue Frage'}</h2>
-                ${isEdit ? `<span style="opacity:0.4;font-size:0.8rem">#${eq.displayNumber ?? '—'} · ${_fqEsc(eq.questionId || '')}</span>` : ''}
             </div>
 
             <!-- Typ -->
@@ -251,13 +398,21 @@ function _fqRenderForm(container) {
 
             <!-- Gruppe -->
             <label for="fqGroup">Gruppe</label>
-            <select id="fqGroup" onchange="_fqToggleNewGroup(this.value)"
+            <select id="fqGroup" onchange="_fqToggleNewGroup(this.value);_fqUpdateIdSuggestion()"
                 style="margin:0 0 6px">
                 ${groupOptions}
                 <option value="__new__">+ Neue Gruppe…</option>
             </select>
             <input type="text" id="fqGroupNew" placeholder="Neuer Gruppenname"
+                oninput="_fqUpdateIdSuggestion()"
                 style="display:none;margin:0 0 6px;padding:8px 12px;font-size:0.9rem">
+
+            <!-- Fragen-ID -->
+            <label for="fqQuestionId">Fragen-ID</label>
+            <input type="text" id="fqQuestionId" value="${suggestedId}"
+                placeholder="prefix_00001"
+                style="margin:0 0 2px;font-family:monospace;font-size:0.9rem">
+            <div id="fqIdHint" style="font-size:0.78rem;opacity:0.55;margin-bottom:8px;min-height:1em"></div>
 
             <!-- Antworten / Zonen -->
             <label>${isMC ? 'Antworten (✓ = korrekt)' : isText ? 'Korrekte Antworten' : 'Zielzonen'}</label>
@@ -272,8 +427,15 @@ function _fqRenderForm(container) {
                 </summary>
                 <textarea id="fqExpl" rows="2" placeholder="Erklärungstext nach der Antwort"
                     style="margin:8px 0 4px;resize:vertical;font-size:0.9rem">${prefillExpl}</textarea>
-                <input type="text" id="fqExplMedia" value="${prefillExplMedia}"
-                    placeholder="Pfad zum Erklärungs-Bild" style="margin:0;font-size:0.9rem">
+                <div style="display:flex;gap:6px;align-items:center">
+                    <input type="text" id="fqExplMedia" value="${prefillExplMedia}"
+                        placeholder="Pfad zum Erklärungs-Bild" style="margin:0;flex:1;font-size:0.9rem">
+                    <input type="file" id="fqExplMediaFile" accept="image/*" style="display:none"
+                        onchange="_fqHandleMediaBrowse(event,'fqExplMedia')">
+                    <button class="btn btn-small btn-secondary"
+                        onclick="document.getElementById('fqExplMediaFile').click()"
+                        style="padding:4px 8px;font-size:0.78rem;background:var(--overlay-10);box-shadow:none">📂</button>
+                </div>
             </details>
 
             <!-- Hinweis -->
@@ -283,8 +445,15 @@ function _fqRenderForm(container) {
                 </summary>
                 <textarea id="fqHint" rows="2" placeholder="Hinweistext für Hint-Fähigkeit"
                     style="margin:8px 0 4px;resize:vertical;font-size:0.9rem">${prefillHint}</textarea>
-                <input type="text" id="fqHintMedia" value="${prefillHintMedia}"
-                    placeholder="Pfad zum Hinweis-Bild" style="margin:0;font-size:0.9rem">
+                <div style="display:flex;gap:6px;align-items:center">
+                    <input type="text" id="fqHintMedia" value="${prefillHintMedia}"
+                        placeholder="Pfad zum Hinweis-Bild" style="margin:0;flex:1;font-size:0.9rem">
+                    <input type="file" id="fqHintMediaFile" accept="image/*" style="display:none"
+                        onchange="_fqHandleMediaBrowse(event,'fqHintMedia')">
+                    <button class="btn btn-small btn-secondary"
+                        onclick="document.getElementById('fqHintMediaFile').click()"
+                        style="padding:4px 8px;font-size:0.78rem;background:var(--overlay-10);box-shadow:none">📂</button>
+                </div>
             </details>
 
             <div style="display:flex;gap:10px;margin-top:24px">
@@ -302,6 +471,25 @@ function _fqRenderForm(container) {
 function _fqToggleNewGroup(val) {
     const input = document.getElementById('fqGroupNew');
     if (input) input.style.display = val === '__new__' ? 'block' : 'none';
+}
+
+function _fqCurrentGroup() {
+    const sel = document.getElementById('fqGroup');
+    if (!sel) return 'Manuell';
+    if (sel.value === '__new__') {
+        const inp = document.getElementById('fqGroupNew');
+        return (inp?.value || '').trim() || 'Manuell';
+    }
+    return sel.value || 'Manuell';
+}
+
+function _fqUpdateIdSuggestion() {
+    const idInput = document.getElementById('fqQuestionId');
+    const hint    = document.getElementById('fqIdHint');
+    if (!idInput || !hint) return;
+    const group     = _fqCurrentGroup();
+    const suggested = _fmAssignStableId(group, questions);
+    hint.textContent = 'Nächste freie ID für "' + group + '": ' + suggested;
 }
 
 // ── Speichern ─────────────────────────────────────────────────────────────────
@@ -348,17 +536,27 @@ function _fqSave() {
         ? { type: 'image', path: _fqImPathVal } : null;
     const resolvedMedia = imMedia || (mediaPath ? { type: 'image', path: mediaPath } : null);
 
+    // ID aus Eingabefeld lesen
+    const enteredId = (document.getElementById('fqQuestionId')?.value || '').trim();
+    if (!enteredId) { Toast.show('Fragen-ID darf nicht leer sein.', 'warning'); return; }
+
+    // Duplikat-Check: ID darf nicht bei einer anderen Frage vergeben sein
+    const editQ      = _fqEditIdx >= 0 ? questions[_fqEditIdx] : null;
+    const duplicate  = questions.find((q, i) => q.questionId === enteredId && i !== _fqEditIdx);
+    if (duplicate) {
+        const nextFree = _fmAssignStableId(group, questions);
+        Toast.show(`ID "${enteredId}" ist bereits vergeben. Nächste freie: ${nextFree}`, 'warning');
+        return;
+    }
+
     if (_fqEditIdx >= 0) {
         // ── Bestehende Frage aktualisieren ──────────────────────────────────
         const q        = questions[_fqEditIdx];
-        const oldGroup = q._fileGroup;
-        q.text         = text;
-        q.type         = _fqFormType;
-        q._fileGroup   = group;
-        if (group !== oldGroup) {
-            q._oldQuestionId = q.questionId;
-            q.questionId     = _fmAssignStableId(group, questions);
-        }
+        if (q.questionId !== enteredId) q._oldQuestionId = q.questionId;
+        q.questionId       = enteredId;
+        q.text             = text;
+        q.type             = _fqFormType;
+        q._fileGroup       = group;
         q.media            = resolvedMedia;
         q.explanation      = explText  || null;
         q.explanationMedia = explMedia ? { type: 'image', path: explMedia } : null;
@@ -373,17 +571,12 @@ function _fqSave() {
         } else {
             q.answers = answers;
         }
-        Toast.show(`Frage #${q.displayNumber} aktualisiert.`, 'success');
+        Toast.show(`Frage ${q.questionId} aktualisiert.`, 'success');
     } else {
         // ── Neue Frage anlegen ───────────────────────────────────────────────
-        const usedNums = new Set(questions.map(q => q.displayNumber).filter(n => typeof n === 'number'));
-        let dispNum = 1;
-        while (usedNums.has(dispNum)) dispNum++;
-        const questionId = _fmAssignStableId(group, questions);
         const newQ = {
             id:              Date.now() + Math.floor(Math.random() * 1000),
-            questionId,
-            displayNumber:   dispNum,
+            questionId:      enteredId,
             text,
             type:            _fqFormType,
             active:          true,
@@ -403,7 +596,7 @@ function _fqSave() {
             newQ.answers = answers;
         }
         questions.push(newQ);
-        Toast.show(`Frage #${dispNum} erstellt (${group}).`, 'success');
+        Toast.show(`Frage ${enteredId} erstellt (${group}).`, 'success');
     }
 
     _fqEditIdx  = -1;
@@ -443,7 +636,6 @@ function _fqBuildExportQ(q) {
     const out = {
         id:              q.id,
         questionId:      q.questionId,
-        displayNumber:   q.displayNumber ?? null,
         text:            q.text,
         type:            q.type,
         active:          q.active !== false,
