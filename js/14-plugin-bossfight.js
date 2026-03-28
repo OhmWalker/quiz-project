@@ -195,6 +195,7 @@ const BossFightPlugin = {
 
     nextQuestion() {
         const s = this._state;
+        if (!s.active) return;
         this._clearIntervals();
         this._resetColors();
         if (s.hp <= 0) { this._victory(); return; }
@@ -383,9 +384,10 @@ const BossFightPlugin = {
     abort() {
         if (!this._state.active) return;
         GameDialog.showConfirm(
+            '⚔️',
             'Boss-Fight abbrechen?',
             'Du verlässt den Kampf. Keine XP werden vergeben.',
-            () => { this.close(); }
+            () => { BossFightPlugin.close(); }
         );
     },
 
