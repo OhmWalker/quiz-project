@@ -5680,9 +5680,10 @@
         // === Forge: Fragen-Verwaltung (Erstellen + Export) ===
         // MC, Text und Bildklick-Fragen
 
-        let _fqShowForm  = false;
-        let _fqFormType  = QUESTION_TYPES.MULTIPLE_CHOICE;
+        let _fqShowForm    = false;
+        let _fqFormType    = QUESTION_TYPES.MULTIPLE_CHOICE;
         let _fqGroupFilter = '';
+        let _fqEditIdx     = -1;   // -1 = neue Frage, >= 0 = Index in questions[]
 
         // Imagemap editor state
         let _fqImMode         = 'circle';
@@ -5719,13 +5720,21 @@
 
             const typeIcon = t => t === QUESTION_TYPES.TEXT ? '📝' : t === QUESTION_TYPES.IMAGEMAP ? '🗺' : '☑';
 
-            const rows = filtered.map(q => `
+            const rows = questions
+                .map((q, idx) => ({ q, idx }))
+                .filter(({ q }) => !_fqGroupFilter || (q._fileGroup || 'Manuell') === _fqGroupFilter)
+                .map(({ q, idx }) => `
                 <tr>
                     <td style="opacity:0.45;width:40px">${q.displayNumber ?? '—'}</td>
                     <td style="width:28px;text-align:center" title="${q.type}">${typeIcon(q.type)}</td>
-                    <td style="max-width:420px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">${_fqEsc(q.text)}</td>
+                    <td style="max-width:380px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">${_fqEsc(q.text)}</td>
                     <td class="td-muted td-nowrap" style="font-size:0.82rem">${_fqEsc(q._fileGroup || 'Manuell')}</td>
                     <td style="opacity:0.4;font-size:0.78rem">${q.questionId || '—'}</td>
+                    <td style="width:36px;text-align:center">
+                        <button class="btn btn-small btn-secondary" onclick="_fqOpenEdit(${idx})"
+                            style="padding:3px 8px;font-size:0.8rem;background:var(--overlay-10);box-shadow:none"
+                            title="Bearbeiten">✏</button>
+                    </td>
                 </tr>`).join('');
 
             const groupOptions = groups.map(g =>
@@ -5761,10 +5770,11 @@
                                 <td style="padding:10px 8px">Frage</td>
                                 <td style="padding:10px 8px">Gruppe</td>
                                 <td style="padding:10px 8px">ID</td>
+                                <td></td>
                             </tr>
                         </thead>
                         <tbody>
-                            ${rows || '<tr><td colspan="5" style="text-align:center;padding:30px;opacity:0.4">Keine Fragen in dieser Gruppe</td></tr>'}
+                            ${rows || '<tr><td colspan="6" style="text-align:center;padding:30px;opacity:0.4">Keine Fragen in dieser Gruppe</td></tr>'}
                         </tbody>
                     </table>
                 </div>`;
@@ -5778,13 +5788,30 @@
         // ── Formular ──────────────────────────────────────────────────────────────────
 
         function _fqOpenForm() {
+            _fqEditIdx  = -1;
             _fqShowForm = true;
             _fqFormType = QUESTION_TYPES.MULTIPLE_CHOICE;
             _fqImReset();
             AdminShell.showPanel('fragen');
         }
 
+        function _fqOpenEdit(idx) {
+            const q = questions[idx];
+            if (!q) return;
+            _fqEditIdx  = idx;
+            _fqShowForm = true;
+            _fqFormType = q.type || QUESTION_TYPES.MULTIPLE_CHOICE;
+            _fqImReset();
+            if (q.type === QUESTION_TYPES.IMAGEMAP) {
+                _fqImZones    = q.targets ? JSON.parse(JSON.stringify(q.targets)) : [];
+                _fqImPathVal  = q.media?.path || '';
+                _fqImImageSrc = _fqImPathVal || null;
+            }
+            AdminShell.showPanel('fragen');
+        }
+
         function _fqCloseForm() {
+            _fqEditIdx  = -1;
             _fqShowForm = false;
             AdminShell.showPanel('fragen');
         }
@@ -5796,39 +5823,60 @@
         }
 
         function _fqRenderForm(container) {
+            const isEdit  = _fqEditIdx >= 0;
+            const eq      = isEdit ? questions[_fqEditIdx] : null;
             const groups  = [...new Set(questions.map(q => q._fileGroup || 'Manuell'))].sort();
             const isMC    = _fqFormType === QUESTION_TYPES.MULTIPLE_CHOICE;
             const isText  = _fqFormType === QUESTION_TYPES.TEXT;
             const isIm    = _fqFormType === QUESTION_TYPES.IMAGEMAP;
 
+            // Vorausgefüllte Werte aus bestehender Frage
+            const prefillText      = _fqEsc(eq?.text || '');
+            const prefillGroup     = eq?._fileGroup || '';
+            const prefillMedia     = (!isIm && eq?.media?.path)          ? _fqEsc(eq.media.path)           : '';
+            const prefillExpl      = _fqEsc(eq?.explanation || '');
+            const prefillExplMedia = _fqEsc(eq?.explanationMedia?.path || '');
+            const prefillHint      = _fqEsc(eq?.hint || '');
+            const prefillHintMedia = _fqEsc(eq?.hintMedia?.path || '');
+
             const groupOptions = groups.map(g =>
-                `<option value="${_fqEsc(g)}">${_fqEsc(g)}</option>`
+                `<option value="${_fqEsc(g)}" ${prefillGroup === g ? 'selected' : ''}>${_fqEsc(g)}</option>`
             ).join('');
 
             let answerFields;
             if (isMC) {
-                answerFields = Array.from({ length: 4 }, (_, i) => `
+                const mcAnswers = (eq?.type === QUESTION_TYPES.MULTIPLE_CHOICE ? eq.answers : null) || [];
+                answerFields = Array.from({ length: 4 }, (_, i) => {
+                    const a = mcAnswers[i] || { text: '', correct: false };
+                    return `
                 <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
                     <input type="checkbox" id="fqCorr_${i}" style="width:auto;margin:0;flex-shrink:0"
-                        title="Korrekte Antwort">
+                        title="Korrekte Antwort" ${a.correct ? 'checked' : ''}>
                     <input type="text" id="fqAns_${i}" placeholder="Antwort ${i + 1}"
+                        value="${_fqEsc(a.text)}"
                         style="margin:0;flex:1;padding:8px 12px;font-size:0.9rem">
-                </div>`).join('');
+                </div>`;
+                }).join('');
             } else if (isText) {
+                const textVal = (eq?.type === QUESTION_TYPES.TEXT) ? getCorrectTextAnswers(eq).join('\n') : '';
                 answerFields = `
                 <textarea id="fqTextAns" rows="3" placeholder="Eine korrekte Antwort pro Zeile"
-                    style="margin:0;resize:vertical;font-size:0.9rem"></textarea>`;
+                    style="margin:0;resize:vertical;font-size:0.9rem">${_fqEsc(textVal)}</textarea>`;
             } else {
                 answerFields = _fqImBuildHTML();
             }
 
+            const mediaOpen = prefillMedia ? 'open' : '';
+            const explOpen  = (prefillExpl || prefillExplMedia) ? 'open' : '';
+            const hintOpen  = (prefillHint || prefillHintMedia) ? 'open' : '';
+
             const mediaSection = isIm ? '' : `
-                    <!-- Media -->
-                    <details style="margin-top:12px">
+                    <details style="margin-top:12px" ${mediaOpen}>
                         <summary style="cursor:pointer;opacity:0.7;font-size:0.85rem;padding:4px 0">
                             Bild / Media (optional)
                         </summary>
-                        <input type="text" id="fqMedia" placeholder="Pfad zur Bilddatei, z.B. bilder/frage01.jpg"
+                        <input type="text" id="fqMedia" value="${prefillMedia}"
+                            placeholder="Pfad zur Bilddatei, z.B. bilder/frage01.jpg"
                             style="margin:8px 0 0;font-size:0.9rem">
                     </details>`;
 
@@ -5839,7 +5887,8 @@
                             style="background:var(--overlay-10);box-shadow:none">
                             ← Zurück
                         </button>
-                        <h2 style="margin:0;font-size:1.2rem">Neue Frage</h2>
+                        <h2 style="margin:0;font-size:1.2rem">${isEdit ? 'Frage bearbeiten' : 'Neue Frage'}</h2>
+                        ${isEdit ? `<span style="opacity:0.4;font-size:0.8rem">#${eq.displayNumber ?? '—'} · ${_fqEsc(eq.questionId || '')}</span>` : ''}
                     </div>
 
                     <!-- Typ -->
@@ -5865,7 +5914,7 @@
                     <!-- Text -->
                     <label for="fqText">Fragetext *</label>
                     <textarea id="fqText" rows="3" placeholder="Fragetext eingeben…"
-                        style="margin:0;resize:vertical"></textarea>
+                        style="margin:0;resize:vertical">${prefillText}</textarea>
 
                     <!-- Gruppe -->
                     <label for="fqGroup">Gruppe</label>
@@ -5884,30 +5933,30 @@
                     ${mediaSection}
 
                     <!-- Erklärung -->
-                    <details style="margin-top:8px">
+                    <details style="margin-top:8px" ${explOpen}>
                         <summary style="cursor:pointer;opacity:0.7;font-size:0.85rem;padding:4px 0">
                             Erklärung (optional)
                         </summary>
                         <textarea id="fqExpl" rows="2" placeholder="Erklärungstext nach der Antwort"
-                            style="margin:8px 0 4px;resize:vertical;font-size:0.9rem"></textarea>
-                        <input type="text" id="fqExplMedia" placeholder="Pfad zum Erklärungs-Bild"
-                            style="margin:0;font-size:0.9rem">
+                            style="margin:8px 0 4px;resize:vertical;font-size:0.9rem">${prefillExpl}</textarea>
+                        <input type="text" id="fqExplMedia" value="${prefillExplMedia}"
+                            placeholder="Pfad zum Erklärungs-Bild" style="margin:0;font-size:0.9rem">
                     </details>
 
                     <!-- Hinweis -->
-                    <details style="margin-top:8px">
+                    <details style="margin-top:8px" ${hintOpen}>
                         <summary style="cursor:pointer;opacity:0.7;font-size:0.85rem;padding:4px 0">
                             Hinweis (optional)
                         </summary>
                         <textarea id="fqHint" rows="2" placeholder="Hinweistext für Hint-Fähigkeit"
-                            style="margin:8px 0 4px;resize:vertical;font-size:0.9rem"></textarea>
-                        <input type="text" id="fqHintMedia" placeholder="Pfad zum Hinweis-Bild"
-                            style="margin:0;font-size:0.9rem">
+                            style="margin:8px 0 4px;resize:vertical;font-size:0.9rem">${prefillHint}</textarea>
+                        <input type="text" id="fqHintMedia" value="${prefillHintMedia}"
+                            placeholder="Pfad zum Hinweis-Bild" style="margin:0;font-size:0.9rem">
                     </details>
 
                     <div style="display:flex;gap:10px;margin-top:24px">
-                        <button class="btn btn-small" onclick="_fqSaveNew()">
-                            💾 Frage speichern
+                        <button class="btn btn-small" onclick="_fqSave()">
+                            💾 ${isEdit ? 'Änderungen speichern' : 'Frage speichern'}
                         </button>
                         <button class="btn btn-small btn-secondary" onclick="_fqCloseForm()"
                             style="background:var(--overlay-10);box-shadow:none">
@@ -5924,7 +5973,7 @@
 
         // ── Speichern ─────────────────────────────────────────────────────────────────
 
-        function _fqSaveNew() {
+        function _fqSave() {
             const text = (document.getElementById('fqText')?.value || '').trim();
             if (!text) { Toast.show('Fragetext darf nicht leer sein.', 'warning'); return; }
 
@@ -5962,41 +6011,69 @@
             const hintText    = (document.getElementById('fqHint')?.value || '').trim();
             const hintMedia   = (document.getElementById('fqHintMedia')?.value || '').trim();
 
-            // Nächste Display-Nummer + stabile ID
-            const usedNums  = new Set(questions.map(q => q.displayNumber).filter(n => typeof n === 'number'));
-            let dispNum = 1;
-            while (usedNums.has(dispNum)) dispNum++;
-
-            const questionId = _fmAssignStableId(group, questions);
-
             const imMedia = _fqFormType === QUESTION_TYPES.IMAGEMAP && _fqImPathVal
                 ? { type: 'image', path: _fqImPathVal } : null;
+            const resolvedMedia = imMedia || (mediaPath ? { type: 'image', path: mediaPath } : null);
 
-            const newQ = {
-                id:              Date.now() + Math.floor(Math.random() * 1000),
-                questionId:      questionId,
-                displayNumber:   dispNum,
-                text:            text,
-                type:            _fqFormType,
-                active:          true,
-                _fileGroup:      group,
-                media:           imMedia || (mediaPath ? { type: 'image', path: mediaPath } : null),
-                explanation:     explText  || null,
-                explanationMedia:explMedia ? { type: 'image', path: explMedia } : null,
-                hint:            hintText  || null,
-                hintMedia:       hintMedia ? { type: 'image', path: hintMedia } : null,
-            };
-            if (_fqFormType === QUESTION_TYPES.TEXT) {
-                newQ.correctAnswer = correctAnswer;
-                newQ.answers = answers;
-            } else if (_fqFormType === QUESTION_TYPES.IMAGEMAP) {
-                newQ.targets = targets;
+            if (_fqEditIdx >= 0) {
+                // ── Bestehende Frage aktualisieren ──────────────────────────────────
+                const q        = questions[_fqEditIdx];
+                const oldGroup = q._fileGroup;
+                q.text         = text;
+                q.type         = _fqFormType;
+                q._fileGroup   = group;
+                if (group !== oldGroup) {
+                    q._oldQuestionId = q.questionId;
+                    q.questionId     = _fmAssignStableId(group, questions);
+                }
+                q.media            = resolvedMedia;
+                q.explanation      = explText  || null;
+                q.explanationMedia = explMedia ? { type: 'image', path: explMedia } : null;
+                q.hint             = hintText  || null;
+                q.hintMedia        = hintMedia ? { type: 'image', path: hintMedia } : null;
+                delete q.answers; delete q.correctAnswer; delete q.targets;
+                if (_fqFormType === QUESTION_TYPES.TEXT) {
+                    q.correctAnswer = correctAnswer;
+                    q.answers       = answers;
+                } else if (_fqFormType === QUESTION_TYPES.IMAGEMAP) {
+                    q.targets = targets;
+                } else {
+                    q.answers = answers;
+                }
+                Toast.show(`Frage #${q.displayNumber} aktualisiert.`, 'success');
             } else {
-                newQ.answers = answers;
+                // ── Neue Frage anlegen ───────────────────────────────────────────────
+                const usedNums = new Set(questions.map(q => q.displayNumber).filter(n => typeof n === 'number'));
+                let dispNum = 1;
+                while (usedNums.has(dispNum)) dispNum++;
+                const questionId = _fmAssignStableId(group, questions);
+                const newQ = {
+                    id:              Date.now() + Math.floor(Math.random() * 1000),
+                    questionId,
+                    displayNumber:   dispNum,
+                    text,
+                    type:            _fqFormType,
+                    active:          true,
+                    _fileGroup:      group,
+                    media:           resolvedMedia,
+                    explanation:     explText  || null,
+                    explanationMedia:explMedia ? { type: 'image', path: explMedia } : null,
+                    hint:            hintText  || null,
+                    hintMedia:       hintMedia ? { type: 'image', path: hintMedia } : null,
+                };
+                if (_fqFormType === QUESTION_TYPES.TEXT) {
+                    newQ.correctAnswer = correctAnswer;
+                    newQ.answers       = answers;
+                } else if (_fqFormType === QUESTION_TYPES.IMAGEMAP) {
+                    newQ.targets = targets;
+                } else {
+                    newQ.answers = answers;
+                }
+                questions.push(newQ);
+                Toast.show(`Frage #${dispNum} erstellt (${group}).`, 'success');
             }
 
-            questions.push(newQ);
-            Toast.show(`Frage #${dispNum} erstellt (${group}).`, 'success');
+            _fqEditIdx  = -1;
             _fqShowForm = false;
             AdminShell.showPanel('fragen');
         }
