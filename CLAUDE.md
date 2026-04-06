@@ -166,10 +166,17 @@ Reihenfolge in der Nav (von oben nach unten):
 - Admin lädt JSON in Forge → Tab "Einreichungen" → annehmen/ablehnen
 - Bei "Annehmen": `_fmAssignStableId()` vergibt stabile ID, Herald-Felder werden entfernt
 
+### Themen-Kategorien (Dropdown)
+- Konfiguration in `js/herald/00-herald-groups.js` — `HERALD_GROUPS`-Array befüllen, dann `python3 build.py`
+- **Kein Build verfügbar?** Direkt in `herald.html` editieren: **Ctrl+F → `HERALD_GRUPPEN_EDIT`**
+- Leeres Array = Nutzer tippt Thema frei ein (Freitext-Input)
+- build.py gibt nach jedem Herald-Build den Hinweis auf das Suchwort aus
+
 ### Herald-Quellstruktur
 | Datei | Funktion |
 |---|---|
 | `herald-index.html` | Quell-HTML (ohne inline JS/CSS) |
+| `js/herald/00-herald-groups.js` | Themen-Kategorien für Dropdown (Admin konfiguriert) |
 | `js/herald/10-herald.js` | Formular, Imagemap-Editor, Drafts-Liste, Download |
 
 ## BossFight-Plugin (`js/14-plugin-bossfight.js`)

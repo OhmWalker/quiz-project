@@ -134,3 +134,4 @@ with open(herald_out, "w", encoding="utf-8") as f:
 
 size_kb = os.path.getsize(herald_out) / 1024
 print(f"[OK] herald.html             —  {size_kb:.1f} KB  |  CSS: {len(css_files_herald)}  |  Core-JS: {len(core_herald_paths)}  |  Herald-JS: {len(herald_paths)}")
+print(f"     Themen-Kategorien manuell editieren → Ctrl+F nach: HERALD_GRUPPEN_EDIT")
