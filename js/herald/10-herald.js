@@ -4,8 +4,10 @@
 
 // ── State ─────────────────────────────────────────────────────────────────────
 
-let _hrFormType = QUESTION_TYPES.MULTIPLE_CHOICE;
-let _hrDrafts   = [];   // gesammelte Fragen in dieser Session
+let _hrFormType  = QUESTION_TYPES.MULTIPLE_CHOICE;
+let _hrDrafts    = [];   // gesammelte Fragen in dieser Session
+let _hrAuthor    = '';   // bleibt über Fragen-Einreichungen hinweg erhalten
+let _hrLastGroup = '';   // zuletzt gewählte Gruppe
 
 // Imagemap-State (identisch mit forge-fragen.js)
 let _fqImMode          = 'circle';
@@ -116,9 +118,7 @@ function _hrRender() {
                 style="margin:0;resize:vertical"></textarea>
 
             <label for="hrGroup">Thema / Kategorie</label>
-            <input type="text" id="hrGroup"
-                placeholder="z.B. Geschichte, Geographie, Biologie …"
-                style="margin:0 0 4px">
+            ${_hrGroupInput()}
 
             <label>${isMC ? 'Antworten (✓ = korrekt)' : isText ? 'Korrekte Antworten' : 'Zielzonen'}</label>
             <div id="hrAnswers">${answerFields}</div>
@@ -148,6 +148,7 @@ function _hrRender() {
             </label>
             <input type="text" id="hrAuthor"
                 placeholder="Wird beim Admin als Einreicher angezeigt"
+                value="${_fqEsc(_hrAuthor)}"
                 style="margin:0 0 4px">
 
             <div style="margin-top:20px">
@@ -191,8 +192,10 @@ function _hrSave() {
     const text = (document.getElementById('hrText')?.value || '').trim();
     if (!text) { Toast.show('Fragetext darf nicht leer sein.', 'warning'); return; }
 
-    const group  = (document.getElementById('hrGroup')?.value  || '').trim() || 'Allgemein';
+    const group  = _hrReadGroup();
     const author = (document.getElementById('hrAuthor')?.value || '').trim();
+    _hrLastGroup = group;
+    _hrAuthor    = author;
 
     let answers, correctAnswer, targets;
     if (_hrFormType === QUESTION_TYPES.MULTIPLE_CHOICE) {
@@ -270,6 +273,46 @@ function _hrDownload() {
 }
 
 // ── Hilfsfunktionen ───────────────────────────────────────────────────────────
+
+function _hrGroupInput() {
+    const groups = (typeof HERALD_GROUPS !== 'undefined') ? HERALD_GROUPS : [];
+    if (!groups.length) {
+        return `<input type="text" id="hrGroup"
+            placeholder="z.B. Geschichte, Geographie, Biologie …"
+            value="${_fqEsc(_hrLastGroup)}"
+            style="margin:0 0 4px">`;
+    }
+    const isOther  = _hrLastGroup === '' || !groups.includes(_hrLastGroup);
+    const options  = groups.map(g =>
+        `<option value="${_fqEsc(g)}" ${!isOther && _hrLastGroup === g ? 'selected' : ''}>${_fqEsc(g)}</option>`
+    ).join('');
+    return `
+        <select id="hrGroup" onchange="_hrToggleGroupOther(this.value)" style="margin:0 0 4px">
+            ${options}
+            <option value="__other__" ${isOther ? 'selected' : ''}>Anderes Thema…</option>
+        </select>
+        <input type="text" id="hrGroupOther"
+            placeholder="Thema eingeben"
+            value="${isOther ? _fqEsc(_hrLastGroup) : ''}"
+            style="display:${isOther ? 'block' : 'none'};margin:4px 0 0">`;
+}
+
+function _hrReadGroup() {
+    const groups = (typeof HERALD_GROUPS !== 'undefined') ? HERALD_GROUPS : [];
+    if (!groups.length) {
+        return (document.getElementById('hrGroup')?.value || '').trim() || 'Allgemein';
+    }
+    const sel = document.getElementById('hrGroup')?.value;
+    if (sel === '__other__') {
+        return (document.getElementById('hrGroupOther')?.value || '').trim() || 'Allgemein';
+    }
+    return sel || groups[0] || 'Allgemein';
+}
+
+function _hrToggleGroupOther(val) {
+    const inp = document.getElementById('hrGroupOther');
+    if (inp) inp.style.display = val === '__other__' ? 'block' : 'none';
+}
 
 function _fqEsc(s) {
     return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
