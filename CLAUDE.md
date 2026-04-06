@@ -75,7 +75,11 @@
 
 ## Scoring-System
 - **Qualität** (50%): Gewichteter Ø richtige Antworten mit Zeitverfall (decay 0.99/Tag)
-- **Engagement** (50%): Decay-Modell — jedes Quiz gibt Boost-Punkte (Standard 5), die täglich um 5% verfallen
+- **Engagement** (50%): `min(QuizIn90Tagen / Ziel, 1) × engDecay^tageSeitletztemQuiz × 100`
+  - Ziel (Standard 60 Quiz/90 Tage) = 100% Engagement
+  - Zerfall: 0.95^Tage → nach ~90 Tagen Inaktivität ≈ 0
+  - Kein Raw-Reserve-Problem: Score ist immer direkt = angezeigter Wert
+  - Einstellbar in Forge: „Ziel-Quiz/90 Tage" + „Verfall/Tag"
 - History-Einträge nutzen Feld `score` (nicht `pct`) für Prozent richtig
 
 ## Ability-System (earnStat-Modell)
