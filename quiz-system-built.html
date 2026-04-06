@@ -6987,7 +6987,7 @@
                 // Score all users
                 const allScored = users.filter(u => (u.quizzesTaken || 0) >= minQuizzes)
                     .map(u => { const s = this.calculateScore(u); return { user: u, score: s.total, quality: s.quality, engagement: s.engagement }; })
-                    .sort((a, b) => b.score - a.score);
+                    .sort((a, b) => b.score - a.score || (b.user.totalXP || 0) - (a.user.totalXP || 0));
                 if (allScored.length === 0) { container.innerHTML = ''; return; }
                 // Max 50% of total users visible (don't demotivate bottom half)
                 const maxFiftyPercent = Math.max(1, Math.floor(users.length / 2));
