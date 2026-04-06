@@ -103,7 +103,6 @@ const LeaderboardPlugin = {
         const eW = (lb.engagementWeight || 50) / 100;
         const decay = lb.decayRate || 0.99;
         const maxAge = lb.maxAgeDays || 90;
-        const engDecay = lb.engagementDecay || 0.95;
         const engTarget = lb.engagementTarget || 60;
         const hist = user.history || [];
         const now = Date.now();
@@ -117,9 +116,9 @@ const LeaderboardPlugin = {
             qualityWeight += w;
         });
         const quality = qualityWeight > 0 ? qualitySum / qualityWeight : 0;
-        // Engagement: Methode 1 — Zählung × Aktualität
-        // countScore: wie viele Quiz in maxAge Tagen vs. Ziel
-        // recency:    täglicher Zerfall seit letztem Quiz (engDecay^tage → 0 in ~90 Tagen)
+        // Engagement: Zählung × linearer Aktualitäts-Zerfall
+        // countScore: Quiz in maxAge Tagen vs. Ziel (z.B. 60/90 Tage)
+        // recency:    linear 1 → 0 über maxAge Tage seit letztem Quiz
         let recentCount = 0;
         let daysSinceLast = maxAge;
         hist.forEach(h => {
@@ -129,7 +128,8 @@ const LeaderboardPlugin = {
             if (ageDays < daysSinceLast) daysSinceLast = ageDays;
         });
         const countScore = Math.min(1, recentCount / engTarget);
-        const engagement = countScore * Math.pow(engDecay, daysSinceLast) * 100;
+        const recency = Math.max(0, 1 - daysSinceLast / maxAge);
+        const engagement = countScore * recency * 100;
         const total = quality * qW + engagement * eW;
         return { total, quality, engagement };
     },
@@ -142,7 +142,6 @@ const LeaderboardPlugin = {
             leaderboardDecayRate: lb.decayRate || 0.99,
             leaderboardMaxAgeDays: lb.maxAgeDays || 90,
             leaderboardEngagementTarget: lb.engagementTarget || 60,
-            leaderboardEngagementDecay: lb.engagementDecay || 0.95,
             leaderboardMinQuizzes: lb.minQuizzes || 0
         };
         Object.entries(fields).forEach(([id, val]) => {
@@ -160,7 +159,6 @@ const LeaderboardPlugin = {
         lb.decayRate = parseFloat(document.getElementById('leaderboardDecayRate').value) || 0.99;
         lb.maxAgeDays = parseInt(document.getElementById('leaderboardMaxAgeDays').value) || 90;
         lb.engagementTarget = parseInt(document.getElementById('leaderboardEngagementTarget').value) || 60;
-        lb.engagementDecay = parseFloat(document.getElementById('leaderboardEngagementDecay').value) || 0.95;
         lb.minQuizzes = parseInt(document.getElementById('leaderboardMinQuizzes').value) || 0;
         this.updatePreview();
         this.render();
@@ -173,21 +171,19 @@ const LeaderboardPlugin = {
         const lb = quizSettings.leaderboard || {};
         const qW = (lb.qualityWeight || 50);
         const eW = (lb.engagementWeight || 50);
-        const eDecay = lb.engagementDecay || 0.95;
         const target = lb.engagementTarget || 60;
         const maxAge = lb.maxAgeDays || 90;
-        // Beispiel: Spieler mit Ziel-Anzahl Quiz, heute gespielt
-        const eng100 = 100;
-        const eng8d = Math.round(Math.pow(eDecay, 8) * 100);
-        const eng30d = Math.round(Math.pow(eDecay, 30) * 100);
-        const engHalf = Math.round(Math.min(1, (target / 2) / target) * 100);
+        const perDay = (100 / maxAge).toFixed(1);
+        const eng8d  = Math.round(Math.max(0, 1 - 8  / maxAge) * 100);
+        const eng30d = Math.round(Math.max(0, 1 - 30 / maxAge) * 100);
         preview.innerHTML = `<strong style="color:var(--secondary);">📊 Engagement-Formel:</strong>
             <div style="margin-top:5px;">
-            <code>min(Quiz/${target}, 1) × ${eDecay}^Tage × 100</code><br><br>
-            <strong>${target} Quiz in ${maxAge} Tagen, heute gespielt:</strong> ${eng100}<br>
+            <code>min(Quiz/${target}, 1) × max(0, 1 − Tage/${maxAge}) × 100</code><br><br>
+            <strong>${target} Quiz, heute gespielt:</strong> 100<br>
             <strong>${target} Quiz, 8 Tage nicht gespielt:</strong> ${eng8d}<br>
             <strong>${target} Quiz, 30 Tage nicht gespielt:</strong> ${eng30d}<br>
-            <strong>${Math.round(target/2)} Quiz (Hälfte), heute gespielt:</strong> ${engHalf}<br><br>
+            <strong>${Math.round(target/2)} Quiz, heute gespielt:</strong> 50<br>
+            <strong>Verfall:</strong> −${perDay} Punkte/Tag (linear)<br><br>
             <strong>Qualität 80%, Engagement 100%:</strong> ${((80 * qW + 100 * eW) / 100).toFixed(1)} Score
             </div>`;
     },
