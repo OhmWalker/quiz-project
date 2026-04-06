@@ -3454,8 +3454,8 @@
                     <div class="sub-title">Engagement</div>
                     <div class="grid-2col">
                         <div class="field-row">
-                            <span class="field-label">Punkte/Quiz<span class="hint">Boost pro Quiz</span></span>
-                            <input type="number" id="leaderboardEngagementBoost" min="1" max="20" value="5">
+                            <span class="field-label">Ziel-Quiz/90 Tage<span class="hint">= 100% Engagement</span></span>
+                            <input type="number" id="leaderboardEngagementTarget" min="10" max="200" value="60">
                         </div>
                         <div class="field-row">
                             <span class="field-label">Verfall/Tag<span class="hint">0.95 = 5%/Tag</span></span>
@@ -7067,8 +7067,8 @@
                 const eW = (lb.engagementWeight || 50) / 100;
                 const decay = lb.decayRate || 0.99;
                 const maxAge = lb.maxAgeDays || 90;
-                const engBoost = lb.engagementBoost || 5;
                 const engDecay = lb.engagementDecay || 0.95;
+                const engTarget = lb.engagementTarget || 60;
                 const hist = user.history || [];
                 const now = Date.now();
                 // Quality: weighted average of recent quiz scores with time decay
@@ -7081,14 +7081,19 @@
                     qualityWeight += w;
                 });
                 const quality = qualityWeight > 0 ? qualitySum / qualityWeight : 0;
-                // Engagement: each quiz contributes boost × engDecay^days_since_quiz
-                let engagementRaw = 0;
+                // Engagement: Methode 1 — Zählung × Aktualität
+                // countScore: wie viele Quiz in maxAge Tagen vs. Ziel
+                // recency:    täglicher Zerfall seit letztem Quiz (engDecay^tage → 0 in ~90 Tagen)
+                let recentCount = 0;
+                let daysSinceLast = maxAge;
                 hist.forEach(h => {
                     const ageDays = (now - new Date(h.date).getTime()) / 86400000;
                     if (ageDays > maxAge) return;
-                    engagementRaw += engBoost * Math.pow(engDecay, ageDays);
+                    recentCount++;
+                    if (ageDays < daysSinceLast) daysSinceLast = ageDays;
                 });
-                const engagement = Math.min(100, engagementRaw);
+                const countScore = Math.min(1, recentCount / engTarget);
+                const engagement = countScore * Math.pow(engDecay, daysSinceLast) * 100;
                 const total = quality * qW + engagement * eW;
                 return { total, quality, engagement };
             },
@@ -7100,7 +7105,7 @@
                     leaderboardEngagementWeight: lb.engagementWeight || 50,
                     leaderboardDecayRate: lb.decayRate || 0.99,
                     leaderboardMaxAgeDays: lb.maxAgeDays || 90,
-                    leaderboardEngagementBoost: lb.engagementBoost || 5,
+                    leaderboardEngagementTarget: lb.engagementTarget || 60,
                     leaderboardEngagementDecay: lb.engagementDecay || 0.95,
                     leaderboardMinQuizzes: lb.minQuizzes || 0
                 };
@@ -7118,7 +7123,7 @@
                 lb.engagementWeight = parseInt(document.getElementById('leaderboardEngagementWeight').value) || 50;
                 lb.decayRate = parseFloat(document.getElementById('leaderboardDecayRate').value) || 0.99;
                 lb.maxAgeDays = parseInt(document.getElementById('leaderboardMaxAgeDays').value) || 90;
-                lb.engagementBoost = parseInt(document.getElementById('leaderboardEngagementBoost').value) || 5;
+                lb.engagementTarget = parseInt(document.getElementById('leaderboardEngagementTarget').value) || 60;
                 lb.engagementDecay = parseFloat(document.getElementById('leaderboardEngagementDecay').value) || 0.95;
                 lb.minQuizzes = parseInt(document.getElementById('leaderboardMinQuizzes').value) || 0;
                 this.updatePreview();
@@ -7132,16 +7137,22 @@
                 const lb = quizSettings.leaderboard || {};
                 const qW = (lb.qualityWeight || 50);
                 const eW = (lb.engagementWeight || 50);
-                const boost = lb.engagementBoost || 5;
                 const eDecay = lb.engagementDecay || 0.95;
-                // Beispiel: tägliches Spielen → Gleichgewicht = boost / (1 - eDecay)
-                const eqEngagement = Math.min(100, boost / (1 - eDecay));
-                preview.innerHTML = `<strong style="color:var(--secondary);">📊 Beispielrechnung:</strong>
+                const target = lb.engagementTarget || 60;
+                const maxAge = lb.maxAgeDays || 90;
+                // Beispiel: Spieler mit Ziel-Anzahl Quiz, heute gespielt
+                const eng100 = 100;
+                const eng8d = Math.round(Math.pow(eDecay, 8) * 100);
+                const eng30d = Math.round(Math.pow(eDecay, 30) * 100);
+                const engHalf = Math.round(Math.min(1, (target / 2) / target) * 100);
+                preview.innerHTML = `<strong style="color:var(--secondary);">📊 Engagement-Formel:</strong>
                     <div style="margin-top:5px;">
-                    Spieler mit 80% Quote, spielt täglich 1 Quiz:<br>
-                    <strong>Qualität:</strong> 80 × ${qW}% = ${(80 * qW / 100).toFixed(1)}<br>
-                    <strong>Engagement:</strong> ${eqEngagement.toFixed(0)} × ${eW}% = ${(eqEngagement * eW / 100).toFixed(1)}<br>
-                    <strong>Gesamt: ${((80 * qW + eqEngagement * eW) / 100).toFixed(1)} Score</strong>
+                    <code>min(Quiz/${target}, 1) × ${eDecay}^Tage × 100</code><br><br>
+                    <strong>${target} Quiz in ${maxAge} Tagen, heute gespielt:</strong> ${eng100}<br>
+                    <strong>${target} Quiz, 8 Tage nicht gespielt:</strong> ${eng8d}<br>
+                    <strong>${target} Quiz, 30 Tage nicht gespielt:</strong> ${eng30d}<br>
+                    <strong>${Math.round(target/2)} Quiz (Hälfte), heute gespielt:</strong> ${engHalf}<br><br>
+                    <strong>Qualität 80%, Engagement 100%:</strong> ${((80 * qW + 100 * eW) / 100).toFixed(1)} Score
                     </div>`;
             },
 
