@@ -168,6 +168,19 @@ Reihenfolge in der Nav (von oben nach unten):
 | `herald-index.html` | Quell-HTML (ohne inline JS/CSS) |
 | `js/herald/10-herald.js` | Formular, Imagemap-Editor, Drafts-Liste, Download |
 
+## BossFight-Plugin (`js/14-plugin-bossfight.js`)
+
+### DOM-Reset-Muster (kritisch!)
+`_victory()` und `_defeat()` ersetzen `bossQuestionCard.innerHTML` vollständig mit dem Endscreen.
+Dadurch werden `bossQuestionText` und `bossAnswerArea` aus dem DOM **zerstört**.
+`start()` stellt die Original-Struktur deshalb **vor** `nextQuestion()` explizit wieder her:
+```javascript
+document.getElementById('bossQuestionCard').innerHTML =
+    '<div class="boss-question-text" id="bossQuestionText"></div><div id="bossAnswerArea"></div>';
+```
+**Regel:** Wenn weitere Overlays/Screens im Projekt `.innerHTML =` auf Container-Elemente setzen,
+die Kind-IDs enthalten, muss der nächste `start()`/`open()`-Aufruf diese IDs ebenfalls wiederherstellen.
+
 ## Offene Punkte
 - **Hash → Stabile ID Migration** ausführen (Forge → "ID-Migration") sobald alle `_fileGroup`-Zuordnungen korrekt sind
 - Nach Migration: `buildMigrationMap` + `_oldQuestionId`-Logik vereinfachen
