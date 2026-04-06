@@ -96,6 +96,9 @@ const BossFightPlugin = {
         document.getElementById('bossCloseBtn').style.display = 'none';
         document.getElementById('bossEffectText').textContent = '';
         document.getElementById('bossAbilities').innerHTML = '';
+        // DOM-Struktur wiederherstellen (wird durch _victory/_defeat überschrieben)
+        document.getElementById('bossQuestionCard').innerHTML =
+            '<div class="boss-question-text" id="bossQuestionText"></div><div id="bossAnswerArea"></div>';
         this._renderHearts();
         document.getElementById('bossOverlay').classList.add('active');
         this.nextQuestion();
