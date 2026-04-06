@@ -185,6 +185,9 @@ document.getElementById('bossQuestionCard').innerHTML =
 **Regel:** Wenn weitere Overlays/Screens im Projekt `.innerHTML =` auf Container-Elemente setzen,
 die Kind-IDs enthalten, muss der nächste `start()`/`open()`-Aufruf diese IDs ebenfalls wiederherstellen.
 
+## Offene Punkte (Scoring)
+- **Engagement vs. Qualität Balance:** Häufiges Spielen mit schlechten Ergebnissen schlägt selten-aber-perfekte Spieler (z.B. Eva 35% täglich > Stefan 95% wöchentlich). Aktuell gewollt, langfristig ggf. Mindest-Qualität als Engagement-Multiplikator einführen.
+
 ## Offene Punkte
 - **Hash → Stabile ID Migration** ausführen (Forge → "ID-Migration") sobald alle `_fileGroup`-Zuordnungen korrekt sind
 - Nach Migration: `buildMigrationMap` + `_oldQuestionId`-Logik vereinfachen
