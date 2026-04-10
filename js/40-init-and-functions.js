@@ -1568,6 +1568,15 @@ function importQuestionSet(event) {
 // Keyboard controls for quiz
 
 document.addEventListener('keydown', function(e) {
+    // Start Screen: Enter startet Quiz wenn Nutzer ausgewählt
+    const startScreen = document.getElementById('startScreen');
+    if (startScreen && startScreen.classList.contains('active')) {
+        if (e.key === 'Enter' && currentUser) {
+            e.preventDefault();
+            startQuiz();
+            return;
+        }
+    }
     // Quiz Screen Keyboard Handler
     const quizScreen = document.getElementById('quizScreen');
     if (quizScreen && quizScreen.classList.contains('active')) {

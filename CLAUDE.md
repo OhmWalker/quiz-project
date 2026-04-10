@@ -206,3 +206,4 @@ die Kind-IDs enthalten, muss der nächste `start()`/`open()`-Aufruf diese IDs eb
 - Browser-Cache: `Ctrl + Shift + R` nach Build
 - Git: SSH-Zugang, E-Mail: `OhmWalker@users.noreply.github.com`
 - User spricht Deutsch, Commit-Messages auf Deutsch
+- **Lernprojekt-MDs nicht committen:** `FEATURE-ANALYSE.md`, `LEITFADEN.md`, `LERNPLAN-VORGEHEN.md`, `LERNPROJEKT-VORLAGE.md` bleiben unversioniert (gehören zum Lernprojekt, nicht zum Quiz-System)
