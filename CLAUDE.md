@@ -73,6 +73,30 @@
 - SVG: `setAttribute('class', ...)` statt `className` (SVGAnimatedString-Problem)
 - Zonen-Zähler wird live in `_imRedraw()` aktualisiert, Zonen löschbar per ✕-Klick
 
+## Spaced-Repetition-Settings (in Master-JSON `spacedRepetition`-Block)
+
+| Setting | Wert | Bedeutung |
+|---|---|---|
+| `maxCoreFirst` | **7** | Max. Core-Fragen im 1. Quiz des Tages (7 von 10 Slots) |
+| `maxCoreSubsequent` | **3** | Max. Core-Fragen in Folge-Quizzen (3 von 10 Slots) |
+| `freshQuota` | **50** | 50% der Non-Core-Slots für neue/seltene Fragen reserviert |
+| `freshThreshold` | **1** | Frage gilt als "neu" wenn ≤ 1× gestellt |
+| `randomness` | **50** | 50% Zufallsanteil (0 = reines SR, 100 = komplett zufällig) |
+| `streakThreshold` | **2** | Cooldown nach 2 richtigen in Folge (statt 3) |
+| `streakCooldown` | **48** | Cooldown-Dauer in Stunden |
+
+### Simulations-Ergebnisse (100 Runs, 370 Fragen, 80 Core, 65–100% richtig)
+- **287 von 290 Normal-Fragen** gestellt (99% — vorher 0% mit maxCore=999)
+- Ø Core-Slots/Quiz: **7,0** (1. Quiz) / **3,0** (Folge-Quizze) / **4,16** (gesamt)
+- Ø Normal-Slots/Quiz: **3,0** (1. Quiz) / **7,0** (Folge-Quizze) / **5,84** (gesamt)
+- SR-Faktor: **7,55×** (schwierige Fragen erscheinen 7,55× häufiger als gut beherrschte)
+- freshQuota: 97% der reservierten Slots mit echten Neu-Fragen besetzt
+- 68 Fragen am Ende im 48h-Cooldown (streakThreshold=2 erzeugt mehr Rotation)
+
+### Hinweis `freshQuota`
+Wert in JSON als **Prozentzahl (0–100)** angeben — der Code teilt intern durch 100.
+`freshQuota: 50` = 50% der Non-Core-Slots reserviert.
+
 ## Scoring-System
 - **Qualität** (50%): Gewichteter Ø richtige Antworten mit Zeitverfall (decay 0.99/Tag)
 - **Engagement** (50%): `min(QuizIn90Tagen / Ziel, 1) × max(0, 1 − TageSeitletztemQuiz / maxAge) × 100`
