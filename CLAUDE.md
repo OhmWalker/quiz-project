@@ -81,21 +81,33 @@
 | `maxCoreSubsequent` | **3** | Max. Core-Fragen in Folge-Quizzen (3 von 10 Slots) |
 | `freshQuota` | **50** | 50% der Non-Core-Slots für neue/seltene Fragen reserviert |
 | `freshThreshold` | **1** | Frage gilt als "neu" wenn ≤ 1× gestellt |
-| `randomness` | **50** | 50% Zufallsanteil (0 = reines SR, 100 = komplett zufällig) |
+| `randomness` | **30** | 30% Zufallsanteil (0 = reines SR, 100 = komplett zufällig) |
 | `streakThreshold` | **2** | Cooldown nach 2 richtigen in Folge (statt 3) |
 | `streakCooldown` | **48** | Cooldown-Dauer in Stunden |
 
 ### Simulations-Skript
 `tools/simulate.py` — `python3 tools/simulate.py`
-Settings oben in `CONFIG` anpassen (müssen identisch mit Master-JSON sein), dann neu starten.
+`python3 tools/simulate.py --szenarien` — 4 Konfigurationen im Direktvergleich
+Enthält beide SR-Fixes (consecutiveCorrect-Bonus + prevLastAsked-Reset).
 
-### Simulations-Ergebnisse (100 Runs, 370 Fragen, 80 Core, 65–100% richtig)
-- **287 von 290 Normal-Fragen** gestellt (99% — vorher 0% mit maxCore=999)
+### Simulations-Ergebnisse (100 Runs, 380 Fragen, 80 Core, 65–100% richtig, random=30)
+- **261 von 300 Normal-Fragen** gestellt (87%)
 - Ø Core-Slots/Quiz: **7,0** (1. Quiz) / **3,0** (Folge-Quizze) / **4,16** (gesamt)
 - Ø Normal-Slots/Quiz: **3,0** (1. Quiz) / **7,0** (Folge-Quizze) / **5,84** (gesamt)
-- SR-Faktor: **7,55×** (schwierige Fragen erscheinen 7,55× häufiger als gut beherrschte)
-- freshQuota: 97% der reservierten Slots mit echten Neu-Fragen besetzt
-- 68 Fragen am Ende im 48h-Cooldown (streakThreshold=2 erzeugt mehr Rotation)
+- SR-Faktor: **7,1×** (schwierige Fragen erscheinen 7,1× häufiger als gut beherrschte)
+- freshQuota: 87,8% der reservierten Slots mit echten Neu-Fragen besetzt
+- Cluster-Indikator: **2,08** Ø gleiche Fragen in aufeinanderfolgenden Quizzen
+- 269 Cooldowns ausgelöst, 133 Resets (Fix 2 aktiv), 61 Fragen am Ende im Cooldown
+
+### Szenarien-Vergleich (--szenarien)
+| Szenario | SR-Faktor | Cluster | Normal% |
+|---|---|---|---|
+| Aktuell (random=30, threshold=2) | 7,1× | 2,08 | 87% |
+| Wenig Zufall (random=15, threshold=2) | 7,2× | 2,57 | 84% |
+| Strenger CD (random=30, threshold=3) | 7,0× | 1,97 | 87% |
+| Konservativ (random=20, threshold=2) | 8,7× | 2,70 | 68% |
+
+**Erkenntnis:** Weniger randomness = mehr Cluster (SR dominiert, immer dieselben schwachen Fragen). threshold=3 verbessert Cluster minimal, erzeugt aber weniger Rotation.
 
 ### Hinweis `freshQuota`
 Wert in JSON als **Prozentzahl (0–100)** angeben — der Code teilt intern durch 100.
@@ -161,6 +173,20 @@ qs.consecutiveCorrect = (qs.consecutiveCorrect || 0) + 1;
 - `20` → starkes SR, kaum Zufall
 
 **Kein Build nötig** — nur Master-JSON anpassen.
+
+### SR-Fallback-Defaults (`js/30-globals.js`)
+
+Die Defaults in `js/30-globals.js` (Fallback wenn kein `spacedRepetition`-Block in der Master-JSON) sind auf die produktiven Werte gesetzt:
+`streakThreshold: 2, randomness: 30, freshQuota: 50, maxCoreFirst: 7, maxCoreSubsequent: 3`
+
+**Warum wichtig:** Vorher standen Fallbacks auf `streakThreshold: 3` und `maxCoreFirst: 999` — Code-interne `|| 3` Defaults galten wenn JSON fehlte oder leer war.
+
+### SR-Abweichungs-Toast (`js/32-file-io.js`)
+
+Nach jedem Master-JSON-Load werden die geladenen SR-Werte mit `SR_EXPECTED` verglichen. Bei Abweichung erscheint 1,5 Sekunden nach dem Load ein Toast:
+> ⚠ SR-Einstellungen weichen ab: `streakThreshold=3 (erwartet: 2)`
+
+Zweck: Sofort sichtbar wenn auf dem Standalone-System eine alte/falsche JSON geladen wurde — ohne DevTools.
 
 ## Scoring-System
 - **Qualität** (50%): Gewichteter Ø richtige Antworten mit Zeitverfall (decay 0.99/Tag)
