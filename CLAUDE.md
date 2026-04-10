@@ -85,6 +85,10 @@
 | `streakThreshold` | **2** | Cooldown nach 2 richtigen in Folge (statt 3) |
 | `streakCooldown` | **48** | Cooldown-Dauer in Stunden |
 
+### Simulations-Skript
+`tools/simulate.py` — `python3 tools/simulate.py`
+Settings oben in `CONFIG` anpassen (müssen identisch mit Master-JSON sein), dann neu starten.
+
 ### Simulations-Ergebnisse (100 Runs, 370 Fragen, 80 Core, 65–100% richtig)
 - **287 von 290 Normal-Fragen** gestellt (99% — vorher 0% mit maxCore=999)
 - Ø Core-Slots/Quiz: **7,0** (1. Quiz) / **3,0** (Folge-Quizze) / **4,16** (gesamt)
