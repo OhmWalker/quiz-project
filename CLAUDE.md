@@ -128,6 +128,35 @@ if ((s.consecutiveCorrect || 0) >= 1)
 
 **Keine Änderung an Master-JSON nötig** — reine Berechnungslogik im Code.
 
+### Cooldown-Endlosschleife (analysiert + behoben)
+
+**Problem (Bug 7):** `consecutiveCorrect` wurde nach Cooldown-Ablauf nie zurückgesetzt.
+- Frage 2× richtig → Cooldown (48h) → Cooldown abgelaufen
+- 1× richtig beantwortet → `consecutiveCorrect` steigt auf 3 → **sofort wieder Cooldown**
+- Frage pendelt endlos: Cooldown → 1× richtig → Cooldown → ...
+- Erklärt: "Fragen die ich kann tauchen trotzdem dauernd auf"
+
+**Fix (in `js/10-plugin-classic-quiz.js`, `update_stats`):**
+Vor dem Increment prüfen ob der Cooldown abgelaufen war — wenn ja, erst `consecutiveCorrect = 0`:
+```javascript
+if (prevConsec >= streakThreshold && qs.lastAsked) {
+    const elapsed = Date.now() - new Date(qs.lastAsked).getTime();
+    if (elapsed >= cooldownMs) qs.consecutiveCorrect = 0;
+}
+qs.consecutiveCorrect = (qs.consecutiveCorrect || 0) + 1;
+```
+
+### Cluster-Problem durch hohe randomness
+
+**Problem:** `randomness: 50` entspricht ±50 Zufallspunkten auf einer 0–100 Skala. Bei ähnlich priorisierten Fragen entscheidet fast nur der Zufall → gleiche Fragen werden zufällig mehrfach gezogen (Cluster).
+
+**Lösung:** `randomness` in Master-JSON auf **30** senken (`Ctrl+F → "randomness"`).
+- `50` → SR-Effekt schwach, Cluster häufig
+- `30` → SR gewinnt klar, noch genug Abwechslung
+- `20` → starkes SR, kaum Zufall
+
+**Kein Build nötig** — nur Master-JSON anpassen.
+
 ## Scoring-System
 - **Qualität** (50%): Gewichteter Ø richtige Antworten mit Zeitverfall (decay 0.99/Tag)
 - **Engagement** (50%): `min(QuizIn90Tagen / Ziel, 1) × max(0, 1 − TageSeitletztemQuiz / maxAge) × 100`
