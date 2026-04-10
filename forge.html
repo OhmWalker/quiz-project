@@ -3707,13 +3707,13 @@
             superAdminPassword: 'super',
             avatarPreset: 1,
             spacedRepetition: {
-                randomness: 40,         // 0-100: 0=pure SR, 100=komplett zufällig
+                randomness: 30,         // 0-100: 0=pure SR, 100=komplett zufällig
                 streakCooldown: 48,     // Stunden Sperre nach N korrekt in Folge
-                streakThreshold: 3,     // Anzahl korrekt in Folge für Sperre
-                freshQuota: 0,          // % neue/seltene Fragen pro Quiz (0=deaktiviert)
+                streakThreshold: 2,     // Anzahl korrekt in Folge für Sperre
+                freshQuota: 50,         // % neue/seltene Fragen pro Quiz (0=deaktiviert)
                 freshThreshold: 1,      // max. asked-Zahl für "selten gestellt"
-                maxCoreFirst: 999,      // max. Core-Fragen im 1. Quiz des Tages (999=kein Limit)
-                maxCoreSubsequent: 999  // max. Core-Fragen in Folge-Quizzen (999=kein Limit)
+                maxCoreFirst: 7,        // max. Core-Fragen im 1. Quiz des Tages
+                maxCoreSubsequent: 3    // max. Core-Fragen in Folge-Quizzen
             },
             timer: {
                 secondsPerQuestion: 3,
@@ -4071,6 +4071,17 @@
             // Master-Daten laden (keine Fragen mehr im Master!)
             quizSettings = { ...quizSettings, ...masterData.settings };
             ensureSettingsDefaults(quizSettings);
+
+            // SR-Einstellungen prüfen: Warnung wenn Werte von den erwarteten Werten abweichen
+            (function() {
+                const SR_EXPECTED = { randomness: 30, streakCooldown: 48, streakThreshold: 2, freshQuota: 50, freshThreshold: 1, maxCoreFirst: 7, maxCoreSubsequent: 3 };
+                const sr = quizSettings.spacedRepetition || {};
+                const abweichungen = Object.entries(SR_EXPECTED)
+                    .filter(([k, v]) => sr[k] !== undefined && sr[k] !== v)
+                    .map(([k, v]) => `${k}=${sr[k]} (erwartet: ${v})`);
+                if (abweichungen.length > 0)
+                    setTimeout(() => Toast.show('⚠ SR-Einstellungen weichen ab:\n' + abweichungen.join(', '), 'warning'), 1500);
+            })();
 
             // Fähigkeiten-Overrides anwenden
             if (quizSettings.abilityOverrides) {
