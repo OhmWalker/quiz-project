@@ -641,6 +641,9 @@
             background: rgba(231, 76, 60, 0.2);
         }
 
+        .text-answer-input.correct  { background: rgba(46, 204, 113, 0.2); border-color: var(--correct); }
+        .text-answer-input.incorrect { background: rgba(231, 76, 60, 0.2);  border-color: var(--incorrect); }
+
         .answer-btn:disabled {
             cursor: not-allowed;
             opacity: 0.6;
@@ -2753,6 +2756,14 @@
         }
         .boss-sprite.hit { animation: bossHit 0.5s ease-out; }
         .boss-sprite.attacking { animation: bossAttack 0.6s ease-out; }
+        .boss-ability-chip { display:inline-flex;flex-direction:column;align-items:center;background:rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.15);border-radius:10px;padding:5px 10px;font-size:0.78rem;cursor:default;transition:border-color .3s,background .3s; }
+        .boss-ability-chip .chip-name { font-weight:700; }
+        .boss-ability-chip .chip-desc { opacity:0.65;font-size:0.7rem;margin-top:2px;text-align:center; }
+        @keyframes abilityPulse {
+            0%,100% { box-shadow: 0 0 0 0 transparent; }
+            50%      { box-shadow: 0 0 0 6px var(--pulse-color); }
+        }
+        .boss-ability-chip.active { animation: abilityPulse 0.7s ease-in-out 3; border-width:2px; }
         .boss-hp-bar {
             width: 100%; height: 28px; background: rgba(255,255,255,0.1);
             border-radius: 14px; overflow: hidden; margin: 10px 0;
@@ -4158,7 +4169,7 @@
             },
             // UI
             UI: {
-                TOAST_DURATION_MS: 3000,
+                TOAST_DURATION_MS: 8000,
                 TOAST_FADE_MS: 300,
                 SCROLL_DELAY_MS: 100,
                 ANIMATION_DURATION_MS: 300
@@ -5130,13 +5141,11 @@
                     if (input) {
                         input.disabled = true;
                         input.classList.add(isCorrect ? 'correct' : 'incorrect');
-                        if (!isCorrect) {
-                            const correct = getCorrectTextAnswers(q);
-                            const hint = document.createElement('div');
-                            hint.style.cssText = 'margin-top:10px;color:var(--correct);font-weight:700;';
-                            hint.textContent = 'Richtige Antwort: ' + correct.join(' / ');
-                            input.parentNode.appendChild(hint);
-                        }
+                        const correct = getCorrectTextAnswers(q);
+                        const hint = document.createElement('div');
+                        hint.style.cssText = 'margin-top:10px;font-weight:700;color:' + (isCorrect ? 'var(--correct)' : 'var(--incorrect)');
+                        hint.textContent = (isCorrect ? '✓ ' : '✗ Richtig wäre: ') + correct.join(' / ');
+                        input.parentNode.appendChild(hint);
                     }
                 }
                 // XP calculation
@@ -5531,6 +5540,7 @@
                     if (newCharges > 0) {
                         ab[key].charges = (ab[key].charges || 0) + newCharges;
                         user.chargesEarned[key] = totalEarned;
+                        Toast.show(`${def.icon} ${def.name}: +${newCharges} Ladung${newCharges > 1 ? 'en' : ''} verdient!`, 'success');
                     }
 
                     ab[key].unlocked = totalEarned > 0 || ab[key].unlocked || (ab[key].charges || 0) > 0;
@@ -5707,7 +5717,7 @@
                         currentUser.teamBonusActive = true;
                         // Bonus für Mitspieler vormerken (wird beim nächsten Laden angewendet)
                         target.pendingTeamBonus = (target.pendingTeamBonus || 0) + 50;
-                        Toast.show(`👥 Team-Bonus aktiviert!\n3× XP für dich, +50 Bonus-XP für ${target.name}!`, 'success', 5000);
+                        Toast.show(`👥 Team-Bonus aktiviert!\n3× XP für dich, +50 Bonus-XP für ${target.name}!`, 'success');
                         self.renderAbilityBar();
                     };
                 });
@@ -5768,7 +5778,7 @@
                             from: currentUser.name, questionId: question.questionId,
                             questionText: question.text, date: new Date().toISOString()
                         });
-                        Toast.show(`📞 ${target.name} bekommt die Frage beim nächsten Quiz!\nBei richtig: 5× XP Bonus für euch beide!`, 'success', 5000);
+                        Toast.show(`📞 ${target.name} bekommt die Frage beim nächsten Quiz!\nBei richtig: 5× XP Bonus für euch beide!`, 'success');
                         // Skip question
                         userAnswers.push({ questionId: question.questionId, correct: false, xp: 0, skipped: true, phoneJokerTo: target.name });
                         ClassicQuizPlugin.nextQuestion();
@@ -5786,7 +5796,7 @@
                 // Apply pending joker bonus (set by cross-reference on import)
                 if (user.pendingJokerBonus && user.pendingJokerBonus > 0) {
                     const bonus = user.pendingJokerBonus;
-                    Toast.show(`📞 Telefon-Joker Bonus: +${bonus} XP!`, 'success', 5000);
+                    Toast.show(`📞 Telefon-Joker Bonus: +${bonus} XP!`, 'success');
                     user.totalXP = (user.totalXP || 0) + bonus;
                     user.pendingJokerBonus = 0;
                     const lvl = calculateLevel(user.totalXP);
@@ -5795,7 +5805,7 @@
                 // Show pending (unresolved) joker notifications
                 if (!user.pendingPhoneJoker || user.pendingPhoneJoker.length === 0) return;
                 user.pendingPhoneJoker.filter(j => !j.resolved).forEach(j => {
-                    Toast.show(`📞 Telefon-Joker von ${j.from}:\n"${j.questionText}"`, 'info', 8000);
+                    Toast.show(`📞 Telefon-Joker von ${j.from}:\n"${j.questionText}"`, 'info');
                 });
             },
 
@@ -6106,7 +6116,12 @@
                 document.getElementById('bossHpText').textContent = `${s.hp} / ${s.maxHP}`;
                 document.getElementById('bossCloseBtn').style.display = 'none';
                 document.getElementById('bossEffectText').textContent = '';
-                document.getElementById('bossAbilities').innerHTML = '';
+                document.getElementById('bossAbilities').innerHTML = s.boss.abilities.map((ab, i) =>
+                    `<div class="boss-ability-chip" id="bossChip${i}" style="--pulse-color:${s.boss.color};border-color:rgba(255,255,255,0.15);">
+                        <span class="chip-name" style="color:${s.boss.color};">${ab.name}</span>
+                        <span class="chip-desc">${ab.desc}</span>
+                    </div>`
+                ).join('');
                 // DOM-Struktur wiederherstellen (wird durch _victory/_defeat überschrieben)
                 document.getElementById('bossQuestionCard').innerHTML =
                     '<div class="boss-question-text" id="bossQuestionText"></div><div id="bossAnswerArea"></div>';
@@ -6124,12 +6139,20 @@
 
             _showAbilityNotification(ability) {
                 const s = this._state;
-                const el = document.getElementById('bossAbilities');
-                el.innerHTML = `<div style="background:rgba(0,0,0,0.45);border:2px solid ${s.boss.color};border-radius:8px;padding:8px 12px;margin-top:8px;text-align:center;animation:fadeIn .3s;">
-                    <div style="font-weight:700;color:${s.boss.color};">${ability.name}</div>
-                    <div style="font-size:0.83em;color:#ddd;margin-top:3px;">${ability.desc}</div>
-                </div>`;
-                setTimeout(() => { if (el) el.innerHTML = ''; }, 3000);
+                // Chip-Index ermitteln und highlighten
+                const idx = s.boss.abilities.findIndex(ab => ab.id === ability.id);
+                if (idx >= 0) {
+                    const chip = document.getElementById(`bossChip${idx}`);
+                    if (chip) {
+                        chip.classList.remove('active');
+                        void chip.offsetWidth; // reflow für Neustart der Animation
+                        chip.classList.add('active');
+                        setTimeout(() => chip.classList.remove('active'), 2100);
+                    }
+                }
+                // EffectText setzen (bleibt bis zur nächsten Frage)
+                const et = document.getElementById('bossEffectText');
+                if (et) { et.style.color = s.boss.color; et.textContent = `${ability.name} wird eingesetzt!`; }
             },
 
             _clearIntervals() {

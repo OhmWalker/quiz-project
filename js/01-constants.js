@@ -86,7 +86,7 @@ const CONFIG = {
     },
     // UI
     UI: {
-        TOAST_DURATION_MS: 3000,
+        TOAST_DURATION_MS: 8000,
         TOAST_FADE_MS: 300,
         SCROLL_DELAY_MS: 100,
         ANIMATION_DURATION_MS: 300

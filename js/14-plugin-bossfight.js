@@ -95,7 +95,12 @@ const BossFightPlugin = {
         document.getElementById('bossHpText').textContent = `${s.hp} / ${s.maxHP}`;
         document.getElementById('bossCloseBtn').style.display = 'none';
         document.getElementById('bossEffectText').textContent = '';
-        document.getElementById('bossAbilities').innerHTML = '';
+        document.getElementById('bossAbilities').innerHTML = s.boss.abilities.map((ab, i) =>
+            `<div class="boss-ability-chip" id="bossChip${i}" style="--pulse-color:${s.boss.color};border-color:rgba(255,255,255,0.15);">
+                <span class="chip-name" style="color:${s.boss.color};">${ab.name}</span>
+                <span class="chip-desc">${ab.desc}</span>
+            </div>`
+        ).join('');
         // DOM-Struktur wiederherstellen (wird durch _victory/_defeat überschrieben)
         document.getElementById('bossQuestionCard').innerHTML =
             '<div class="boss-question-text" id="bossQuestionText"></div><div id="bossAnswerArea"></div>';
@@ -113,12 +118,20 @@ const BossFightPlugin = {
 
     _showAbilityNotification(ability) {
         const s = this._state;
-        const el = document.getElementById('bossAbilities');
-        el.innerHTML = `<div style="background:rgba(0,0,0,0.45);border:2px solid ${s.boss.color};border-radius:8px;padding:8px 12px;margin-top:8px;text-align:center;animation:fadeIn .3s;">
-            <div style="font-weight:700;color:${s.boss.color};">${ability.name}</div>
-            <div style="font-size:0.83em;color:#ddd;margin-top:3px;">${ability.desc}</div>
-        </div>`;
-        setTimeout(() => { if (el) el.innerHTML = ''; }, 3000);
+        // Chip-Index ermitteln und highlighten
+        const idx = s.boss.abilities.findIndex(ab => ab.id === ability.id);
+        if (idx >= 0) {
+            const chip = document.getElementById(`bossChip${idx}`);
+            if (chip) {
+                chip.classList.remove('active');
+                void chip.offsetWidth; // reflow für Neustart der Animation
+                chip.classList.add('active');
+                setTimeout(() => chip.classList.remove('active'), 2100);
+            }
+        }
+        // EffectText setzen (bleibt bis zur nächsten Frage)
+        const et = document.getElementById('bossEffectText');
+        if (et) { et.style.color = s.boss.color; et.textContent = `${ability.name} wird eingesetzt!`; }
     },
 
     _clearIntervals() {

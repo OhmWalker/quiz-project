@@ -396,6 +396,9 @@
     background: rgba(231, 76, 60, 0.2);
 }
 
+.text-answer-input.correct  { background: rgba(46, 204, 113, 0.2); border-color: var(--correct); }
+.text-answer-input.incorrect { background: rgba(231, 76, 60, 0.2);  border-color: var(--incorrect); }
+
 .answer-btn:disabled {
     cursor: not-allowed;
     opacity: 0.6;

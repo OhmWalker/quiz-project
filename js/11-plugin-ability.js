@@ -104,6 +104,7 @@ const AbilityPlugin = {
             if (newCharges > 0) {
                 ab[key].charges = (ab[key].charges || 0) + newCharges;
                 user.chargesEarned[key] = totalEarned;
+                Toast.show(`${def.icon} ${def.name}: +${newCharges} Ladung${newCharges > 1 ? 'en' : ''} verdient!`, 'success');
             }
 
             ab[key].unlocked = totalEarned > 0 || ab[key].unlocked || (ab[key].charges || 0) > 0;
@@ -280,7 +281,7 @@ const AbilityPlugin = {
                 currentUser.teamBonusActive = true;
                 // Bonus für Mitspieler vormerken (wird beim nächsten Laden angewendet)
                 target.pendingTeamBonus = (target.pendingTeamBonus || 0) + 50;
-                Toast.show(`👥 Team-Bonus aktiviert!\n3× XP für dich, +50 Bonus-XP für ${target.name}!`, 'success', 5000);
+                Toast.show(`👥 Team-Bonus aktiviert!\n3× XP für dich, +50 Bonus-XP für ${target.name}!`, 'success');
                 self.renderAbilityBar();
             };
         });
@@ -341,7 +342,7 @@ const AbilityPlugin = {
                     from: currentUser.name, questionId: question.questionId,
                     questionText: question.text, date: new Date().toISOString()
                 });
-                Toast.show(`📞 ${target.name} bekommt die Frage beim nächsten Quiz!\nBei richtig: 5× XP Bonus für euch beide!`, 'success', 5000);
+                Toast.show(`📞 ${target.name} bekommt die Frage beim nächsten Quiz!\nBei richtig: 5× XP Bonus für euch beide!`, 'success');
                 // Skip question
                 userAnswers.push({ questionId: question.questionId, correct: false, xp: 0, skipped: true, phoneJokerTo: target.name });
                 ClassicQuizPlugin.nextQuestion();
@@ -359,7 +360,7 @@ const AbilityPlugin = {
         // Apply pending joker bonus (set by cross-reference on import)
         if (user.pendingJokerBonus && user.pendingJokerBonus > 0) {
             const bonus = user.pendingJokerBonus;
-            Toast.show(`📞 Telefon-Joker Bonus: +${bonus} XP!`, 'success', 5000);
+            Toast.show(`📞 Telefon-Joker Bonus: +${bonus} XP!`, 'success');
             user.totalXP = (user.totalXP || 0) + bonus;
             user.pendingJokerBonus = 0;
             const lvl = calculateLevel(user.totalXP);
@@ -368,7 +369,7 @@ const AbilityPlugin = {
         // Show pending (unresolved) joker notifications
         if (!user.pendingPhoneJoker || user.pendingPhoneJoker.length === 0) return;
         user.pendingPhoneJoker.filter(j => !j.resolved).forEach(j => {
-            Toast.show(`📞 Telefon-Joker von ${j.from}:\n"${j.questionText}"`, 'info', 8000);
+            Toast.show(`📞 Telefon-Joker von ${j.from}:\n"${j.questionText}"`, 'info');
         });
     },
 

@@ -297,13 +297,11 @@ const ClassicQuizPlugin = {
             if (input) {
                 input.disabled = true;
                 input.classList.add(isCorrect ? 'correct' : 'incorrect');
-                if (!isCorrect) {
-                    const correct = getCorrectTextAnswers(q);
-                    const hint = document.createElement('div');
-                    hint.style.cssText = 'margin-top:10px;color:var(--correct);font-weight:700;';
-                    hint.textContent = 'Richtige Antwort: ' + correct.join(' / ');
-                    input.parentNode.appendChild(hint);
-                }
+                const correct = getCorrectTextAnswers(q);
+                const hint = document.createElement('div');
+                hint.style.cssText = 'margin-top:10px;font-weight:700;color:' + (isCorrect ? 'var(--correct)' : 'var(--incorrect)');
+                hint.textContent = (isCorrect ? '✓ ' : '✗ Richtig wäre: ') + correct.join(' / ');
+                input.parentNode.appendChild(hint);
             }
         }
         // XP calculation

@@ -192,6 +192,17 @@ document.getElementById('bossQuestionCard').innerHTML =
 **Regel:** Wenn weitere Overlays/Screens im Projekt `.innerHTML =` auf Container-Elemente setzen,
 die Kind-IDs enthalten, muss der nächste `start()`/`open()`-Aufruf diese IDs ebenfalls wiederherstellen.
 
+### Boss-Fähigkeiten-Anzeige
+- `#bossAbilities` zeigt beim Start **dauerhaft beide Fähigkeiten** als Chips (`.boss-ability-chip`)
+- Chip-Name in Boss-Farbe, Beschreibung darunter — bleibt die gesamte Runde sichtbar
+- Beim Einsatz: **Puls-Animation** (`.active`-Klasse, 3× Glow in Boss-Farbe, 2,1 Sek.) + `#bossEffectText` zeigt `"[Name] wird eingesetzt!"` bis zur nächsten Frage
+- `_showAbilityNotification(ability)` sucht den Chip per `ability.id`-Index (`bossChip0` / `bossChip1`)
+
+## Feedback & Toasts
+- **Toast-Dauer:** 8 Sekunden (Standard `TOAST_DURATION_MS` in `js/01-constants.js`) — alle hardcodierten Werte entfernt
+- **Ability-Charge-Toast:** bei jeder neu verdienten Ladung erscheint `[Icon] [Name]: +N Ladung(en) verdient!`
+- **Freitext-Fragen:** Eingabefeld erhält grünen/roten Hintergrund (`correct`/`incorrect`-Klassen in CSS); darunter immer die richtige Antwort — bei richtig `✓ [Antwort]`, bei falsch `✗ Richtig wäre: [Antwort]`
+
 ## Offene Punkte (Scoring)
 - **Engagement vs. Qualität Balance:** Häufiges Spielen mit schlechten Ergebnissen schlägt selten-aber-perfekte Spieler (z.B. Eva 35% täglich > Stefan 95% wöchentlich). Aktuell gewollt, langfristig ggf. Mindest-Qualität als Engagement-Multiplikator einführen.
 
