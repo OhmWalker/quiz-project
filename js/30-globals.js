@@ -39,13 +39,13 @@ const SETTINGS_DEFAULTS = {
     superAdminPassword: 'super',
     avatarPreset: 1,
     spacedRepetition: {
-        randomness: 40,         // 0-100: 0=pure SR, 100=komplett zufällig
+        randomness: 30,         // 0-100: 0=pure SR, 100=komplett zufällig
         streakCooldown: 48,     // Stunden Sperre nach N korrekt in Folge
-        streakThreshold: 3,     // Anzahl korrekt in Folge für Sperre
-        freshQuota: 0,          // % neue/seltene Fragen pro Quiz (0=deaktiviert)
+        streakThreshold: 2,     // Anzahl korrekt in Folge für Sperre
+        freshQuota: 50,         // % neue/seltene Fragen pro Quiz (0=deaktiviert)
         freshThreshold: 1,      // max. asked-Zahl für "selten gestellt"
-        maxCoreFirst: 999,      // max. Core-Fragen im 1. Quiz des Tages (999=kein Limit)
-        maxCoreSubsequent: 999  // max. Core-Fragen in Folge-Quizzen (999=kein Limit)
+        maxCoreFirst: 7,        // max. Core-Fragen im 1. Quiz des Tages
+        maxCoreSubsequent: 3    // max. Core-Fragen in Folge-Quizzen
     },
     timer: {
         secondsPerQuestion: 3,

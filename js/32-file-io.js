@@ -117,6 +117,17 @@ async function loadFromFolderInput(event) {
     quizSettings = { ...quizSettings, ...masterData.settings };
     ensureSettingsDefaults(quizSettings);
 
+    // SR-Einstellungen prüfen: Warnung wenn Werte von den erwarteten Werten abweichen
+    (function() {
+        const SR_EXPECTED = { randomness: 30, streakCooldown: 48, streakThreshold: 2, freshQuota: 50, freshThreshold: 1, maxCoreFirst: 7, maxCoreSubsequent: 3 };
+        const sr = quizSettings.spacedRepetition || {};
+        const abweichungen = Object.entries(SR_EXPECTED)
+            .filter(([k, v]) => sr[k] !== undefined && sr[k] !== v)
+            .map(([k, v]) => `${k}=${sr[k]} (erwartet: ${v})`);
+        if (abweichungen.length > 0)
+            setTimeout(() => Toast.show('⚠ SR-Einstellungen weichen ab:\n' + abweichungen.join(', '), 'warning'), 1500);
+    })();
+
     // Fähigkeiten-Overrides anwenden
     if (quizSettings.abilityOverrides) {
         Object.keys(quizSettings.abilityOverrides).forEach(function(key) {
