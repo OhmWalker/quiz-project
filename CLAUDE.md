@@ -137,14 +137,19 @@ if ((s.consecutiveCorrect || 0) >= 1)
 - Erklärt: "Fragen die ich kann tauchen trotzdem dauernd auf"
 
 **Fix (in `js/10-plugin-classic-quiz.js`, `update_stats`):**
-Vor dem Increment prüfen ob der Cooldown abgelaufen war — wenn ja, erst `consecutiveCorrect = 0`:
+`prevLastAsked` VOR dem Überschreiben von `qs.lastAsked` merken, dann Cooldown-Check dagegen:
 ```javascript
-if (prevConsec >= streakThreshold && qs.lastAsked) {
-    const elapsed = Date.now() - new Date(qs.lastAsked).getTime();
+const prevLastAsked = qs.lastAsked; // VOR Überschreibung merken!
+qs.asked++;
+qs.lastAsked = new Date().toISOString();
+// ...
+if (prevConsec >= streakThreshold && prevLastAsked) {
+    const elapsed = Date.now() - new Date(prevLastAsked).getTime();
     if (elapsed >= cooldownMs) qs.consecutiveCorrect = 0;
 }
 qs.consecutiveCorrect = (qs.consecutiveCorrect || 0) + 1;
 ```
+**Erster Fix-Versuch hatte selbst einen Bug:** `qs.lastAsked` wurde auf Zeile 339 überschrieben bevor der Check lief → elapsed war immer ~0ms → Reset griff nie.
 
 ### Cluster-Problem durch hohe randomness
 

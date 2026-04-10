@@ -335,6 +335,7 @@ const ClassicQuizPlugin = {
                 currentUser.questionStats[qid] = { asked: 0, correct: 0, consecutiveCorrect: 0, lastAsked: null };
             }
             const qs = currentUser.questionStats[qid];
+            const prevLastAsked = qs.lastAsked; // VOR Überschreibung merken für Cooldown-Check
             qs.asked++;
             qs.lastAsked = new Date().toISOString();
             qs._q = (q.text || '').replace(/<[^>]*>/g, '').slice(0, 60);
@@ -346,9 +347,8 @@ const ClassicQuizPlugin = {
                 const cooldownMs = (sr.streakCooldown || 48) * 3600000;
                 const streakThreshold = sr.streakThreshold || 3;
                 const prevConsec = qs.consecutiveCorrect || 0;
-                if (prevConsec >= streakThreshold && qs.lastAsked) {
-                    const prevLastAsked = new Date(qs.lastAsked).getTime();
-                    const elapsed = Date.now() - prevLastAsked;
+                if (prevConsec >= streakThreshold && prevLastAsked) {
+                    const elapsed = Date.now() - new Date(prevLastAsked).getTime();
                     if (elapsed >= cooldownMs) qs.consecutiveCorrect = 0;
                 }
                 qs.consecutiveCorrect = (qs.consecutiveCorrect || 0) + 1;
