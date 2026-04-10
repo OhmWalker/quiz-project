@@ -4893,7 +4893,9 @@
                     let priority = 50;
                     if (s) {
                         const asked = s.asked || 0;
-                        const ratio = asked > 0 ? (s.correct || 0) / asked : 0;
+                        let ratio = asked > 0 ? (s.correct || 0) / asked : 0;
+                        if ((s.consecutiveCorrect || 0) >= 1)
+                            ratio = Math.min(1.0, ratio + (s.consecutiveCorrect || 0) * 0.2);
                         priority = Math.max(5, 100 - ratio * 80);
                         if (s.consecutiveCorrect >= streakThreshold && s.lastAsked) {
                             const elapsed = now - new Date(s.lastAsked).getTime();

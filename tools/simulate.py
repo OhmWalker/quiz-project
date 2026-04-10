@@ -325,8 +325,187 @@ def analyze(sim):
     print()
 
 
+# ─── Sticky-Question-Analyse ──────────────────────────────────────────────────
+# Zeigt wie lange eine einmal falsch beantwortete Frage erhöhte Priorität behält,
+# selbst wenn sie danach immer richtig beantwortet wird.
+def analyze_sticky(sim):
+    sr      = CONFIG['spacedRepetition']
+    stats   = sim['user']['questionStats']
+    questions = sim['questions']
+
+    sep = '─' * 60
+
+    # ── 1. Priorität nach X-mal falsch, dann immer richtig ──
+    print()
+    print('═' * 60)
+    print('  STICKY-QUESTION-ANALYSE')
+    print('  Wie lange bleibt eine Frage "schwer" nach frühen Fehlern?')
+    print('═' * 60)
+    print()
+    print(sep)
+    print('A. PRIORITÄT nach N Fehlern zu Beginn, dann immer richtig')
+    print(sep)
+    print(f'  {"Stand":<30} {"asked":>5} {"correct":>7} {"ratio":>6} {"Prio (ohne Zufall)":>18}')
+    print(f'  {"-"*30} {"-----":>5} {"-------":>7} {"------":>6} {"------------------":>18}')
+
+    scenarios = [
+        ('1x falsch, dann richtig',  1, 0),
+        ('2x falsch, dann richtig',  2, 0),
+        ('3x falsch, dann richtig',  3, 0),
+        ('5x falsch, dann richtig',  5, 0),
+    ]
+    streak_threshold = sr['streakThreshold']
+
+    for label, start_wrong, start_right in scenarios:
+        print(f'\n  Szenario: {label}')
+        asked   = start_wrong + start_right
+        correct = start_right
+        consec  = start_right
+
+        for step in range(12):
+            ratio    = correct / asked if asked > 0 else 0
+            in_cd    = consec >= streak_threshold
+            prio_base = 2.0 if in_cd else max(5.0, 100 - ratio * 80)
+            cd_hint  = ' ← Cooldown' if in_cd else ''
+            print(f'  {"  asked="+str(asked)+", correct="+str(correct):<30} {asked:>5} {correct:>7} {ratio*100:>5.0f}% {prio_base:>17.1f}{cd_hint}')
+
+            if step < 11:
+                asked   += 1
+                correct += 1
+                consec  += 1
+                if consec >= streak_threshold:
+                    # nach Cooldown: consecutiveCorrect wird nicht zurückgesetzt
+                    # nächste Frage startet mit consec=0 nach Cooldown-Ende
+                    consec = 0
+
+    # ── 2. Wie viele Fragen sind "dauerhaft hoch" wegen alter Fehler ──
+    print()
+    print(sep)
+    print('B. FRAGEN MIT SCHLECHTER HISTORY ABER GUTER LETZTER SERIE')
+    print(sep)
+    print('  (asked >= 4, ratio < 60%, aber consecutiveCorrect >= 1)')
+    print()
+
+    candidates = []
+    for q in questions:
+        s = stats.get(q['questionId'])
+        if not s:
+            continue
+        asked   = s.get('asked', 0)
+        correct = s.get('correct', 0)
+        consec  = s.get('consecutiveCorrect', 0)
+        if asked < 4:
+            continue
+        ratio   = correct / asked
+        prio    = max(5.0, 100 - ratio * 80)
+        if ratio < 0.6 and consec >= 1:
+            candidates.append({
+                'qid': q['questionId'], 'isCore': q['isCore'],
+                'asked': asked, 'correct': correct, 'ratio': ratio,
+                'consec': consec, 'prio': prio
+            })
+
+    candidates.sort(key=lambda x: x['prio'], reverse=True)
+    print(f'  Betroffene Fragen: {len(candidates)}')
+    print()
+    if candidates:
+        print(f'  {"Frage":<12} {"Typ":<6} {"asked":>5} {"correct":>7} {"ratio":>6} {"consec":>6} {"Prio":>6}')
+        print(f'  {"-"*12} {"-"*6} {"-----":>5} {"-------":>7} {"------":>6} {"------":>6} {"----":>6}')
+        for c in candidates[:15]:
+            typ = 'Core' if c['isCore'] else 'Normal'
+            print(f'  {c["qid"]:<12} {typ:<6} {c["asked"]:>5} {c["correct"]:>7} {c["ratio"]*100:>5.0f}% {c["consec"]:>6} {c["prio"]:>6.1f}')
+        if len(candidates) > 15:
+            print(f'  ... und {len(candidates)-15} weitere')
+
+    # ── 3. Wie lange bis eine Frage auf Prio 5 fällt ──
+    print()
+    print(sep)
+    print('C. QUIZZE BIS PRIORITÄT UNTER 20 FÄLLT (nach N Startfehlern)')
+    print('   (Annahme: danach immer richtig, alle 2 Runs gestellt)')
+    print(sep)
+    print()
+
+    for start_wrong in [1, 2, 3, 5]:
+        asked   = start_wrong
+        correct = 0
+        consec  = 0
+        runs_until_low = 0
+        max_runs = 200
+
+        for r in range(max_runs):
+            ratio = correct / asked if asked > 0 else 0
+            prio  = 2.0 if consec >= streak_threshold else max(5.0, 100 - ratio * 80)
+            if prio <= 20:
+                runs_until_low = r
+                break
+            # nächste richtige Antwort
+            asked   += 1
+            correct += 1
+            consec  += 1
+            if consec >= streak_threshold:
+                consec = 0   # simuliert Cooldown-Reset
+        else:
+            runs_until_low = max_runs
+
+        print(f'  Nach {start_wrong}x falsch zu Beginn: ~{runs_until_low} weitere richtige '
+              f'Antworten bis Prio ≤ 20')
+
+    print()
+
+    # ── 4. Lösungsvorschläge ──
+    print(sep)
+    print('D. LÖSUNGSOPTIONEN (Code-Änderungen in js/10-plugin-classic-quiz.js)')
+    print(sep)
+    print()
+    print('  OPTION 1 — Decay-Fenster (empfohlen)')
+    print('  Nur die letzten N Antworten zählen für die Ratio,')
+    print('  nicht die gesamte History.')
+    print('  Beispiel: N=10 → nach 10 richtigen Antworten ist die alte History weg.')
+    print('  Aufwand: mittel (answered-Array pro Frage speichern)')
+    print()
+    print('  OPTION 2 — Forgetting Curve (sanfter)')
+    print('  Alte Antworten werden mit der Zeit weniger gewichtet.')
+    print('  Ähnlich wie Qualitäts-Score: decay 0.95/Tag auf jede Antwort.')
+    print('  Aufwand: hoch (Timestamp pro Antwort nötig)')
+    print()
+    print('  OPTION 3 — consecutive-Bonus auf die Ratio (einfach)')
+    print('  Ab consecutiveCorrect >= 2: Ratio künstlich um +0.2 anheben.')
+    print('  Schnelle Verbesserung ohne Daten-Struktur-Änderung.')
+    print('  Aufwand: gering (eine Zeile in scoreQuestion)')
+    print()
+    print('  OPTION 4 — Reset nach langer richtiger Serie (simpel)')
+    print('  Ab consecutiveCorrect >= 5: asked und correct auf 5/5 setzen.')
+    print('  Harte Entscheidung, sehr einfach umzusetzen.')
+    print('  Aufwand: gering')
+    print()
+
+    # Simulation Option 3 — consecutiveCorrect-Bonus
+    print(sep)
+    print('  SIMULATION OPTION 3 — consecutive-Bonus +0.2 auf Ratio')
+    print(sep)
+    print(f'  {"Stand":<35} {"Ratio":>6} {"Prio ohne Bonus":>15} {"Prio mit Bonus":>14}')
+    print(f'  {"-"*35} {"------":>6} {"---------------":>15} {"----------":>14}')
+
+    for start_wrong in [2, 3, 5]:
+        asked   = start_wrong
+        correct = 0
+        consec  = 0
+        for step in range(8):
+            ratio       = correct / asked if asked > 0 else 0
+            prio_orig   = max(5.0, 100 - ratio * 80)
+            bonus_ratio = min(1.0, ratio + consec * 0.15)
+            prio_bonus  = max(5.0, 100 - bonus_ratio * 80)
+            label = f'{start_wrong}xF, dann {step}xR, consec={consec}'
+            print(f'  {label:<35} {ratio*100:>5.0f}% {prio_orig:>15.1f} {prio_bonus:>14.1f}')
+            asked   += 1
+            correct += 1
+            consec  += 1
+    print()
+
+
 # ─── Hauptprogramm ────────────────────────────────────────────────────────────
 if __name__ == '__main__':
     random.seed(42)
     sim = run_simulation()
     analyze(sim)
+    analyze_sticky(sim)

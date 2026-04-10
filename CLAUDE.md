@@ -101,6 +101,33 @@ Settings oben in `CONFIG` anpassen (müssen identisch mit Master-JSON sein), dan
 Wert in JSON als **Prozentzahl (0–100)** angeben — der Code teilt intern durch 100.
 `freshQuota: 50` = 50% der Non-Core-Slots reserviert.
 
+### Sticky-Question-Problem (analysiert + behoben)
+
+**Problem:** Prioritätsformel `max(5, 100 − ratio × 80)` ist kumulativ — frühere Fehler werden nie vergessen. Selbst nach vielen richtigen Antworten konvergiert die Priorität asymptotisch gegen ~20, erreicht diesen Wert aber nie. Eine einmal falsch beantwortete Frage blieb dauerhaft erhöht.
+
+**Simulation ergab:** Priorität fällt ohne Fix rechnerisch nie dauerhaft unter 20 — unabhängig von der Anzahl der Startfehler.
+
+**Ziel:** Fragen die 2× richtig beantwortet wurden sollen wieder im normalen Pool landen.
+
+**Fix (in `js/10-plugin-classic-quiz.js`, `scoreQuestion`):**
+```javascript
+if ((s.consecutiveCorrect || 0) >= 1)
+    ratio = Math.min(1.0, ratio + (s.consecutiveCorrect || 0) * 0.2);
+```
+`consecutiveCorrect` hebt die effektive Ratio künstlich an — nach 2 richtigen in Folge (= streakThreshold) landet die Frage im Cooldown (Prio 2) und kehrt danach mit Prio ~36 zurück (normaler Pool). Ein erneuter Fehler setzt `consecutiveCorrect` auf 0 → Prio sofort wieder hoch.
+
+**Prioritäten nach Fix (Beispiel: 3× falsch zu Beginn, streakThreshold=2):**
+
+| Stand | Priorität |
+|---|---|
+| 3× falsch | 100 |
+| +1× richtig (consec=1) | 64 |
+| +2× richtig → Cooldown (consec=2) | 2 (48h) |
+| Nach Cooldown | ~36 ← normaler Pool |
+| Nächste falsch → consec=0 | 73 → sofort wieder hoch |
+
+**Keine Änderung an Master-JSON nötig** — reine Berechnungslogik im Code.
+
 ## Scoring-System
 - **Qualität** (50%): Gewichteter Ø richtige Antworten mit Zeitverfall (decay 0.99/Tag)
 - **Engagement** (50%): `min(QuizIn90Tagen / Ziel, 1) × max(0, 1 − TageSeitletztemQuiz / maxAge) × 100`
