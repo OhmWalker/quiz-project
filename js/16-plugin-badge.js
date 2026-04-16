@@ -138,7 +138,7 @@ const BadgePlugin = {
         // Groups played
         const groups = new Set();
         (questions || []).forEach(q => {
-            const qid = q.questionId || q.id;
+            const qid = q.questionId;
             if (qs[qid] && (qs[qid].asked || 0) > 0) groups.add(q.group || q._fileGroup || 'Standard');
         });
         stats.groupsPlayed = groups.size;

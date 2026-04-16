@@ -240,7 +240,6 @@ AdminShell.registerPanel('id-migration', 'ID-Migration', '🔑', container => {
 
 function _fmBuildExportQ(q) {
     const out = {
-        id:               q.id,
         questionId:       q.questionId,
         text:             q.text,
         type:             q.type,

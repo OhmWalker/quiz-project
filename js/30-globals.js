@@ -208,7 +208,6 @@ function normalizeQuestion(q) {
     // Imagemap-Frage?
     if (q.type === QUESTION_TYPES.IMAGEMAP) {
         return {
-            id: q.id,
             questionId: resolveId(),
             _contentHash: typeof generateQuestionHash === 'function' ? generateQuestionHash(q) : null,
             text: text,
@@ -228,7 +227,6 @@ function normalizeQuestion(q) {
         // Kanonisches Format: immer Array
         const textAnswers = getCorrectTextAnswers(q);
         return {
-            id: q.id,
             questionId: resolveId(),
             _contentHash: typeof generateQuestionHash === 'function' ? generateQuestionHash(q) : null,
             text: text,
@@ -268,7 +266,6 @@ function normalizeQuestion(q) {
     });
 
     return {
-        id: q.id,
         questionId: resolveId(),
         _contentHash: typeof generateQuestionHash === 'function' ? generateQuestionHash(q) : null,
         text: text,

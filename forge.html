@@ -3876,7 +3876,6 @@
             // Imagemap-Frage?
             if (q.type === QUESTION_TYPES.IMAGEMAP) {
                 return {
-                    id: q.id,
                     questionId: resolveId(),
                     _contentHash: typeof generateQuestionHash === 'function' ? generateQuestionHash(q) : null,
                     text: text,
@@ -3896,7 +3895,6 @@
                 // Kanonisches Format: immer Array
                 const textAnswers = getCorrectTextAnswers(q);
                 return {
-                    id: q.id,
                     questionId: resolveId(),
                     _contentHash: typeof generateQuestionHash === 'function' ? generateQuestionHash(q) : null,
                     text: text,
@@ -3936,7 +3934,6 @@
             });
 
             return {
-                id: q.id,
                 questionId: resolveId(),
                 _contentHash: typeof generateQuestionHash === 'function' ? generateQuestionHash(q) : null,
                 text: text,
@@ -4120,7 +4117,6 @@
                             });
                             if (isDupe) { qErrors++; return; }
                             // Eindeutige ID sicherstellen (verschiedene Dateien können gleiche IDs haben)
-                            normalized.id = Date.now() + questions.length + qi;
                             normalized.sourceFile = qf.name;
                             normalized.theme = q.theme || theme;
                             normalized._fileGroup = q._fileGroup || q.theme || theme;
@@ -4142,9 +4138,8 @@
             } else if (masterData.questions && masterData.questions.length > 0) {
                 // Rückwärtskompatibel: Fragen aus altem Master laden
                 questions = masterData.questions.map(normalizeQuestion);
-                questions.forEach(function(q, idx) {
+                questions.forEach(function(q) {
                     if (!q._fileGroup) q._fileGroup = q.theme || 'Legacy';
-                    q.id = Date.now() + idx; // Eindeutige ID sicherstellen
                 });
                 loadedQuestionFiles.push({
                     name: '(aus Master)',
@@ -5646,7 +5641,6 @@
             } else {
                 // ── Neue Frage anlegen ───────────────────────────────────────────────
                 const newQ = {
-                    id:              Date.now() + Math.floor(Math.random() * 1000),
                     questionId:      enteredId,
                     text,
                     type:            _fqFormType,
@@ -5705,7 +5699,6 @@
 
         function _fqBuildExportQ(q) {
             const out = {
-                id:              q.id,
                 questionId:      q.questionId,
                 text:            q.text,
                 type:            q.type,
@@ -6047,8 +6040,7 @@
                                 });
                                 if (isDupe) { dupes++; }
                                 else {
-                                    normalized.id = Date.now() + added + Math.floor(Math.random() * 1000);
-                                    questions.push(normalized);
+                                        questions.push(normalized);
                                     added++;
                                 }
                             });
@@ -6639,7 +6631,6 @@
 
         function _fmBuildExportQ(q) {
             const out = {
-                id:               q.id,
                 questionId:       q.questionId,
                 text:             q.text,
                 type:             q.type,

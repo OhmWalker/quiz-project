@@ -580,7 +580,6 @@ function _fqSave() {
     } else {
         // ── Neue Frage anlegen ───────────────────────────────────────────────
         const newQ = {
-            id:              Date.now() + Math.floor(Math.random() * 1000),
             questionId:      enteredId,
             text,
             type:            _fqFormType,
@@ -639,7 +638,6 @@ function _fqStartExport() {
 
 function _fqBuildExportQ(q) {
     const out = {
-        id:              q.id,
         questionId:      q.questionId,
         text:            q.text,
         type:            q.type,
@@ -981,8 +979,7 @@ function _fqHandleImport(event) {
                         });
                         if (isDupe) { dupes++; }
                         else {
-                            normalized.id = Date.now() + added + Math.floor(Math.random() * 1000);
-                            questions.push(normalized);
+                                questions.push(normalized);
                             added++;
                         }
                     });

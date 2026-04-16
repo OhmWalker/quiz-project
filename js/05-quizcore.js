@@ -16,7 +16,7 @@ const QuizCore = {
             return AppState.data.questions.filter(q => q.active !== false); 
         },
         findQuestionById(id) {
-            return AppState.data.questions.find(q => q.id === id || q.questionId === id);
+            return AppState.data.questions.find(q => q.questionId === id);
         },
         findUserById(id) {
             return AppState.data.users.find(u => u.id === id);

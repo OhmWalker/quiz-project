@@ -4488,7 +4488,7 @@
                     return AppState.data.questions.filter(q => q.active !== false); 
                 },
                 findQuestionById(id) {
-                    return AppState.data.questions.find(q => q.id === id || q.questionId === id);
+                    return AppState.data.questions.find(q => q.questionId === id);
                 },
                 findUserById(id) {
                     return AppState.data.users.find(u => u.id === id);
@@ -6625,7 +6625,7 @@
                 // Groups played
                 const groups = new Set();
                 (questions || []).forEach(q => {
-                    const qid = q.questionId || q.id;
+                    const qid = q.questionId;
                     if (qs[qid] && (qs[qid].asked || 0) > 0) groups.add(q.group || q._fileGroup || 'Standard');
                 });
                 stats.groupsPlayed = groups.size;
@@ -7390,7 +7390,7 @@
                                 lastGroup = g;
                             }
                         }
-                        html += (self._editingId === q.id) ? self._renderEditForm(q) : self._renderCard(q);
+                        html += (self._editingId === q.questionId) ? self._renderEditForm(q) : self._renderCard(q);
                     });
                     html += '</div>';
                 }
@@ -7469,7 +7469,7 @@
                 var qType = q.type || 'multiple-choice';
                 var questionId = q.questionId || '???';
                 var mediaSrc = typeof getMediaSource === 'function' ? getMediaSource(q.media) : null;
-                var isExpanded = this._expandedCards.has(q.id);
+                var isExpanded = this._expandedCards.has(q.questionId);
                 var stats = typeof calculateQuestionStats === 'function' ? calculateQuestionStats(questionId) : null;
                 var statsPct = stats ? stats.percentage : -1;
                 var statsColor = statsPct >= 75 ? '#2ecc71' : statsPct >= 50 ? '#f1c40f' : statsPct >= 0 ? '#e74c3c' : 'rgba(255,255,255,0.1)';
@@ -7479,7 +7479,7 @@
                 var h = '<div class="f2-card' + (!isActive ? ' inactive' : '') + '">';
                 h += '<div class="f2-card-header">';
                 h += '<div style="display:flex;align-items:center;gap:8px;">';
-                h += '<input type="checkbox" ' + (isActive ? 'checked' : '') + ' onchange="Fragen2Plugin._toggleActive(' + q.id + ')" style="width:16px;height:16px;cursor:pointer;accent-color:var(--accent);">';
+                h += '<input type="checkbox" ' + (isActive ? 'checked' : '') + ' onchange="Fragen2Plugin._toggleActive(\'' + q.questionId + '\')" style="width:16px;height:16px;cursor:pointer;accent-color:var(--accent);">';
                 h += '<span class="f2-card-hash">' + questionId + '</span>';
                 h += '</div>';
                 h += '<div style="display:flex;align-items:center;gap:6px;">';
@@ -7507,12 +7507,12 @@
         
                 h += '<div class="f2-card-actions">';
                 if (this._viewMode === 'compact') {
-                    h += '<button class="btn btn-small btn-secondary" onclick="Fragen2Plugin._toggleExpand(' + q.id + ')" style="font-size:0.78rem;padding:4px 10px;">' + (isExpanded ? '▲ Weniger' : '▼ Details') + '</button>';
+                    h += '<button class="btn btn-small btn-secondary" onclick="Fragen2Plugin._toggleExpand(\'' + q.questionId + '\')" style="font-size:0.78rem;padding:4px 10px;">' + (isExpanded ? '▲ Weniger' : '▼ Details') + '</button>';
                 }
-                h += '<button class="btn btn-small btn-secondary" onclick="Fragen2Plugin._showQuestionStats(' + q.id + ')" style="font-size:0.78rem;padding:4px 10px;">📊</button>';
-                h += '<button class="btn btn-small btn-secondary" onclick="Fragen2Plugin._preview(' + q.id + ')" style="font-size:0.78rem;padding:4px 10px;">👁️</button>';
-                h += '<button class="btn btn-small" onclick="Fragen2Plugin._startEdit(' + q.id + ')" style="font-size:0.78rem;padding:4px 10px;background:linear-gradient(135deg,#2980b9,#3498db);">✏️ Bearbeiten</button>';
-                h += '<button class="btn btn-small btn-danger" onclick="Fragen2Plugin._delete(' + q.id + ')" style="font-size:0.78rem;padding:4px 10px;">🗑️</button>';
+                h += '<button class="btn btn-small btn-secondary" onclick="Fragen2Plugin._showQuestionStats(\'' + q.questionId + '\')" style="font-size:0.78rem;padding:4px 10px;">📊</button>';
+                h += '<button class="btn btn-small btn-secondary" onclick="Fragen2Plugin._preview(\'' + q.questionId + '\')" style="font-size:0.78rem;padding:4px 10px;">👁️</button>';
+                h += '<button class="btn btn-small" onclick="Fragen2Plugin._startEdit(\'' + q.questionId + '\')" style="font-size:0.78rem;padding:4px 10px;background:linear-gradient(135deg,#2980b9,#3498db);">✏️ Bearbeiten</button>';
+                h += '<button class="btn btn-small btn-danger" onclick="Fragen2Plugin._delete(\'' + q.questionId + '\')" style="font-size:0.78rem;padding:4px 10px;">🗑️</button>';
                 h += '</div>';
                 h += '<div class="f2-card-stat-bar"><div class="f2-card-stat-fill" style="width:' + (statsPct >= 0 ? statsPct : 0) + '%;background:' + statsColor + ';"></div></div>';
                 h += '</div>';
@@ -7548,7 +7548,7 @@
             _startEdit(qId) {
                 this._editingId = qId;
                 // Load imagemap zones if editing an imagemap question
-                var q = questions.find(function(qq) { return qq.id === qId; });
+                var q = questions.find(function(qq) { return qq.questionId === qId; });
                 if (q && q.type === 'imagemap') {
                     this._imZones = q.targets ? JSON.parse(JSON.stringify(q.targets)) : [];
                     this._imPoints = [];
@@ -7577,49 +7577,50 @@
                 var groups = this._getGroups(questions || []);
                 var curGroup = q._fileGroup || 'Manuell';
         
-                var h = '<div class="f2-card" id="f2Edit_' + q.id + '" style="border-color:var(--accent);background:rgba(247,184,1,0.05);">';
+                var qid = q.questionId;
+                var h = '<div class="f2-card" id="f2Edit_' + qid + '" style="border-color:var(--accent);background:rgba(247,184,1,0.05);">';
                 h += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">';
-                h += '<strong style="color:var(--accent);">✏️ Frage ' + (q.questionId || '?') + ' bearbeiten</strong>';
+                h += '<strong style="color:var(--accent);">✏️ Frage ' + (qid || '?') + ' bearbeiten</strong>';
                 h += '<button class="btn btn-small btn-secondary" onclick="Fragen2Plugin._cancelEdit()">✕ Abbrechen</button>';
                 h += '</div>';
-        
+
                 h += '<label style="font-size:0.85rem;font-weight:600;margin-bottom:4px;display:block;">Fragetext</label>';
-                h += '<textarea id="f2EditText_' + q.id + '" rows="3" style="width:100%;padding:10px;background:rgba(255,255,255,0.1);border:2px solid rgba(255,255,255,0.2);border-radius:8px;color:var(--text);font-size:0.95rem;resize:vertical;box-sizing:border-box;">' + sanitizeHTML(q.text || '') + '</textarea>';
-        
+                h += '<textarea id="f2EditText_' + qid + '" rows="3" style="width:100%;padding:10px;background:rgba(255,255,255,0.1);border:2px solid rgba(255,255,255,0.2);border-radius:8px;color:var(--text);font-size:0.95rem;resize:vertical;box-sizing:border-box;">' + sanitizeHTML(q.text || '') + '</textarea>';
+
                 h += '<div style="display:flex;gap:10px;margin-top:10px;align-items:center;flex-wrap:wrap;">';
                 h += '<label style="font-size:0.85rem;font-weight:600;white-space:nowrap;">📁 Gruppe:</label>';
-                h += '<select id="f2EditGroup_' + q.id + '" onchange="var inp=document.getElementById(\'f2EditGroupInput_' + q.id + '\');if(this.value===\'__new__\'){inp.style.display=\'block\';inp.focus();}else{inp.style.display=\'none\';}" style="flex:1;padding:6px 10px;background:rgba(255,255,255,0.1);border:2px solid rgba(255,255,255,0.2);border-radius:8px;color:var(--text);">';
+                h += '<select id="f2EditGroup_' + qid + '" onchange="var inp=document.getElementById(\'f2EditGroupInput_' + qid + '\');if(this.value===\'__new__\'){inp.style.display=\'block\';inp.focus();}else{inp.style.display=\'none\';}" style="flex:1;padding:6px 10px;background:rgba(255,255,255,0.1);border:2px solid rgba(255,255,255,0.2);border-radius:8px;color:var(--text);">';
                 groups.forEach(function(g) {
                     h += '<option value="' + sanitizeHTML(g.name) + '"' + (g.name === curGroup ? ' selected' : '') + '>' + sanitizeHTML(g.name) + '</option>';
                 });
                 h += '<option value="__new__">➕ Neue Gruppe...</option>';
                 h += '</select>';
-                h += '<input type="text" id="f2EditGroupInput_' + q.id + '" placeholder="Neuer Gruppenname..." style="display:none;flex-basis:100%;padding:6px 10px;background:rgba(255,255,255,0.1);border:2px solid rgba(255,255,255,0.2);border-radius:8px;color:var(--text);font-size:0.85rem;margin-top:4px;">';
+                h += '<input type="text" id="f2EditGroupInput_' + qid + '" placeholder="Neuer Gruppenname..." style="display:none;flex-basis:100%;padding:6px 10px;background:rgba(255,255,255,0.1);border:2px solid rgba(255,255,255,0.2);border-radius:8px;color:var(--text);font-size:0.85rem;margin-top:4px;">';
                 h += '</div>';
 
                 h += '<div style="display:flex;align-items:center;gap:8px;margin-top:8px;">';
                 h += '<label style="font-size:0.8rem;opacity:0.6;white-space:nowrap;">Fragen-ID:</label>';
-                h += '<input type="text" id="f2EditId_' + q.id + '" value="' + sanitizeHTML(q.questionId || '') + '" style="flex:1;padding:4px 8px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:6px;color:var(--text);font-size:0.78rem;font-family:monospace;" placeholder="prefix_00001">';
+                h += '<input type="text" id="f2EditId_' + qid + '" value="' + sanitizeHTML(qid || '') + '" style="flex:1;padding:4px 8px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:6px;color:var(--text);font-size:0.78rem;font-family:monospace;" placeholder="prefix_00001">';
                 h += '</div>';
 
                 if (qType === 'multiple-choice') {
                     h += '<label style="font-size:0.85rem;font-weight:600;margin:12px 0 6px;display:block;">Antworten</label>';
                     (q.answers || []).forEach(function(a, i) {
                         h += '<div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;">';
-                        h += '<input type="text" id="f2EditAns_' + q.id + '_' + i + '" value="' + sanitizeHTML(a.text || '') + '" style="flex:1;padding:8px;background:rgba(255,255,255,0.1);border:2px solid ' + (a.correct ? 'var(--correct)' : 'rgba(255,255,255,0.2)') + ';border-radius:8px;color:var(--text);font-size:0.9rem;">';
+                        h += '<input type="text" id="f2EditAns_' + qid + '_' + i + '" value="' + sanitizeHTML(a.text || '') + '" style="flex:1;padding:8px;background:rgba(255,255,255,0.1);border:2px solid ' + (a.correct ? 'var(--correct)' : 'rgba(255,255,255,0.2)') + ';border-radius:8px;color:var(--text);font-size:0.9rem;">';
                         h += '<label style="display:flex;align-items:center;gap:4px;font-size:0.82rem;cursor:pointer;">';
-                        h += '<input type="checkbox" id="f2EditCorr_' + q.id + '_' + i + '" ' + (a.correct ? 'checked' : '') + ' style="accent-color:var(--correct);"> ✓</label>';
+                        h += '<input type="checkbox" id="f2EditCorr_' + qid + '_' + i + '" ' + (a.correct ? 'checked' : '') + ' style="accent-color:var(--correct);"> ✓</label>';
                         h += '</div>';
                     });
                 } else if (qType === 'text') {
                     var ta = typeof getCorrectTextAnswers === 'function' ? getCorrectTextAnswers(q) : (q.correctAnswer || []);
                     var ansStr = (Array.isArray(ta) ? ta : [ta]).join('\n');
                     h += '<label style="font-size:0.85rem;font-weight:600;margin:12px 0 6px;display:block;">Akzeptierte Antworten (eine pro Zeile)</label>';
-                    h += '<textarea id="f2EditTextAns_' + q.id + '" rows="3" style="width:100%;padding:10px;background:rgba(255,255,255,0.1);border:2px solid rgba(255,255,255,0.2);border-radius:8px;color:var(--text);font-size:0.9rem;box-sizing:border-box;">' + sanitizeHTML(ansStr) + '</textarea>';
+                    h += '<textarea id="f2EditTextAns_' + qid + '" rows="3" style="width:100%;padding:10px;background:rgba(255,255,255,0.1);border:2px solid rgba(255,255,255,0.2);border-radius:8px;color:var(--text);font-size:0.9rem;box-sizing:border-box;">' + sanitizeHTML(ansStr) + '</textarea>';
                 } else if (qType === 'imagemap') {
-                    h += this._renderImEditor('edit_' + q.id, q);
+                    h += this._renderImEditor('edit_' + qid, q);
                 }
-        
+
                 // Collapsible media path field for MC and FT questions
                 if (qType === 'multiple-choice' || qType === 'text') {
                     var existingPath = (q.media && q.media.path) ? q.media.path : '';
@@ -7633,18 +7634,18 @@
                     h += '</div>';
                     h += '<div style="padding:10px 12px;display:' + (hasMediaData ? 'block' : 'none') + ';">';
                     h += '<div style="display:flex;gap:8px;align-items:center;">';
-                    h += '<input type="text" id="f2EditMedia_' + q.id + '" value="' + sanitizeHTML(existingPath) + '" placeholder="z.B. medien/Bundesländer/bayern.jpg" oninput="Fragen2Plugin._liveMediaPreview(\'f2EditMedia_' + q.id + '\',\'f2EditMediaPrev_' + q.id + '\')" style="flex:1;padding:8px;background:rgba(255,255,255,0.1);border:2px solid rgba(255,255,255,0.2);border-radius:8px;color:var(--text);font-size:0.85rem;box-sizing:border-box;">';
-                    h += '<input type="file" id="f2EditMediaBrowse_' + q.id + '" accept="image/*" style="display:none;" onchange="Fragen2Plugin._handleMediaBrowse(event,\'f2EditMedia_' + q.id + '\')">';
-                    h += '<button type="button" class="btn btn-secondary btn-small" onclick="document.getElementById(\'f2EditMediaBrowse_' + q.id + '\').click()" style="white-space:nowrap;padding:6px 12px;font-size:0.8rem;">📂 Durchsuchen</button>';
+                    h += '<input type="text" id="f2EditMedia_' + qid + '" value="' + sanitizeHTML(existingPath) + '" placeholder="z.B. medien/Bundesländer/bayern.jpg" oninput="Fragen2Plugin._liveMediaPreview(\'f2EditMedia_' + qid + '\',\'f2EditMediaPrev_' + qid + '\')" style="flex:1;padding:8px;background:rgba(255,255,255,0.1);border:2px solid rgba(255,255,255,0.2);border-radius:8px;color:var(--text);font-size:0.85rem;box-sizing:border-box;">';
+                    h += '<input type="file" id="f2EditMediaBrowse_' + qid + '" accept="image/*" style="display:none;" onchange="Fragen2Plugin._handleMediaBrowse(event,\'f2EditMedia_' + qid + '\')">';
+                    h += '<button type="button" class="btn btn-secondary btn-small" onclick="document.getElementById(\'f2EditMediaBrowse_' + qid + '\').click()" style="white-space:nowrap;padding:6px 12px;font-size:0.8rem;">📂 Durchsuchen</button>';
                     if (hasMediaData) {
-                        h += '<button type="button" class="btn btn-secondary btn-small" onclick="document.getElementById(\'f2EditMedia_' + q.id + '\').value=\'\';Fragen2Plugin._editMediaCleared=' + q.id + ';document.getElementById(\'f2EditMediaPrev_' + q.id + '\').innerHTML=\'\';" style="padding:6px 8px;font-size:0.8rem;" title="Bild entfernen">✕</button>';
+                        h += '<button type="button" class="btn btn-secondary btn-small" onclick="document.getElementById(\'f2EditMedia_' + qid + '\').value=\'\';Fragen2Plugin._editMediaCleared=\'' + qid + '\';document.getElementById(\'f2EditMediaPrev_' + qid + '\').innerHTML=\'\';" style="padding:6px 8px;font-size:0.8rem;" title="Bild entfernen">✕</button>';
                     }
                     h += '</div>';
                     if (existingData && !existingPath) {
                         h += '<div style="font-size:0.75rem;opacity:0.5;margin-top:3px;">💾 Aktuell: Base64 eingebettet. Pfad eingeben um zu wechseln.</div>';
                     }
                     h += '<div style="font-size:0.72rem;opacity:0.4;margin-top:3px;">Unterordner manuell eingeben — Browser kann Unterordner nicht erkennen</div>';
-                    h += '<div id="f2EditMediaPrev_' + q.id + '" style="margin-top:6px;">';
+                    h += '<div id="f2EditMediaPrev_' + qid + '" style="margin-top:6px;">';
                     if (q.media) {
                         var prevSrc = typeof getMediaSource === 'function' ? getMediaSource(q.media) : null;
                         if (prevSrc) {
@@ -7664,15 +7665,15 @@
                 if (hasExplData) h += '<span style="font-size:0.7rem;opacity:0.4;margin-left:auto;">Daten vorhanden</span>';
                 h += '</div>';
                 h += '<div style="padding:10px 12px;display:' + (hasExplData ? 'block' : 'none') + ';">';
-                h += '<input type="text" id="f2EditExpl_' + q.id + '" value="' + sanitizeHTML(q.explanation || '') + '" placeholder="Wird nach falscher Antwort angezeigt..." style="width:100%;padding:8px;background:rgba(255,255,255,0.08);border:2px solid rgba(255,255,255,0.15);border-radius:8px;color:var(--text);font-size:0.85rem;box-sizing:border-box;">';
+                h += '<input type="text" id="f2EditExpl_' + qid + '" value="' + sanitizeHTML(q.explanation || '') + '" placeholder="Wird nach falscher Antwort angezeigt..." style="width:100%;padding:8px;background:rgba(255,255,255,0.08);border:2px solid rgba(255,255,255,0.15);border-radius:8px;color:var(--text);font-size:0.85rem;box-sizing:border-box;">';
                 var explMediaPath = (q.explanationMedia && q.explanationMedia.path) ? q.explanationMedia.path : '';
                 h += '<div style="display:flex;gap:8px;align-items:center;margin-top:4px;">';
-                h += '<input type="text" id="f2EditExplMedia_' + q.id + '" value="' + sanitizeHTML(explMediaPath) + '" placeholder="Bild zur Erklärung (z.B. medien/erkl_001.jpg)" oninput="Fragen2Plugin._liveMediaPreview(\'f2EditExplMedia_' + q.id + '\',\'f2EditExplMediaPrev_' + q.id + '\')" style="flex:1;padding:6px 8px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:6px;color:var(--text);font-size:0.8rem;box-sizing:border-box;">';
-                h += '<input type="file" id="f2EditExplMediaBrowse_' + q.id + '" accept="image/*" style="display:none;" onchange="Fragen2Plugin._handleMediaBrowse(event,\'f2EditExplMedia_' + q.id + '\')">';
-                h += '<button type="button" class="btn btn-secondary btn-small" onclick="document.getElementById(\'f2EditExplMediaBrowse_' + q.id + '\').click()" style="padding:4px 8px;font-size:0.75rem;">📂</button>';
-                if (explMediaPath) h += '<button type="button" class="btn btn-secondary btn-small" onclick="document.getElementById(\'f2EditExplMedia_' + q.id + '\').value=\'\';document.getElementById(\'f2EditExplMediaPrev_' + q.id + '\').innerHTML=\'\';" style="padding:4px 6px;font-size:0.75rem;" title="Bild entfernen">✕</button>';
+                h += '<input type="text" id="f2EditExplMedia_' + qid + '" value="' + sanitizeHTML(explMediaPath) + '" placeholder="Bild zur Erklärung (z.B. medien/erkl_001.jpg)" oninput="Fragen2Plugin._liveMediaPreview(\'f2EditExplMedia_' + qid + '\',\'f2EditExplMediaPrev_' + qid + '\')" style="flex:1;padding:6px 8px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:6px;color:var(--text);font-size:0.8rem;box-sizing:border-box;">';
+                h += '<input type="file" id="f2EditExplMediaBrowse_' + qid + '" accept="image/*" style="display:none;" onchange="Fragen2Plugin._handleMediaBrowse(event,\'f2EditExplMedia_' + qid + '\')">';
+                h += '<button type="button" class="btn btn-secondary btn-small" onclick="document.getElementById(\'f2EditExplMediaBrowse_' + qid + '\').click()" style="padding:4px 8px;font-size:0.75rem;">📂</button>';
+                if (explMediaPath) h += '<button type="button" class="btn btn-secondary btn-small" onclick="document.getElementById(\'f2EditExplMedia_' + qid + '\').value=\'\';document.getElementById(\'f2EditExplMediaPrev_' + qid + '\').innerHTML=\'\';" style="padding:4px 6px;font-size:0.75rem;" title="Bild entfernen">✕</button>';
                 h += '</div>';
-                h += '<div id="f2EditExplMediaPrev_' + q.id + '" style="margin-top:4px;">';
+                h += '<div id="f2EditExplMediaPrev_' + qid + '" style="margin-top:4px;">';
                 if (explMediaPath) h += '<img src="' + explMediaPath + '" style="max-width:150px;max-height:80px;border-radius:6px;object-fit:contain;" onerror="this.style.display=\'none\'">';
                 h += '</div>';
                 h += '</div></div>';
@@ -7686,28 +7687,28 @@
                 if (hasHintData) h += '<span style="font-size:0.7rem;opacity:0.4;margin-left:auto;">Daten vorhanden</span>';
                 h += '</div>';
                 h += '<div style="padding:10px 12px;display:' + (hasHintData ? 'block' : 'none') + ';">';
-                h += '<input type="text" id="f2EditHint_' + q.id + '" value="' + sanitizeHTML(q.hint || '') + '" placeholder="Wird bei Hinweis-Fähigkeit angezeigt..." style="width:100%;padding:8px;background:rgba(255,255,255,0.08);border:2px solid rgba(255,255,255,0.15);border-radius:8px;color:var(--text);font-size:0.85rem;box-sizing:border-box;">';
+                h += '<input type="text" id="f2EditHint_' + qid + '" value="' + sanitizeHTML(q.hint || '') + '" placeholder="Wird bei Hinweis-Fähigkeit angezeigt..." style="width:100%;padding:8px;background:rgba(255,255,255,0.08);border:2px solid rgba(255,255,255,0.15);border-radius:8px;color:var(--text);font-size:0.85rem;box-sizing:border-box;">';
                 var hintMediaPath = (q.hintMedia && q.hintMedia.path) ? q.hintMedia.path : '';
                 h += '<div style="display:flex;gap:8px;align-items:center;margin-top:4px;">';
-                h += '<input type="text" id="f2EditHintMedia_' + q.id + '" value="' + sanitizeHTML(hintMediaPath) + '" placeholder="Bild zum Hinweis (z.B. medien/hint_001.jpg)" oninput="Fragen2Plugin._liveMediaPreview(\'f2EditHintMedia_' + q.id + '\',\'f2EditHintMediaPrev_' + q.id + '\')" style="flex:1;padding:6px 8px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:6px;color:var(--text);font-size:0.8rem;box-sizing:border-box;">';
-                h += '<input type="file" id="f2EditHintMediaBrowse_' + q.id + '" accept="image/*" style="display:none;" onchange="Fragen2Plugin._handleMediaBrowse(event,\'f2EditHintMedia_' + q.id + '\')">';
-                h += '<button type="button" class="btn btn-secondary btn-small" onclick="document.getElementById(\'f2EditHintMediaBrowse_' + q.id + '\').click()" style="padding:4px 8px;font-size:0.75rem;">📂</button>';
-                if (hintMediaPath) h += '<button type="button" class="btn btn-secondary btn-small" onclick="document.getElementById(\'f2EditHintMedia_' + q.id + '\').value=\'\';document.getElementById(\'f2EditHintMediaPrev_' + q.id + '\').innerHTML=\'\';" style="padding:4px 6px;font-size:0.75rem;" title="Bild entfernen">✕</button>';
+                h += '<input type="text" id="f2EditHintMedia_' + qid + '" value="' + sanitizeHTML(hintMediaPath) + '" placeholder="Bild zum Hinweis (z.B. medien/hint_001.jpg)" oninput="Fragen2Plugin._liveMediaPreview(\'f2EditHintMedia_' + qid + '\',\'f2EditHintMediaPrev_' + qid + '\')" style="flex:1;padding:6px 8px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:6px;color:var(--text);font-size:0.8rem;box-sizing:border-box;">';
+                h += '<input type="file" id="f2EditHintMediaBrowse_' + qid + '" accept="image/*" style="display:none;" onchange="Fragen2Plugin._handleMediaBrowse(event,\'f2EditHintMedia_' + qid + '\')">';
+                h += '<button type="button" class="btn btn-secondary btn-small" onclick="document.getElementById(\'f2EditHintMediaBrowse_' + qid + '\').click()" style="padding:4px 8px;font-size:0.75rem;">📂</button>';
+                if (hintMediaPath) h += '<button type="button" class="btn btn-secondary btn-small" onclick="document.getElementById(\'f2EditHintMedia_' + qid + '\').value=\'\';document.getElementById(\'f2EditHintMediaPrev_' + qid + '\').innerHTML=\'\';" style="padding:4px 6px;font-size:0.75rem;" title="Bild entfernen">✕</button>';
                 h += '</div>';
-                h += '<div id="f2EditHintMediaPrev_' + q.id + '" style="margin-top:4px;">';
+                h += '<div id="f2EditHintMediaPrev_' + qid + '" style="margin-top:4px;">';
                 if (hintMediaPath) h += '<img src="' + hintMediaPath + '" style="max-width:150px;max-height:80px;border-radius:6px;object-fit:contain;" onerror="this.style.display=\'none\'">';
                 h += '</div>';
                 h += '</div></div>';
 
                 h += '<div style="display:flex;gap:8px;margin-top:14px;">';
-                h += '<button class="btn" onclick="Fragen2Plugin._saveEdit(' + q.id + ')" style="padding:10px 24px;">💾 Speichern</button>';
+                h += '<button class="btn" onclick="Fragen2Plugin._saveEdit(\'' + qid + '\')" style="padding:10px 24px;">💾 Speichern</button>';
                 h += '<button class="btn btn-secondary" onclick="Fragen2Plugin._cancelEdit()">Abbrechen</button>';
                 h += '</div></div>';
                 return h;
             },
-    
+
             _saveEdit(qId) {
-                var q = questions.find(function(qq) { return qq.id === qId; });
+                var q = questions.find(function(qq) { return qq.questionId === qId; });
                 if (!q) return;
                 var newText = document.getElementById('f2EditText_' + qId);
                 if (!newText || !newText.value.trim()) { Toast.show('Fragetext darf nicht leer sein!', 'warning'); return; }
@@ -7939,11 +7940,9 @@
                 var hint = hintEl && hintEl.value.trim() ? hintEl.value.trim() : null;
                 var hintMediaEl = document.getElementById('f2NewHintMedia');
                 var hintMedia = (hintMediaEl && hintMediaEl.value.trim()) ? { type: 'image', path: hintMediaEl.value.trim() } : null;
-                var newId = Date.now() + Math.floor(Math.random() * 1000);
                 var ansCount = (typeof CONFIG !== 'undefined' && CONFIG.QUIZ && CONFIG.QUIZ.DEFAULT_ANSWER_COUNT) ? CONFIG.QUIZ.DEFAULT_ANSWER_COUNT : 4;
 
                 var newQ = {
-                    id: newId,
                     text: text,
                     active: true,
                     _fileGroup: group,
@@ -8070,7 +8069,7 @@
             },
     
             _toggleActive(qId) {
-                var q = questions.find(function(qq) { return qq.id === qId; });
+                var q = questions.find(function(qq) { return qq.questionId === qId; });
                 if (q) { q.active = (q.active === false) ? true : false; this._renderList(); }
             },
     
@@ -8081,7 +8080,7 @@
             },
     
             _delete(qId) {
-                var q = questions.find(function(qq) { return qq.id === qId; });
+                var q = questions.find(function(qq) { return qq.questionId === qId; });
                 if (!q) return;
                 if (!confirm('Frage ' + (q.questionId || '?') + ' löschen?\n\n"' + (q.text || '').substring(0, 80) + '..."')) return;
                 var idx = questions.indexOf(q);
@@ -8091,7 +8090,7 @@
             },
     
             _preview(qId) {
-                var q = questions.find(function(qq) { return qq.id === qId; });
+                var q = questions.find(function(qq) { return qq.questionId === qId; });
                 if (!q) return;
                 var mediaSrc = typeof getMediaSource === 'function' ? getMediaSource(q.media) : null;
                 var qType = q.type || 'multiple-choice';
@@ -8149,7 +8148,7 @@
             },
 
             _showQuestionStats(qId) {
-                var q = questions.find(function(qq) { return qq.id === qId; });
+                var q = questions.find(function(qq) { return qq.questionId === qId; });
                 if (!q) return;
                 var qid = q.questionId || '???';
 
@@ -8307,7 +8306,7 @@
             // ── Export ──
             _buildExportQ(q) {
                 var exportQ = {
-                    id: q.id, questionId: q.questionId,
+                    questionId: q.questionId,
                     text: q.text, type: q.type, active: q.active !== false,
                     media: q.media, explanation: q.explanation || null,
                     explanationMedia: q.explanationMedia || null,
@@ -8424,7 +8423,6 @@
                                     });
                                     if (isDupe) { dupes++; }
                                     else {
-                                        normalized.id = Date.now() + added + Math.floor(Math.random() * 1000);
                                         questions.push(normalized);
                                         added++;
                                     }
@@ -9358,7 +9356,6 @@
             // Imagemap-Frage?
             if (q.type === QUESTION_TYPES.IMAGEMAP) {
                 return {
-                    id: q.id,
                     questionId: resolveId(),
                     _contentHash: typeof generateQuestionHash === 'function' ? generateQuestionHash(q) : null,
                     text: text,
@@ -9378,7 +9375,6 @@
                 // Kanonisches Format: immer Array
                 const textAnswers = getCorrectTextAnswers(q);
                 return {
-                    id: q.id,
                     questionId: resolveId(),
                     _contentHash: typeof generateQuestionHash === 'function' ? generateQuestionHash(q) : null,
                     text: text,
@@ -9418,7 +9414,6 @@
             });
 
             return {
-                id: q.id,
                 questionId: resolveId(),
                 _contentHash: typeof generateQuestionHash === 'function' ? generateQuestionHash(q) : null,
                 text: text,
@@ -9602,7 +9597,6 @@
                             });
                             if (isDupe) { qErrors++; return; }
                             // Eindeutige ID sicherstellen (verschiedene Dateien können gleiche IDs haben)
-                            normalized.id = Date.now() + questions.length + qi;
                             normalized.sourceFile = qf.name;
                             normalized.theme = q.theme || theme;
                             normalized._fileGroup = q._fileGroup || q.theme || theme;
@@ -9624,9 +9618,8 @@
             } else if (masterData.questions && masterData.questions.length > 0) {
                 // Rückwärtskompatibel: Fragen aus altem Master laden
                 questions = masterData.questions.map(normalizeQuestion);
-                questions.forEach(function(q, idx) {
+                questions.forEach(function(q) {
                     if (!q._fileGroup) q._fileGroup = q.theme || 'Legacy';
-                    q.id = Date.now() + idx; // Eindeutige ID sicherstellen
                 });
                 loadedQuestionFiles.push({
                     name: '(aus Master)',
@@ -10391,7 +10384,7 @@
 
 
         function validateQuestion(q) {
-            if (!q || typeof q.id !== 'number' || typeof q.text !== 'string') return false;
+            if (!q || typeof q.text !== 'string') return false;
             if (q.type === QUESTION_TYPES.IMAGEMAP) return q.targets && q.targets.length > 0;
             if (q.type === QUESTION_TYPES.TEXT) return true;
             return Array.isArray(q.answers) &&

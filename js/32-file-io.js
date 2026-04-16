@@ -165,7 +165,6 @@ async function loadFromFolderInput(event) {
                     });
                     if (isDupe) { qErrors++; return; }
                     // Eindeutige ID sicherstellen (verschiedene Dateien können gleiche IDs haben)
-                    normalized.id = Date.now() + questions.length + qi;
                     normalized.sourceFile = qf.name;
                     normalized.theme = q.theme || theme;
                     normalized._fileGroup = q._fileGroup || q.theme || theme;
@@ -187,9 +186,8 @@ async function loadFromFolderInput(event) {
     } else if (masterData.questions && masterData.questions.length > 0) {
         // Rückwärtskompatibel: Fragen aus altem Master laden
         questions = masterData.questions.map(normalizeQuestion);
-        questions.forEach(function(q, idx) {
+        questions.forEach(function(q) {
             if (!q._fileGroup) q._fileGroup = q.theme || 'Legacy';
-            q.id = Date.now() + idx; // Eindeutige ID sicherstellen
         });
         loadedQuestionFiles.push({
             name: '(aus Master)',

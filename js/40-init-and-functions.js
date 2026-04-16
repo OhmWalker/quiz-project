@@ -96,7 +96,7 @@ function sanitizeHTML(str) {
 
 
 function validateQuestion(q) {
-    if (!q || typeof q.id !== 'number' || typeof q.text !== 'string') return false;
+    if (!q || typeof q.text !== 'string') return false;
     if (q.type === QUESTION_TYPES.IMAGEMAP) return q.targets && q.targets.length > 0;
     if (q.type === QUESTION_TYPES.TEXT) return true;
     return Array.isArray(q.answers) &&
