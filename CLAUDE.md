@@ -49,8 +49,13 @@
 
 ### `_contentHash`-Feld auf Fragen
 - Jede Frage hat `_contentHash: "Q_xxxxxxxx"` — der alte Hash, jetzt nur noch für Import-Duplikat-Erkennung
-- **Duplikat-Check beim Laden (Quiz + Forge):** nur `questionId` — kein Textvergleich (wurde entfernt, da gleicher Text legitim in verschiedenen Gruppen vorkommen kann)
+- **Duplikat-Check beim Laden (Quiz + Forge):** nur `questionId` — kein Textvergleich (gleicher Text ist legitim in verschiedenen Gruppen)
 - Wird in `normalizeQuestion` gesetzt, nie als primäre ID verwendet
+
+### `normalizeQuestion` (`js/30-globals.js`)
+- Gibt vollständiges kanonisches Fragen-Objekt zurück inkl. `_fileGroup`
+- **`_fileGroup` muss VOR dem Aufruf auf `q` gesetzt sein** — `normalizeQuestion` liest es für `assignStableId()` und gibt es im Ergebnis zurück
+- Kein `id`-Feld mehr (entfernt 2026-04) — `questionId` ist der einzige Schlüssel
 
 ### Migration Hash → stabile ID (noch durchzuführen)
 **Voraussetzung:** Alle Fragen haben korrekte `_fileGroup`-Zuordnung.

@@ -206,10 +206,13 @@ function normalizeQuestion(q) {
     }
 
     // Imagemap-Frage?
+    const fileGroup = q._fileGroup || null;
+
     if (q.type === QUESTION_TYPES.IMAGEMAP) {
         return {
             questionId: resolveId(),
             _contentHash: typeof generateQuestionHash === 'function' ? generateQuestionHash(q) : null,
+            _fileGroup: fileGroup,
             text: text,
             type: QUESTION_TYPES.IMAGEMAP,
             targets: q.targets || (q.target ? [q.target] : []),
@@ -224,11 +227,11 @@ function normalizeQuestion(q) {
 
     // Freitext-Frage?
     if (q.typ === 'freitext' || q.type === QUESTION_TYPES.TEXT || q.antwort || (q.correctAnswer && !q.answers)) {
-        // Kanonisches Format: immer Array
         const textAnswers = getCorrectTextAnswers(q);
         return {
             questionId: resolveId(),
             _contentHash: typeof generateQuestionHash === 'function' ? generateQuestionHash(q) : null,
+            _fileGroup: fileGroup,
             text: text,
             type: QUESTION_TYPES.TEXT,
             answers: [{ type: QUESTION_TYPES.TEXT, correctAnswers: textAnswers }],
@@ -246,21 +249,11 @@ function normalizeQuestion(q) {
     let rawAnswers = q.answers || q.antworten || [];
     const correctIndex = q.correct !== undefined ? q.correct : (q.richtig !== undefined ? q.richtig : 0);
 
-    // Antworten in einheitliches Format konvertieren
-    // Kann sein: Array von Strings ODER Array von Objekten mit {text, correct}
     const answers = rawAnswers.map((ans, idx) => {
         if (typeof ans === 'string') {
-            // Altes Format: Array von Strings mit separatem richtig-Index
-            return {
-                text: ans,
-                correct: idx === correctIndex
-            };
+            return { text: ans, correct: idx === correctIndex };
         } else if (typeof ans === 'object' && ans !== null) {
-            // Neues Format: Objekt mit text und correct
-            return {
-                text: ans.text || ans,
-                correct: ans.correct === true
-            };
+            return { text: ans.text || ans, correct: ans.correct === true };
         }
         return { text: String(ans), correct: false };
     });
@@ -268,6 +261,7 @@ function normalizeQuestion(q) {
     return {
         questionId: resolveId(),
         _contentHash: typeof generateQuestionHash === 'function' ? generateQuestionHash(q) : null,
+        _fileGroup: fileGroup,
         text: text,
         type: QUESTION_TYPES.MULTIPLE_CHOICE,
         answers: answers,
