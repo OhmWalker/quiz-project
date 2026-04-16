@@ -4875,7 +4875,7 @@
                 const sr = quizSettings.spacedRepetition || {};
                 const randomness = (sr.randomness !== undefined ? sr.randomness : 40) / 100;
                 const cooldownHours = sr.streakCooldown || 48;
-                const streakThreshold = sr.streakThreshold || 3;
+                const streakThreshold = sr.streakThreshold || 2;
                 const freshQuota = (sr.freshQuota !== undefined ? sr.freshQuota : 0) / 100;
                 const freshThreshold = sr.freshThreshold !== undefined ? sr.freshThreshold : 1;
                 const stats = user.questionStats || {};
@@ -4888,6 +4888,12 @@
                     ? (sr.maxCoreSubsequent !== undefined ? sr.maxCoreSubsequent : count)
                     : (sr.maxCoreFirst !== undefined ? sr.maxCoreFirst : count);
 
+                const isInCooldown = q => {
+                    const s = stats[q.questionId];
+                    if (!s || s.consecutiveCorrect < streakThreshold || !s.lastAsked) return false;
+                    return (now - new Date(s.lastAsked).getTime()) < cooldownMs;
+                };
+
                 const scoreQuestion = q => {
                     const s = stats[q.questionId];
                     let priority = 50;
@@ -4897,10 +4903,6 @@
                         if ((s.consecutiveCorrect || 0) >= 1)
                             ratio = Math.min(1.0, ratio + (s.consecutiveCorrect || 0) * 0.2);
                         priority = Math.max(5, 100 - ratio * 80);
-                        if (s.consecutiveCorrect >= streakThreshold && s.lastAsked) {
-                            const elapsed = now - new Date(s.lastAsked).getTime();
-                            if (elapsed < cooldownMs) priority = 2;
-                        }
                         if (asked === 0) priority = 90;
                     } else {
                         priority = 95;
@@ -4915,9 +4917,26 @@
                     .slice(0, n).map(s => s.q);
 
                 // Core-Deckel: max N Core-Fragen pro Quiz
-                const coreQ   = active.filter(q => q.isCore);
+                const coreQ    = active.filter(q => q.isCore);
                 const nonCoreQ = active.filter(q => !q.isCore);
-                const corePicked = pickTop(coreQ, Math.min(maxCore, count));
+
+                // Cooldown hart ausschließen — Fallback auf Cooldown-Pool wenn nötig
+                const pickWithCooldownFallback = (pool, n) => {
+                    const available = pool.filter(q => !isInCooldown(q));
+                    if (available.length >= n) return pickTop(available, n);
+                    const picked = pickTop(available, available.length);
+                    const stillNeeded = n - picked.length;
+                    const cooldownPool = pool.filter(q => isInCooldown(q));
+                    const fallback = pickTop(cooldownPool, stillNeeded);
+                    if (fallback.length > 0)
+                        setTimeout(() => Toast.show(
+                            `⚠ Pool zu klein: ${fallback.length} Frage(n) aus dem 48h-Ruhemodus geholt.\nMehr aktive Fragen hinzufügen empfohlen.`,
+                            'warning'
+                        ), 500);
+                    return [...picked, ...fallback];
+                };
+
+                const corePicked   = pickWithCooldownFallback(coreQ, Math.min(maxCore, count));
                 const nonCoreSlots = count - corePicked.length;
 
                 // Fresh-Quota für Non-Core (ab 2. Quiz des Tages)
@@ -4926,12 +4945,22 @@
                     const freshNC = nonCoreQ.filter(q => { const s = stats[q.questionId]; return !s || (s.asked || 0) <= freshThreshold; });
                     const oldNC   = nonCoreQ.filter(q => { const s = stats[q.questionId]; return s && (s.asked || 0) > freshThreshold; });
                     const freshCount = Math.min(Math.floor(nonCoreSlots * freshQuota), freshNC.length);
-                    const oldPicked  = pickTop(oldNC, nonCoreSlots - freshCount);
-                    // Falls old-Pool zu klein: restliche Slots mit fresh auffüllen
+                    const oldPicked  = pickTop(oldNC.filter(q => !isInCooldown(q)), nonCoreSlots - freshCount);
                     const freshCount2 = nonCoreSlots - oldPicked.length;
-                    nonCorePicked = [...pickTop(freshNC, freshCount2), ...oldPicked];
+                    nonCorePicked = [...pickTop(freshNC.filter(q => !isInCooldown(q)), freshCount2), ...oldPicked];
+                    // Fallback wenn immer noch zu wenig
+                    const stillNeeded = nonCoreSlots - nonCorePicked.length;
+                    if (stillNeeded > 0) {
+                        const cdFallback = pickTop(nonCoreQ.filter(q => isInCooldown(q)), stillNeeded);
+                        if (cdFallback.length > 0)
+                            setTimeout(() => Toast.show(
+                                `⚠ Pool zu klein: ${cdFallback.length} Frage(n) aus dem 48h-Ruhemodus geholt.\nMehr aktive Fragen hinzufügen empfohlen.`,
+                                'warning'
+                            ), 500);
+                        nonCorePicked = [...nonCorePicked, ...cdFallback];
+                    }
                 } else {
-                    nonCorePicked = pickTop(nonCoreQ, nonCoreSlots);
+                    nonCorePicked = pickWithCooldownFallback(nonCoreQ, nonCoreSlots);
                 }
 
                 return shuffleArray([...corePicked, ...nonCorePicked]);
@@ -5189,7 +5218,7 @@
                         // verhindert Endlosschleife: Cooldown → 1x richtig → sofort wieder Cooldown
                         const sr = quizSettings.spacedRepetition || {};
                         const cooldownMs = (sr.streakCooldown || 48) * 3600000;
-                        const streakThreshold = sr.streakThreshold || 3;
+                        const streakThreshold = sr.streakThreshold || 2;
                         const prevConsec = qs.consecutiveCorrect || 0;
                         if (prevConsec >= streakThreshold && prevLastAsked) {
                             const elapsed = Date.now() - new Date(prevLastAsked).getTime();
