@@ -158,16 +158,15 @@ async function loadFromFolderInput(event) {
             let qErrors = 0;
             qList.forEach((q, qi) => {
                 try {
+                    q._fileGroup = q._fileGroup || q.theme || theme;
                     const normalized = normalizeQuestion(q);
                     // Duplikat-Check: nur questionId
                     const isDupe = normalized.questionId && questions.some(function(eq) {
                         return eq.questionId === normalized.questionId;
                     });
                     if (isDupe) { qErrors++; return; }
-                    // Eindeutige ID sicherstellen (verschiedene Dateien können gleiche IDs haben)
                     normalized.sourceFile = qf.name;
                     normalized.theme = q.theme || theme;
-                    normalized._fileGroup = q._fileGroup || q.theme || theme;
                     normalized.isCore = isCore;
                     questions.push(normalized);
                 } catch(qErr) {

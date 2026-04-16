@@ -82,16 +82,11 @@ async function _adminLoadFolder(event) {
         let loaded = 0;
         qList.forEach((q, qi) => {
             try {
+                q._fileGroup = q._fileGroup || fileTheme || 'Manuell';
                 const n = normalizeQuestion(q);
-                const isDupe = questions.some(eq =>
-                    (n.questionId && eq.questionId === n.questionId) ||
-                    (eq.text || '').trim().toLowerCase() === (n.text || '').trim().toLowerCase()
-                );
+                const isDupe = n.questionId && questions.some(eq => eq.questionId === n.questionId);
                 if (isDupe) return;
-                n.id = Date.now() + questions.length + qi;
                 n.sourceFile = qf.name;
-                // _fileGroup: Frage selbst → Datei-Theme → 'Manuell'
-                if (!n._fileGroup) n._fileGroup = fileTheme || 'Manuell';
                 questions.push(n);
                 loaded++;
             } catch { /* fehlerhafte Frage überspringen */ }
