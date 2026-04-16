@@ -167,6 +167,7 @@ async function loadFromFolderInput(event) {
                     if (isDupe) { qErrors++; return; }
                     normalized.sourceFile = qf.name;
                     normalized.theme = q.theme || theme;
+                    normalized._fileGroup = q._fileGroup;
                     normalized.isCore = isCore;
                     questions.push(normalized);
                 } catch(qErr) {

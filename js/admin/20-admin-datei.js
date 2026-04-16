@@ -84,6 +84,7 @@ async function _adminLoadFolder(event) {
             try {
                 q._fileGroup = q._fileGroup || fileTheme || 'Manuell';
                 const n = normalizeQuestion(q);
+                n._fileGroup = q._fileGroup;
                 const isDupe = n.questionId && questions.some(eq => eq.questionId === n.questionId);
                 if (isDupe) return;
                 n.sourceFile = qf.name;
