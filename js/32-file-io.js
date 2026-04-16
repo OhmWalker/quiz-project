@@ -159,10 +159,9 @@ async function loadFromFolderInput(event) {
             qList.forEach((q, qi) => {
                 try {
                     const normalized = normalizeQuestion(q);
-                    // Duplikat-Check: questionId ODER Text (verhindert doppelte Fragen aus mehreren Dateien)
-                    const isDupe = questions.some(function(eq) {
-                        if (normalized.questionId && eq.questionId === normalized.questionId) return true;
-                        return (eq.text || '').trim().toLowerCase() === (normalized.text || '').trim().toLowerCase();
+                    // Duplikat-Check: nur questionId
+                    const isDupe = normalized.questionId && questions.some(function(eq) {
+                        return eq.questionId === normalized.questionId;
                     });
                     if (isDupe) { qErrors++; return; }
                     // Eindeutige ID sicherstellen (verschiedene Dateien können gleiche IDs haben)
@@ -265,7 +264,26 @@ async function loadFromFolderInput(event) {
         });
     });
 
-    // Phase 2: sentPhoneJokers aufräumen + pending aus sent erzeugen
+    // Phase 2: Verwaiste resolved-Einträge aufräumen
+    // Muss VOR Phase 3 laufen: solange A's sentPhoneJokers noch nicht bereinigt wurden,
+    // darf B's Quittung nicht entfernt werden — sonst erstellt Phase 3 den Joker neu
+    // wenn A's Datei noch den unresolved Eintrag enthält.
+    users.forEach(function(target) {
+        if (!target.pendingPhoneJoker) return;
+        target.pendingPhoneJoker = target.pendingPhoneJoker.filter(function(entry) {
+            if (!entry.resolved) return true; // offene behalten
+            // Abgelaufene resolved-Einträge entfernen
+            if (entry.date && new Date(entry.date).getTime() < jokerExpiryThreshold) return false;
+            // Quittung nur entfernen wenn Sender keinen passenden sent-Eintrag mehr hat
+            var sender = users.find(function(u){ return u.name === entry.from; });
+            if (!sender || !sender.sentPhoneJokers) return false;
+            return sender.sentPhoneJokers.some(function(s) {
+                return s.questionId === entry.questionId && s.targetName === target.name;
+            });
+        });
+    });
+
+    // Phase 3: sentPhoneJokers aufräumen + pending aus sent erzeugen
     users.forEach(function(sender) {
         if (!sender.sentPhoneJokers || sender.sentPhoneJokers.length === 0) return;
         // Ghost-Joker Cleanup: resolved, abgelaufene, inaktive Fragen entfernen
@@ -290,24 +308,6 @@ async function loadFromFolderInput(event) {
                     });
                 }
             }
-        });
-    });
-
-    // Phase 3: Verwaiste resolved-Einträge aufräumen
-    // Wenn der Sender keinen passenden sent-Eintrag mehr hat (schon gespeichert),
-    // kann der resolved-Eintrag beim Empfänger entfernt werden.
-    users.forEach(function(target) {
-        if (!target.pendingPhoneJoker) return;
-        target.pendingPhoneJoker = target.pendingPhoneJoker.filter(function(entry) {
-            if (!entry.resolved) return true; // offene behalten
-            // Abgelaufene resolved-Einträge entfernen
-            if (entry.date && new Date(entry.date).getTime() < jokerExpiryThreshold) return false;
-            // Wenn Sender keinen passenden sent-Eintrag mehr hat → Quittung entfernen
-            var sender = users.find(function(u){ return u.name === entry.from; });
-            if (!sender || !sender.sentPhoneJokers) return false;
-            return sender.sentPhoneJokers.some(function(s) {
-                return s.questionId === entry.questionId && s.targetName === target.name;
-            });
         });
     });
 

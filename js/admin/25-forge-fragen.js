@@ -86,6 +86,11 @@ function _fqRenderList(container) {
                 <button class="btn btn-small btn-secondary" onclick="_fqStartExport()">
                     ↓ Exportieren
                 </button>
+                <button class="btn btn-small btn-secondary" onclick="_fqImportQuestions()">
+                    📥 Importieren
+                </button>
+                <input type="file" id="fqImportFile" accept=".json" multiple style="display:none"
+                    onchange="_fqHandleImport(event)">
                 <button class="btn btn-small" onclick="_fqOpenForm()">
                     + Neue Frage
                 </button>
@@ -944,4 +949,59 @@ function _fqGetTargets() {
 
 function _fqEsc(s) {
     return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+}
+
+// ── Import ────────────────────────────────────────────────────────────────────
+
+function _fqImportQuestions() {
+    document.getElementById('fqImportFile').click();
+}
+
+function _fqHandleImport(event) {
+    const files = Array.from(event.target.files);
+    if (!files.length) return;
+    let totalAdded = 0, totalDupes = 0;
+
+    function processFile(file) {
+        return new Promise(function(resolve) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    let raw = e.target.result;
+                    try { raw = decodeURIComponent(escape(atob(raw))); } catch(ex) {}
+                    const data = JSON.parse(raw);
+                    const importedQuestions = data.questions || data.fragen || [];
+                    const importTheme = data.theme || file.name.replace('.json', '');
+                    let added = 0, dupes = 0;
+                    importedQuestions.forEach(function(iq) {
+                        const normalized = typeof normalizeQuestion === 'function' ? normalizeQuestion(iq) : iq;
+                        normalized._fileGroup = iq._fileGroup || importTheme;
+                        const isDupe = normalized.questionId && questions.some(function(eq) {
+                            return eq.questionId === normalized.questionId;
+                        });
+                        if (isDupe) { dupes++; }
+                        else {
+                            normalized.id = Date.now() + added + Math.floor(Math.random() * 1000);
+                            questions.push(normalized);
+                            added++;
+                        }
+                    });
+                    totalAdded += added;
+                    totalDupes += dupes;
+                } catch(err) {
+                    Toast.show('Fehler in ' + file.name + ': ' + err.message, 'warning');
+                }
+                resolve();
+            };
+            reader.readAsText(file);
+        });
+    }
+
+    Promise.all(files.map(processFile)).then(function() {
+        AdminShell.showPanel('fragen');
+        let msg = '📥 ' + totalAdded + ' Fragen importiert!';
+        if (totalDupes > 0) msg += '\n⚠️ ' + totalDupes + ' Duplikat(e) übersprungen.';
+        Toast.show(msg, 'success');
+    });
+    event.target.value = '';
 }

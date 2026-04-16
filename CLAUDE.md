@@ -49,6 +49,7 @@
 
 ### `_contentHash`-Feld auf Fragen
 - Jede Frage hat `_contentHash: "Q_xxxxxxxx"` — der alte Hash, jetzt nur noch für Import-Duplikat-Erkennung
+- **Duplikat-Check beim Laden (Quiz + Forge):** nur `questionId` — kein Textvergleich (wurde entfernt, da gleicher Text legitim in verschiedenen Gruppen vorkommen kann)
 - Wird in `normalizeQuestion` gesetzt, nie als primäre ID verwendet
 
 ### Migration Hash → stabile ID (noch durchzuführen)
@@ -233,6 +234,11 @@ Zweck: Sofort sichtbar wenn auf dem Standalone-System eine alte/falsche JSON gel
 
 - `pendingJokerBonus`: XP-Gutschrift für Phone-Joker-Sender (wird bei nächstem USER_SELECTED via `checkPendingJokers()` ausgezahlt)
 
+### Phone-Joker: Phasen-Reihenfolge beim Folder-Load (`js/32-file-io.js`)
+Kritisch: Phase 2 (Quittungen aufräumen) muss **vor** Phase 3 (sentPhoneJokers bereinigen + pending neu erzeugen) laufen.
+- **Bug bei falscher Reihenfolge:** Phase 3 entfernt A's resolved sentEntry → Phase 2 findet B's Quittung nicht mehr → Phase 2 erstellt Joker neu → B muss Joker erneut beantworten
+- **Spieler-Dialog:** 2-Spalten-Grid (`grid-template-columns: 1fr 1fr`), `max-height: 300px`, scrollbar — verhindert Überlauf bei vielen Spielern
+
 ### abilities{}-Struktur (pro Key)
 `{ charges: number, unlocked: boolean }`
 
@@ -263,7 +269,7 @@ Reihenfolge in der Nav (von oben nach unten):
 | Tab | Datei | Funktion |
 |---|---|---|
 | Datei | `20-admin-datei.js` | Ordner laden (Master-JSON + Spieler-JSONs) |
-| Fragen | `25-forge-fragen.js` | Fragen erstellen/bearbeiten (MC, Text, Bildklick) + Export; Klick auf Zeile klappt Inline-Edit auf; ID editierbar mit Duplikat-Prüfung; 📂-Buttons für Medien-Pfade |
+| Fragen | `25-forge-fragen.js` | Fragen erstellen/bearbeiten (MC, Text, Bildklick) + Export + **📥 Import** (Einzeldateien); Klick auf Zeile klappt Inline-Edit auf; ID editierbar mit Duplikat-Prüfung; 📂-Buttons für Medien-Pfade |
 | Nutzer | `30-admin-nutzer.js` | Umbenennen, Übersicht |
 | Einstellungen | `40-admin-einstellungen.js` | earnPer/earnStat für Fähigkeiten |
 | *(Trennlinie)* | `45-admin-separator.js` | `AdminShell.registerSeparator()` |
@@ -306,6 +312,9 @@ document.getElementById('bossQuestionCard').innerHTML =
 ```
 **Regel:** Wenn weitere Overlays/Screens im Projekt `.innerHTML =` auf Container-Elemente setzen,
 die Kind-IDs enthalten, muss der nächste `start()`/`open()`-Aufruf diese IDs ebenfalls wiederherstellen.
+
+### Fragen-Pool
+- `getBossQuestions()` filtert: nur MC-Fragen, aktiv, **kein `media`-Feld** (Bild-Fragen werden ausgeschlossen, da Bilder im BossFight nicht angezeigt werden)
 
 ### Boss-Fähigkeiten-Anzeige
 - `#bossAbilities` zeigt beim Start **dauerhaft beide Fähigkeiten** als Chips (`.boss-ability-chip`)

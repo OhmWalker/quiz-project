@@ -301,15 +301,15 @@ const AbilityPlugin = {
         // Player selection dialog via GameDialog overlay
         const overlay = GameDialog._ensureOverlay();
         const playerBtns = others.map(u =>
-            `<button class="btn" style="width:100%;margin-bottom:8px;padding:12px;" data-player="${sanitizeHTML(u.name)}">${sanitizeHTML(u.name)}</button>`
+            `<button class="btn" style="padding:10px 8px;font-size:0.9rem;" data-player="${sanitizeHTML(u.name)}">${sanitizeHTML(u.name)}</button>`
         ).join('');
         overlay.innerHTML = `
-            <div style="background:var(--glass-bg,rgba(30,30,50,0.95));border:1px solid rgba(255,255,255,0.15);border-radius:16px;padding:30px;max-width:400px;width:90%;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,0.5);">
+            <div style="background:var(--glass-bg,rgba(30,30,50,0.95));border:1px solid rgba(255,255,255,0.15);border-radius:16px;padding:30px;max-width:440px;width:90%;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,0.5);">
                 <div style="font-size:3rem;margin-bottom:10px;">📞</div>
                 <h3 style="color:#f1c40f;margin:0 0 10px;">Telefon-Joker</h3>
                 <p style="color:#ddd;margin:0 0 20px;line-height:1.5;">Wen möchtest du um Hilfe bitten?<br><small>Der Spieler bekommt die Frage beim nächsten Quiz. Bei richtig: 5× XP für euch beide!</small></p>
-                <div id="phoneJokerPlayerList">${playerBtns}</div>
-                <button id="phoneJokerCancel" class="btn btn-secondary" style="margin-top:8px;min-width:100px;">Abbrechen</button>
+                <div id="phoneJokerPlayerList" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;max-height:300px;overflow-y:auto;padding-right:4px;">${playerBtns}</div>
+                <button id="phoneJokerCancel" class="btn btn-secondary" style="margin-top:12px;min-width:100px;">Abbrechen</button>
             </div>`;
         overlay.style.display = 'flex';
         const self = this;

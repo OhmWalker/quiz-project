@@ -57,7 +57,7 @@ const BossFightPlugin = {
     disable() {},
 
     getBossQuestions() {
-        const active = questions.filter(q => q.active !== false && q.type === QUESTION_TYPES.MULTIPLE_CHOICE);
+        const active = questions.filter(q => q.active !== false && q.type === QUESTION_TYPES.MULTIPLE_CHOICE && !q.media);
         if (active.length < 5) return questions.filter(q => q.active !== false).slice(0, 10);
         const shuffled = [...active];
         shuffleArray(shuffled);
