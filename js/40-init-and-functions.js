@@ -801,10 +801,10 @@ document.addEventListener('keydown', function(e) {
             return;
         }
     }
-    // Results Screen: Enter löst Export & Weiter aus
+    // Results Screen: Enter löst Export & Weiter aus (nur wenn Button nicht selbst fokussiert — verhindert Doppel-Auslösung)
     const resultsScreen = document.getElementById('resultsScreen');
     if (resultsScreen && resultsScreen.classList.contains('active')) {
-        if (e.key === 'Enter') {
+        if (e.key === 'Enter' && document.activeElement?.id !== 'exportContinueBtn') {
             e.preventDefault();
             exportAllDataAndContinue();
             return;
