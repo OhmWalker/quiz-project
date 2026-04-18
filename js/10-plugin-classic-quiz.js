@@ -568,6 +568,7 @@ const ClassicQuizPlugin = {
         renderUserSelect();
         showScreen('resultsScreen');
         renderNextGoals(currentUser);
+        setTimeout(() => document.getElementById('exportContinueBtn')?.focus(), 100);
         EventBus.emit(EventBus.EVENTS.QUIZ_COMPLETED, { user: currentUser?.name, correct, total, xp: finalXP, pct });
         // Mini-game cascade
         setTimeout(() => this._checkMiniGameTriggers(), 1500);

@@ -5495,6 +5495,7 @@
                 renderUserSelect();
                 showScreen('resultsScreen');
                 renderNextGoals(currentUser);
+                setTimeout(() => document.getElementById('exportContinueBtn')?.focus(), 100);
                 EventBus.emit(EventBus.EVENTS.QUIZ_COMPLETED, { user: currentUser?.name, correct, total, xp: finalXP, pct });
                 // Mini-game cascade
                 setTimeout(() => this._checkMiniGameTriggers(), 1500);
@@ -11206,15 +11207,6 @@
                 if (e.key === 'Enter' && currentUser) {
                     e.preventDefault();
                     startQuiz();
-                    return;
-                }
-            }
-            // Results Screen: Enter löst Export & Weiter aus (nur wenn Button nicht selbst fokussiert — verhindert Doppel-Auslösung)
-            const resultsScreen = document.getElementById('resultsScreen');
-            if (resultsScreen && resultsScreen.classList.contains('active')) {
-                if (e.key === 'Enter' && document.activeElement?.id !== 'exportContinueBtn') {
-                    e.preventDefault();
-                    exportAllDataAndContinue();
                     return;
                 }
             }
