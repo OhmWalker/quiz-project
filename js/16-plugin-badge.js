@@ -235,7 +235,7 @@ const BadgePlugin = {
             return `<div class="badge-item ${locked ? 'locked' : ''} badge-${color}"
                 onmouseenter="BadgePlugin.showBadgeTooltip(event,'${b.id}')"
                 onmouseleave="BadgePlugin.hideBadgeTooltip()"
-                data-badge-id="${b.id}" data-tier="${tier}" data-value="${val}">${icon}${progressPill}</div>`;
+                data-badge-id="${b.id}" data-tier="${tier}" data-value="${val}"><span class="badge-icon-wrap">${icon}</span>${progressPill}</div>`;
         }).join('') + '</div>';
     },
 

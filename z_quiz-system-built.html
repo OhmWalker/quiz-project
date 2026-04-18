@@ -1804,6 +1804,11 @@
             transition: all 0.3s ease;
             position: relative;
         }
+        .badge-icon-wrap {
+            filter: drop-shadow(0 0 3px rgba(255,255,255,0.55)) drop-shadow(0 1px 2px rgba(0,0,0,0.5));
+            pointer-events: none;
+            line-height: 1;
+        }
 
         .badge-item:last-child {
             margin-bottom: 0;
@@ -6837,7 +6842,7 @@
                     return `<div class="badge-item ${locked ? 'locked' : ''} badge-${color}"
                         onmouseenter="BadgePlugin.showBadgeTooltip(event,'${b.id}')"
                         onmouseleave="BadgePlugin.hideBadgeTooltip()"
-                        data-badge-id="${b.id}" data-tier="${tier}" data-value="${val}">${icon}${progressPill}</div>`;
+                        data-badge-id="${b.id}" data-tier="${tier}" data-value="${val}"><span class="badge-icon-wrap">${icon}</span>${progressPill}</div>`;
                 }).join('') + '</div>';
             },
 
