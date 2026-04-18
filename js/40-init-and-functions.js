@@ -398,6 +398,61 @@ function call(plugin, method, ...args) {
 
 function renderLeaderboard() { if (!PluginRegistry.isEnabled('LeaderboardPlugin')) return; LeaderboardPlugin.render(); }
 
+function renderNextGoals(user) {
+    const container = document.getElementById('nextGoalsContainer');
+    if (!container) return;
+    if (!user) { container.innerHTML = ''; return; }
+
+    const goals = [];
+
+    // Level-Up
+    const lvl = calculateLevel(user.totalXP || 0);
+    if (lvl.xpForNextLevel > 0) {
+        const pct = Math.min(99, Math.round(lvl.currentLevelXP / lvl.xpForNextLevel * 100));
+        const remaining = lvl.xpForNextLevel - lvl.currentLevelXP;
+        goals.push({ icon: '⬆️', label: `Level ${lvl.level + 1}`, detail: `Noch ${remaining} XP`, pct });
+    }
+
+    // Nächste Fähigkeits-Ladung (beste Näherung)
+    if (typeof AbilityPlugin !== 'undefined' && PluginRegistry.isEnabled('AbilityPlugin')) {
+        const statVals = AbilityPlugin.getStatValues(user);
+        const statLabels = { totalQuizzes: 'Quiz', uniqueQuestions: 'neue Fragen', perfectQuizzes: 'Perfekt-Quiz', currentStreak: 'Streak-Tage' };
+        const SHOWABLE = ['skip', 'hint', 'doubleXP', 'shield', 'secondChance'];
+        let best = null, bestPct = -1;
+        SHOWABLE.forEach(key => {
+            const def = AbilityPlugin.DEFS[key];
+            if (!def) return;
+            const statVal = statVals[def.earnStat] || 0;
+            const totalEarned = Math.floor(statVal / def.earnPer);
+            const nextAt = (totalEarned + 1) * def.earnPer;
+            const remaining = nextAt - statVal;
+            const pct = Math.round((statVal % def.earnPer) / def.earnPer * 100);
+            if (pct > bestPct) {
+                bestPct = pct;
+                best = { icon: def.icon, label: def.name, detail: `Noch ${remaining} ${statLabels[def.earnStat] || ''}`, pct };
+            }
+        });
+        if (best) goals.push(best);
+    }
+
+    // Streak
+    const streak = user.streak || 0;
+    if (streak > 0) {
+        goals.push({ icon: '🔥', label: `Streak: ${streak} Tag${streak !== 1 ? 'e' : ''}`, detail: `Morgen spielen → ${streak + 1} Tage`, pct: null });
+    }
+
+    if (goals.length === 0) { container.innerHTML = ''; return; }
+
+    let html = '<div class="next-goals-section"><div class="next-goals-title">🎯 Nächste Ziele</div>';
+    goals.forEach(g => {
+        html += `<div class="next-goal-item"><div class="next-goal-header"><span>${g.icon} ${g.label}</span><span class="next-goal-detail">${g.detail}</span></div>`;
+        if (g.pct !== null) html += `<div class="next-goal-bar"><div class="next-goal-fill" style="width:${g.pct}%"></div></div>`;
+        html += '</div>';
+    });
+    html += '</div>';
+    container.innerHTML = html;
+}
+
 // FÄHIGKEITEN-SYSTEM (Abilities)
 
 // ABILITY_DEFS ist eine Referenz auf AbilityPlugin.DEFS (NICHT doppelt pflegen!)

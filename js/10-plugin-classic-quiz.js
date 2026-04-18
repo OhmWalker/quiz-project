@@ -567,6 +567,7 @@ const ClassicQuizPlugin = {
         msg.textContent += ` +${finalXP} XP${xpInfo}`;
         renderUserSelect();
         showScreen('resultsScreen');
+        renderNextGoals(currentUser);
         EventBus.emit(EventBus.EVENTS.QUIZ_COMPLETED, { user: currentUser?.name, correct, total, xp: finalXP, pct });
         // Mini-game cascade
         setTimeout(() => this._checkMiniGameTriggers(), 1500);
