@@ -351,6 +351,38 @@
 
         /* === 01-screens.css === */
         /* 01-screens.css - User Selection, Quiz, Results, Admin Nav */
+
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+            width: 100%;
+        }
+
+        .file-input-wrapper input[type=file] {
+            position: absolute;
+            left: -9999px;
+        }
+
+        .file-input-label {
+            display: block;
+            padding: 12px 24px;
+            background: linear-gradient(135deg, var(--correct), #27AE60);
+            color: white;
+            text-align: center;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 700;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            font-size: 0.9rem;
+            letter-spacing: 1px;
+        }
+
+        .file-input-label:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(46, 204, 113, 0.4);
+        }
         .user-select {
             display: grid;
             grid-template-columns: repeat(5, 1fr);
@@ -1564,37 +1596,7 @@
             gap: 10px;
         }
 
-        .file-input-wrapper {
-            position: relative;
-            overflow: hidden;
-            display: inline-block;
-            width: 100%;
-        }
-
-        .file-input-wrapper input[type=file] {
-            position: absolute;
-            left: -9999px;
-        }
-
-        .file-input-label {
-            display: block;
-            padding: 12px 24px;
-            background: linear-gradient(135deg, var(--correct), #27AE60);
-            color: white;
-            text-align: center;
-            border-radius: 10px;
-            cursor: pointer;
-            font-weight: 700;
-            transition: all 0.3s ease;
-            text-transform: uppercase;
-            font-size: 0.9rem;
-            letter-spacing: 1px;
-        }
-
-        .file-input-label:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 20px rgba(46, 204, 113, 0.4);
-        }
+        /* file-input-wrapper → 01-screens.css (Lean-kritisch) */
 
         .btn-export {
             background: linear-gradient(135deg, var(--primary), var(--accent));
@@ -1699,9 +1701,8 @@
             top: var(--sidebar-top, 120px);
             z-index: 50;
             padding: 14px 10px;
-            background: rgba(26, 26, 46, 0.95);
+            background: rgb(26, 26, 46);
             border-radius: 20px;
-            backdrop-filter: blur(10px);
             border: 1px solid var(--overlay-10);
             max-height: calc(100vh - var(--sidebar-top, 120px) - 10px);
             overflow-y: auto;
@@ -1910,6 +1911,7 @@
             cursor: pointer;
             transition: all 0.3s ease;
             position: relative;
+            color: white;
         }
         .badge-icon-wrap {
             pointer-events: none;
@@ -2988,6 +2990,46 @@
             background: var(--accent);
             border-radius: 3px;
             transition: width 0.7s ease;
+        }
+
+        .xp-neighbor-bar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 6px;
+        }
+        .xp-neighbor-name {
+            font-size: 0.72rem;
+            opacity: 0.6;
+            white-space: nowrap;
+            max-width: 70px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            flex-shrink: 0;
+        }
+        .xp-neighbor-track {
+            flex: 1;
+            height: 6px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 3px;
+            position: relative;
+        }
+        .xp-neighbor-fill {
+            height: 100%;
+            background: linear-gradient(90deg, rgba(247,184,1,0.3), var(--accent));
+            border-radius: 3px;
+            transition: width 0.7s ease;
+        }
+        .xp-neighbor-dot {
+            position: absolute;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            width: 10px;
+            height: 10px;
+            background: var(--accent);
+            border-radius: 50%;
+            border: 2px solid rgba(0,0,0,0.4);
+            transition: left 0.7s ease;
         }
     </style>
 </head>

@@ -140,6 +140,7 @@ Nach jedem Master-JSON-Load werden die geladenen SR-Werte mit `SR_EXPECTED` verg
 ## Badge-System
 - `calculateBadgeStats` nutzt `q.questionId` für groupsPlayed
 - Ability-Badge-Stats: `ab_fiftyFifty`, `ab_skip`, etc. aus `badgeStats.abilitiesUsed`
+- **Emoji-Rendering-Bug (2026-04, gefixt):** `.badge-sidebar-section` hatte `color: rgba(255,255,255,0.4)` — dieses semi-transparente Weiß wurde von `.badge-item` geerbt und ließ Emojis in Chromium milchig/ausgewaschen erscheinen. Fix: `color: white` explizit auf `.badge-item` setzen. Merkrege: Immer `color` auf Emoji-Containern explizit setzen, nie von halbtransparenten Eltern-Elementen erben lassen.
 
 ## Sidebar-Rendering
 - JS nutzt explizite Display-Werte (`'flex'`/`'block'`/`'none'`)

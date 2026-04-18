@@ -449,6 +449,44 @@ function renderNextGoals(user) {
         if (g.pct !== null) html += `<div class="next-goal-bar"><div class="next-goal-fill" style="width:${g.pct}%"></div></div>`;
         html += '</div>';
     });
+
+    // XP-Nachbarbalken
+    if (users && users.length >= 2) {
+        const ranked = [...users].sort((a, b) => (b.totalXP || 0) - (a.totalXP || 0));
+        const myIdx  = ranked.findIndex(u => u.id === user.id);
+        if (myIdx !== -1) {
+            const above = myIdx > 0 ? ranked[myIdx - 1] : null;
+            const below = myIdx < ranked.length - 1 ? ranked[myIdx + 1] : null;
+            const myXP  = user.totalXP || 0;
+
+            if (above || below) {
+                const leftXP  = below ? (below.totalXP || 0) : myXP;
+                const rightXP = above ? (above.totalXP || 0) : myXP;
+                const range   = Math.max(1, rightXP - leftXP);
+                const pos     = Math.min(99, Math.max(1, Math.round((myXP - leftXP) / range * 100)));
+                const leftName  = below ? below.name : '—';
+                const rightName = above ? above.name : '—';
+                const aboveGap  = above ? (above.totalXP || 0) - myXP : 0;
+                const belowGap  = below ? myXP - (below.totalXP || 0) : 0;
+                const detail    = above
+                    ? `Noch ${aboveGap} XP bis ${above.name}`
+                    : `${belowGap} XP Vorsprung auf ${below.name}`;
+
+                html += `<div class="next-goal-item">
+                    <div class="next-goal-header"><span>📊 Rangliste</span><span class="next-goal-detail">${detail}</span></div>
+                    <div class="xp-neighbor-bar">
+                        <span class="xp-neighbor-name xp-neighbor-left">${sanitizeHTML(leftName)}</span>
+                        <div class="xp-neighbor-track">
+                            <div class="xp-neighbor-fill" style="width:${pos}%"></div>
+                            <div class="xp-neighbor-dot" style="left:${pos}%"></div>
+                        </div>
+                        <span class="xp-neighbor-name xp-neighbor-right">${sanitizeHTML(rightName)}</span>
+                    </div>
+                </div>`;
+            }
+        }
+    }
+
     html += '</div>';
     container.innerHTML = html;
 }
