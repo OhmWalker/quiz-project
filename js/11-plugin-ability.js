@@ -7,7 +7,7 @@ const AbilityPlugin = {
     DEFS: {
         fiftyFifty:   { icon:'🎯', name:'50/50', desc:'Entfernt 2 falsche Antworten (Burst: 2 Quizze/h)', earnPer:1, earnStat:'_fifty50Sessions', passive:false },
         skip:         { icon:'⏭️', name:'Überspringen', desc:'Frage überspringen ohne Strafe', earnPer:10, earnStat:'totalQuizzes', passive:false },
-        hint:         { icon:'💡', name:'Hinweis', desc:'Zeigt den Hinweistext an', earnPer:20, earnStat:'uniqueQuestions', passive:false },
+        hint:         { icon:'💡', name:'Hinweis', desc:'Zeigt den Hinweistext an', earnPer:15, earnStat:'totalAnswers', passive:false },
         doubleXP:     { icon:'✨', name:'Doppel-XP', desc:'Doppelte XP für richtige Antwort', earnPer:1, earnStat:'perfectQuizzes', passive:false },
         shield:       { icon:'🛡️', name:'Schild', desc:'Schützt vor XP-Verlust bei falscher Antwort', earnPer:7, earnStat:'currentStreak', passive:true },
         secondChance: { icon:'🔄', name:'2. Chance', desc:'Bei falscher Antwort erneut versuchen', earnPer:3, earnStat:'currentStreak', passive:true },
@@ -72,6 +72,7 @@ const AbilityPlugin = {
             totalQuizzes: bs.totalQuizzes || 0,
             currentStreak: bs.currentStreak || 0,
             uniqueQuestions: bs.uniqueQuestions || Object.keys(user.questionStats || {}).length,
+            totalAnswers: user.totalAnswers || 0,
             perfectQuizzes: bs.perfectQuizzes || 0,
             marathonDays: bs.marathonDays || 0
         };

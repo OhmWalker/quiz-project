@@ -243,6 +243,7 @@ const BadgePlugin = {
         _fifty50Sessions: 'Burst-Sessions (2+ Quizze/h)',
         totalQuizzes: 'Quizze gespielt',
         uniqueQuestions: 'Verschiedene Fragen',
+        totalAnswers: 'Beantwortete Fragen',
         perfectQuizzes: 'Perfekte Quizze (100%)',
         currentStreak: 'Tage Streak',
         activeDays3: 'Tage mit 3+ Quizzen',
