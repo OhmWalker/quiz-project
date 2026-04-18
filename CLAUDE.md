@@ -4,10 +4,10 @@
 - Quiz-System v4.0, Single-Page-App (HTML/CSS/JS)
 - Modulare Plugin-Architektur: ~25 JS-Dateien, 4 CSS-Dateien
 - Build: `python3 build.py` → vier Dateien (Präfix `z_` damit sie in GitHub-Listings ganz unten stehen):
-  - `z_quiz-system-built.html` (~604 KB) — das Quiz + eingebetteter Admin-Bereich (Legacy)
-  - `z_forge.html` (~330 KB) — Admin-/Wartungs-Tool (Standalone)
-  - `z_herald.html` (~131 KB) — Fragen-Einreichungs-Tool (für Nutzer)
-  - `z_LeanQuiz.html` (~332 KB) — Quiz-only, kein Admin (Quelle: `lean-index.html`)
+  - `z_quiz-system-built.html` (~610 KB) — das Quiz + eingebetteter Admin-Bereich (Legacy)
+  - `z_forge.html` (~332 KB) — Admin-/Wartungs-Tool (Standalone)
+  - `z_herald.html` (~133 KB) — Fragen-Einreichungs-Tool (für Nutzer)
+  - `z_LeanQuiz.html` (~336 KB) — Quiz-only, kein Admin (Quelle: `lean-index.html`)
 - Langfristig: `z_quiz-system-built.html` wird durch `z_forge.html` + `z_LeanQuiz.html` ersetzt
 
 ## Architektur
