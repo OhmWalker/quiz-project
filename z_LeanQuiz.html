@@ -5634,6 +5634,20 @@
         };
 
 
+        // === 18-plugin-registration.js ===
+        // 18-plugin-registration.js
+        // PluginRegistry.register() für alle Lean-Plugins.
+        // Lean-kritisch: 20-plugin-usermanagement.js ist aus LeanQuiz ausgeschlossen,
+        // daher stehen die Registrierungen hier (Admin-Plugins folgen in 20-…).
+
+        PluginRegistry.register('ClassicQuizPlugin', ClassicQuizPlugin, {category:'quiz', required:true});
+        PluginRegistry.register('AbilityPlugin',     AbilityPlugin,     {category:'feature'});
+        PluginRegistry.register('WheelPlugin',       WheelPlugin,       {category:'minigame'});
+        PluginRegistry.register('BossFightPlugin',   BossFightPlugin,   {category:'minigame'});
+        PluginRegistry.register('BadgePlugin',       BadgePlugin,       {category:'feature'});
+        PluginRegistry.register('LeaderboardPlugin', LeaderboardPlugin, {category:'feature'});
+
+
         // === 30-globals.js ===
         // 30-globals.js
         // Global variables, settings, bridges for backward compatibility
@@ -6270,12 +6284,20 @@
                 }
             });
             let dupEl = document.getElementById('modeDuplicates');
+            let modeEl = document.getElementById('modeIndicator');
             if (dupEl) {
                 if (dupTotal > 0) {
                     dupEl.textContent = 'Duplicates: ' + dupTotal + ' (' + dupNames.join(', ') + ')';
-                    dupEl.style.color = 'var(--incorrect)';
+                    if (modeEl) {
+                        modeEl.style.background = 'linear-gradient(135deg, #7d2b09, #c0392b)';
+                        modeEl.style.boxShadow  = '0 10px 30px rgba(192, 57, 43, 0.4)';
+                    }
                 } else {
                     dupEl.textContent = 'Duplicates: 0';
+                    if (modeEl) {
+                        modeEl.style.background = '';
+                        modeEl.style.boxShadow  = '';
+                    }
                 }
             }
 

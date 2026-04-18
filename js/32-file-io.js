@@ -350,12 +350,20 @@ async function loadFromFolderInput(event) {
         }
     });
     let dupEl = document.getElementById('modeDuplicates');
+    let modeEl = document.getElementById('modeIndicator');
     if (dupEl) {
         if (dupTotal > 0) {
             dupEl.textContent = 'Duplicates: ' + dupTotal + ' (' + dupNames.join(', ') + ')';
-            dupEl.style.color = 'var(--incorrect)';
+            if (modeEl) {
+                modeEl.style.background = 'linear-gradient(135deg, #7d2b09, #c0392b)';
+                modeEl.style.boxShadow  = '0 10px 30px rgba(192, 57, 43, 0.4)';
+            }
         } else {
             dupEl.textContent = 'Duplicates: 0';
+            if (modeEl) {
+                modeEl.style.background = '';
+                modeEl.style.boxShadow  = '';
+            }
         }
     }
 

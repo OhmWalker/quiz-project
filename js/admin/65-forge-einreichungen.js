@@ -338,7 +338,7 @@ function _eiAccept(idx) {
     if (!q) return;
 
     const group = q._fileGroup || 'Manuell';
-    const newId = _fmAssignStableId(group, questions);
+    const newId = assignStableId(group, questions);
     q.questionId = newId;
     q.active     = true;
 

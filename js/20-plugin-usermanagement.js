@@ -207,15 +207,10 @@ const UserManagementPlugin = {
     }
 };
 
-// Register all plugin stubs
-PluginRegistry.register('ClassicQuizPlugin', ClassicQuizPlugin, {category:'quiz', required:true});
-PluginRegistry.register('AbilityPlugin', AbilityPlugin, {category:'feature'});
-PluginRegistry.register('WheelPlugin', WheelPlugin, {category:'minigame'});
-PluginRegistry.register('BossFightPlugin', BossFightPlugin, {category:'minigame'});
-PluginRegistry.register('BadgePlugin', BadgePlugin, {category:'feature'});
-PluginRegistry.register('LeaderboardPlugin', LeaderboardPlugin, {category:'feature'});
-PluginRegistry.register('Fragen2Plugin', Fragen2Plugin, {category:'admin'});
-PluginRegistry.register('UserManagementPlugin', UserManagementPlugin, {category:'admin'});
+// Lean-Plugins werden in 18-plugin-registration.js registriert.
+// Hier nur Admin-only-Plugins (nicht in LeanQuiz):
+PluginRegistry.register('Fragen2Plugin',          Fragen2Plugin,          {category:'admin'});
+PluginRegistry.register('UserManagementPlugin',   UserManagementPlugin,   {category:'admin'});
 
 
 // getGroupPrefix, assignStableId → 30-globals.js

@@ -4778,12 +4778,20 @@
                 }
             });
             let dupEl = document.getElementById('modeDuplicates');
+            let modeEl = document.getElementById('modeIndicator');
             if (dupEl) {
                 if (dupTotal > 0) {
                     dupEl.textContent = 'Duplicates: ' + dupTotal + ' (' + dupNames.join(', ') + ')';
-                    dupEl.style.color = 'var(--incorrect)';
+                    if (modeEl) {
+                        modeEl.style.background = 'linear-gradient(135deg, #7d2b09, #c0392b)';
+                        modeEl.style.boxShadow  = '0 10px 30px rgba(192, 57, 43, 0.4)';
+                    }
                 } else {
                     dupEl.textContent = 'Duplicates: 0';
+                    if (modeEl) {
+                        modeEl.style.background = '';
+                        modeEl.style.boxShadow  = '';
+                    }
                 }
             }
 
@@ -5715,7 +5723,7 @@
 
             // ID-Feld: bei Edit aktuelle ID, bei Neu vorgeschlagene ID
             const currentGroup = prefillGroup || (groups[0] || 'Manuell');
-            const suggestedId  = isEdit ? _fqEsc(eq.questionId || '') : _fqEsc(_fmAssignStableId(currentGroup, questions));
+            const suggestedId  = isEdit ? _fqEsc(eq.questionId || '') : _fqEsc(assignStableId(currentGroup, questions));
 
             const groupOptions = groups.map(g =>
                 `<option value="${_fqEsc(g)}" ${prefillGroup === g ? 'selected' : ''}>${_fqEsc(g)}</option>`
@@ -5894,7 +5902,7 @@
             const hint    = document.getElementById('fqIdHint');
             if (!idInput || !hint) return;
             const group     = _fqCurrentGroup();
-            const suggested = _fmAssignStableId(group, questions);
+            const suggested = assignStableId(group, questions);
             hint.textContent = 'Nächste freie ID für "' + group + '": ' + suggested;
         }
 
@@ -5950,7 +5958,7 @@
             const editQ      = _fqEditIdx >= 0 ? questions[_fqEditIdx] : null;
             const duplicate  = questions.find((q, i) => q.questionId === enteredId && i !== _fqEditIdx);
             if (duplicate) {
-                const nextFree = _fmAssignStableId(group, questions);
+                const nextFree = assignStableId(group, questions);
                 Toast.show(`ID "${enteredId}" ist bereits vergeben. Nächste freie: ${nextFree}`, 'warning');
                 return;
             }
@@ -7555,7 +7563,7 @@
             if (!q) return;
 
             const group = q._fileGroup || 'Manuell';
-            const newId = _fmAssignStableId(group, questions);
+            const newId = assignStableId(group, questions);
             q.questionId = newId;
             q.active     = true;
 

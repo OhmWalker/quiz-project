@@ -314,7 +314,7 @@ function _fqRenderForm(container) {
 
     // ID-Feld: bei Edit aktuelle ID, bei Neu vorgeschlagene ID
     const currentGroup = prefillGroup || (groups[0] || 'Manuell');
-    const suggestedId  = isEdit ? _fqEsc(eq.questionId || '') : _fqEsc(_fmAssignStableId(currentGroup, questions));
+    const suggestedId  = isEdit ? _fqEsc(eq.questionId || '') : _fqEsc(assignStableId(currentGroup, questions));
 
     const groupOptions = groups.map(g =>
         `<option value="${_fqEsc(g)}" ${prefillGroup === g ? 'selected' : ''}>${_fqEsc(g)}</option>`
@@ -493,7 +493,7 @@ function _fqUpdateIdSuggestion() {
     const hint    = document.getElementById('fqIdHint');
     if (!idInput || !hint) return;
     const group     = _fqCurrentGroup();
-    const suggested = _fmAssignStableId(group, questions);
+    const suggested = assignStableId(group, questions);
     hint.textContent = 'Nächste freie ID für "' + group + '": ' + suggested;
 }
 
@@ -549,7 +549,7 @@ function _fqSave() {
     const editQ      = _fqEditIdx >= 0 ? questions[_fqEditIdx] : null;
     const duplicate  = questions.find((q, i) => q.questionId === enteredId && i !== _fqEditIdx);
     if (duplicate) {
-        const nextFree = _fmAssignStableId(group, questions);
+        const nextFree = assignStableId(group, questions);
         Toast.show(`ID "${enteredId}" ist bereits vergeben. Nächste freie: ${nextFree}`, 'warning');
         return;
     }
