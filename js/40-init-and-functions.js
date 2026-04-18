@@ -454,27 +454,45 @@ function renderNextGoals(user) {
             const myXP  = user.totalXP || 0;
 
             if (above || below) {
-                const leftXP  = below ? (below.totalXP || 0) : myXP;
-                const rightXP = above ? (above.totalXP || 0) : myXP;
-                const range   = Math.max(1, rightXP - leftXP);
-                const pos     = Math.min(99, Math.max(1, Math.round((myXP - leftXP) / range * 100)));
-                const leftName  = below ? below.name : '—';
-                const rightName = above ? above.name : '—';
-                const aboveGap  = above ? (above.totalXP || 0) - myXP : 0;
-                const belowGap  = below ? myXP - (below.totalXP || 0) : 0;
-                const detail    = above
-                    ? `Noch ${aboveGap} XP bis ${above.name}`
-                    : `${belowGap} XP Vorsprung auf ${below.name}`;
+                const belowXP   = below ? (below.totalXP || 0) : myXP;
+                const aboveXP   = above ? (above.totalXP || 0) : myXP;
+                const range     = Math.max(1, aboveXP - belowXP);
+                const pos       = above && below
+                    ? Math.min(97, Math.max(3, Math.round((myXP - belowXP) / range * 100)))
+                    : above ? 3 : 97;
+                const gapBelow  = below ? myXP - belowXP : null;
+                const gapAbove  = above ? aboveXP - myXP : null;
+
+                const leftBlock = below ? `
+                    <div class="xp-nb-side xp-nb-left">
+                        <div class="xp-nb-name">${sanitizeHTML(below.name)}</div>
+                        <div class="xp-nb-xp">${belowXP} XP</div>
+                    </div>` : `<div class="xp-nb-side xp-nb-left"></div>`;
+
+                const rightBlock = above ? `
+                    <div class="xp-nb-side xp-nb-right">
+                        <div class="xp-nb-name">${sanitizeHTML(above.name)}</div>
+                        <div class="xp-nb-xp">${aboveXP} XP</div>
+                    </div>` : `<div class="xp-nb-side xp-nb-right xp-nb-first">1. Platz 🥇</div>`;
+
+                const gapBelowLabel = gapBelow !== null
+                    ? `<span class="xp-nb-gap xp-nb-gap-left">+${gapBelow}</span>` : '';
+                const gapAboveLabel = gapAbove !== null
+                    ? `<span class="xp-nb-gap xp-nb-gap-right">-${gapAbove}</span>` : '';
 
                 html += `<div class="next-goal-item">
-                    <div class="next-goal-header"><span>📊 Rangliste</span><span class="next-goal-detail">${detail}</span></div>
-                    <div class="xp-neighbor-bar">
-                        <span class="xp-neighbor-name xp-neighbor-left">${sanitizeHTML(leftName)}</span>
-                        <div class="xp-neighbor-track">
-                            <div class="xp-neighbor-fill" style="width:${pos}%"></div>
-                            <div class="xp-neighbor-dot" style="left:${pos}%"></div>
+                    <div class="next-goal-header"><span>📊 Rangliste #${myIdx + 1}</span><span class="next-goal-detail">${myXP} XP</span></div>
+                    <div class="xp-nb-row">
+                        ${leftBlock}
+                        <div class="xp-nb-track-wrap">
+                            <div class="xp-nb-track">
+                                <div class="xp-nb-fill" style="width:${pos}%"></div>
+                                <div class="xp-nb-dot" style="left:${pos}%"></div>
+                                ${gapBelowLabel}
+                                ${gapAboveLabel}
+                            </div>
                         </div>
-                        <span class="xp-neighbor-name xp-neighbor-right">${sanitizeHTML(rightName)}</span>
+                        ${rightBlock}
                     </div>
                 </div>`;
             }

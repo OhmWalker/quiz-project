@@ -2885,45 +2885,56 @@
             transition: width 0.7s ease;
         }
 
-        .xp-neighbor-bar {
+        .xp-nb-row {
             display: flex;
             align-items: center;
             gap: 8px;
             margin-top: 6px;
         }
-        .xp-neighbor-name {
-            font-size: 0.72rem;
-            opacity: 0.6;
-            white-space: nowrap;
-            max-width: 70px;
-            overflow: hidden;
-            text-overflow: ellipsis;
+        .xp-nb-side {
             flex-shrink: 0;
+            width: 72px;
+            font-size: 0.7rem;
+            line-height: 1.3;
         }
-        .xp-neighbor-track {
-            flex: 1;
+        .xp-nb-left { text-align: right; }
+        .xp-nb-right { text-align: left; }
+        .xp-nb-name { opacity: 0.85; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .xp-nb-xp   { opacity: 0.45; font-size: 0.65rem; }
+        .xp-nb-first { opacity: 0.55; font-size: 0.68rem; display: flex; align-items: center; }
+        .xp-nb-track-wrap { flex: 1; }
+        .xp-nb-track {
             height: 6px;
             background: rgba(255,255,255,0.1);
             border-radius: 3px;
             position: relative;
         }
-        .xp-neighbor-fill {
+        .xp-nb-fill {
             height: 100%;
             background: linear-gradient(90deg, rgba(247,184,1,0.3), var(--accent));
             border-radius: 3px;
             transition: width 0.7s ease;
         }
-        .xp-neighbor-dot {
+        .xp-nb-dot {
             position: absolute;
             top: 50%;
             transform: translate(-50%, -50%);
-            width: 10px;
-            height: 10px;
+            width: 11px;
+            height: 11px;
             background: var(--accent);
             border-radius: 50%;
-            border: 2px solid rgba(0,0,0,0.4);
+            border: 2px solid rgba(0,0,0,0.5);
             transition: left 0.7s ease;
         }
+        .xp-nb-gap {
+            position: absolute;
+            top: 10px;
+            font-size: 0.6rem;
+            opacity: 0.5;
+            white-space: nowrap;
+        }
+        .xp-nb-gap-left  { left: 0; }
+        .xp-nb-gap-right { right: 0; }
     </style>
 </head>
 <body>
@@ -10860,27 +10871,45 @@
                     const myXP  = user.totalXP || 0;
 
                     if (above || below) {
-                        const leftXP  = below ? (below.totalXP || 0) : myXP;
-                        const rightXP = above ? (above.totalXP || 0) : myXP;
-                        const range   = Math.max(1, rightXP - leftXP);
-                        const pos     = Math.min(99, Math.max(1, Math.round((myXP - leftXP) / range * 100)));
-                        const leftName  = below ? below.name : '—';
-                        const rightName = above ? above.name : '—';
-                        const aboveGap  = above ? (above.totalXP || 0) - myXP : 0;
-                        const belowGap  = below ? myXP - (below.totalXP || 0) : 0;
-                        const detail    = above
-                            ? `Noch ${aboveGap} XP bis ${above.name}`
-                            : `${belowGap} XP Vorsprung auf ${below.name}`;
+                        const belowXP   = below ? (below.totalXP || 0) : myXP;
+                        const aboveXP   = above ? (above.totalXP || 0) : myXP;
+                        const range     = Math.max(1, aboveXP - belowXP);
+                        const pos       = above && below
+                            ? Math.min(97, Math.max(3, Math.round((myXP - belowXP) / range * 100)))
+                            : above ? 3 : 97;
+                        const gapBelow  = below ? myXP - belowXP : null;
+                        const gapAbove  = above ? aboveXP - myXP : null;
+
+                        const leftBlock = below ? `
+                            <div class="xp-nb-side xp-nb-left">
+                                <div class="xp-nb-name">${sanitizeHTML(below.name)}</div>
+                                <div class="xp-nb-xp">${belowXP} XP</div>
+                            </div>` : `<div class="xp-nb-side xp-nb-left"></div>`;
+
+                        const rightBlock = above ? `
+                            <div class="xp-nb-side xp-nb-right">
+                                <div class="xp-nb-name">${sanitizeHTML(above.name)}</div>
+                                <div class="xp-nb-xp">${aboveXP} XP</div>
+                            </div>` : `<div class="xp-nb-side xp-nb-right xp-nb-first">1. Platz 🥇</div>`;
+
+                        const gapBelowLabel = gapBelow !== null
+                            ? `<span class="xp-nb-gap xp-nb-gap-left">+${gapBelow}</span>` : '';
+                        const gapAboveLabel = gapAbove !== null
+                            ? `<span class="xp-nb-gap xp-nb-gap-right">-${gapAbove}</span>` : '';
 
                         html += `<div class="next-goal-item">
-                            <div class="next-goal-header"><span>📊 Rangliste</span><span class="next-goal-detail">${detail}</span></div>
-                            <div class="xp-neighbor-bar">
-                                <span class="xp-neighbor-name xp-neighbor-left">${sanitizeHTML(leftName)}</span>
-                                <div class="xp-neighbor-track">
-                                    <div class="xp-neighbor-fill" style="width:${pos}%"></div>
-                                    <div class="xp-neighbor-dot" style="left:${pos}%"></div>
+                            <div class="next-goal-header"><span>📊 Rangliste #${myIdx + 1}</span><span class="next-goal-detail">${myXP} XP</span></div>
+                            <div class="xp-nb-row">
+                                ${leftBlock}
+                                <div class="xp-nb-track-wrap">
+                                    <div class="xp-nb-track">
+                                        <div class="xp-nb-fill" style="width:${pos}%"></div>
+                                        <div class="xp-nb-dot" style="left:${pos}%"></div>
+                                        ${gapBelowLabel}
+                                        ${gapAboveLabel}
+                                    </div>
                                 </div>
-                                <span class="xp-neighbor-name xp-neighbor-right">${sanitizeHTML(rightName)}</span>
+                                ${rightBlock}
                             </div>
                         </div>`;
                     }
