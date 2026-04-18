@@ -3868,7 +3868,9 @@
                     : generateQuestionHash(q);
             }
 
-            // Imagemap-Frage?
+            // _contentHash: alter Q_xxxxxxxx-Hash, nur für Import-Duplikat-Erkennung.
+            // Duplikat-Check beim Laden (file-io) prüft ausschließlich questionId —
+            // gleicher Text in verschiedenen Gruppen ist legitim und kein Duplikat.
             const fileGroup = q._fileGroup || null;
 
             if (q.type === QUESTION_TYPES.IMAGEMAP) {
@@ -4103,7 +4105,8 @@
                             if (!q._fileGroup && !q.theme && !qData.theme) noGroupCount++;
                             q._fileGroup = q._fileGroup || q.theme || theme;
                             const normalized = normalizeQuestion(q);
-                            // Duplikat-Check: nur questionId
+                            // Duplikat-Check nur über questionId, nicht _contentHash —
+                            // gleicher Text in zwei Gruppen ist kein Duplikat.
                             const isDupe = normalized.questionId && questions.some(function(eq) {
                                 return eq.questionId === normalized.questionId;
                             });

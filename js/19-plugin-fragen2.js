@@ -493,7 +493,14 @@ const Fragen2Plugin = {
             var gVal = groupSel.value;
             if (gVal === '__new__') {
                 var customEl = document.getElementById('f2EditGroupInput_' + qId);
-                gVal = customEl && customEl.value.trim() ? customEl.value.trim() : q._fileGroup;
+                var inputVal = customEl ? customEl.value.trim() : '';
+                if (inputVal) {
+                    var err = this._validateGroupName(inputVal);
+                    if (err) { Toast.show(err, 'warning'); return; }
+                    gVal = inputVal;
+                } else {
+                    gVal = q._fileGroup;
+                }
             }
             q._prevFileGroup = q._fileGroup; // für ID-Neuvergabe merken
             q._fileGroup = gVal;
@@ -704,7 +711,14 @@ const Fragen2Plugin = {
         var group = groupEl ? groupEl.value : 'Manuell';
         if (group === '__new__') {
             var customEl = document.getElementById('f2NewGroupInput');
-            group = customEl && customEl.value.trim() ? customEl.value.trim() : 'Manuell';
+            var inputVal = customEl ? customEl.value.trim() : '';
+            if (inputVal) {
+                var err = this._validateGroupName(inputVal);
+                if (err) { Toast.show(err, 'warning'); return; }
+                group = inputVal;
+            } else {
+                group = 'Manuell';
+            }
         }
         var explEl = document.getElementById('f2NewExpl');
         var explanation = explEl && explEl.value.trim() ? explEl.value.trim() : null;
@@ -808,6 +822,13 @@ const Fragen2Plugin = {
         });
     },
     
+    _validateGroupName(name) {
+        if (!name || !name.trim()) return 'Gruppenname darf nicht leer sein.';
+        var alpha = name.trim().replace(/[^a-zA-ZäöüÄÖÜ]/g, '');
+        if (alpha.length < 2) return 'Gruppenname muss mindestens 2 Buchstaben enthalten\n(sonst wird der ID-Präfix "manu_").';
+        return null;
+    },
+
     _getGroups(allQ) {
         var map = {};
         allQ.forEach(function(q) { var g = q._fileGroup || 'Manuell'; map[g] = (map[g] || 0) + 1; });

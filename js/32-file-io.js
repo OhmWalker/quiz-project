@@ -162,7 +162,8 @@ async function loadFromFolderInput(event) {
                     if (!q._fileGroup && !q.theme && !qData.theme) noGroupCount++;
                     q._fileGroup = q._fileGroup || q.theme || theme;
                     const normalized = normalizeQuestion(q);
-                    // Duplikat-Check: nur questionId
+                    // Duplikat-Check nur über questionId, nicht _contentHash —
+                    // gleicher Text in zwei Gruppen ist kein Duplikat.
                     const isDupe = normalized.questionId && questions.some(function(eq) {
                         return eq.questionId === normalized.questionId;
                     });

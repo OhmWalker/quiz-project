@@ -200,7 +200,9 @@ function normalizeQuestion(q) {
             : generateQuestionHash(q);
     }
 
-    // Imagemap-Frage?
+    // _contentHash: alter Q_xxxxxxxx-Hash, nur für Import-Duplikat-Erkennung.
+    // Duplikat-Check beim Laden (file-io) prüft ausschließlich questionId —
+    // gleicher Text in verschiedenen Gruppen ist legitim und kein Duplikat.
     const fileGroup = q._fileGroup || null;
 
     if (q.type === QUESTION_TYPES.IMAGEMAP) {

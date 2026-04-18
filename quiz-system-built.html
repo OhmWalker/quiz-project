@@ -7745,7 +7745,14 @@
                     var gVal = groupSel.value;
                     if (gVal === '__new__') {
                         var customEl = document.getElementById('f2EditGroupInput_' + qId);
-                        gVal = customEl && customEl.value.trim() ? customEl.value.trim() : q._fileGroup;
+                        var inputVal = customEl ? customEl.value.trim() : '';
+                        if (inputVal) {
+                            var err = this._validateGroupName(inputVal);
+                            if (err) { Toast.show(err, 'warning'); return; }
+                            gVal = inputVal;
+                        } else {
+                            gVal = q._fileGroup;
+                        }
                     }
                     q._prevFileGroup = q._fileGroup; // für ID-Neuvergabe merken
                     q._fileGroup = gVal;
@@ -7956,7 +7963,14 @@
                 var group = groupEl ? groupEl.value : 'Manuell';
                 if (group === '__new__') {
                     var customEl = document.getElementById('f2NewGroupInput');
-                    group = customEl && customEl.value.trim() ? customEl.value.trim() : 'Manuell';
+                    var inputVal = customEl ? customEl.value.trim() : '';
+                    if (inputVal) {
+                        var err = this._validateGroupName(inputVal);
+                        if (err) { Toast.show(err, 'warning'); return; }
+                        group = inputVal;
+                    } else {
+                        group = 'Manuell';
+                    }
                 }
                 var explEl = document.getElementById('f2NewExpl');
                 var explanation = explEl && explEl.value.trim() ? explEl.value.trim() : null;
@@ -8060,6 +8074,13 @@
                 });
             },
     
+            _validateGroupName(name) {
+                if (!name || !name.trim()) return 'Gruppenname darf nicht leer sein.';
+                var alpha = name.trim().replace(/[^a-zA-ZäöüÄÖÜ]/g, '');
+                if (alpha.length < 2) return 'Gruppenname muss mindestens 2 Buchstaben enthalten\n(sonst wird der ID-Präfix "manu_").';
+                return null;
+            },
+
             _getGroups(allQ) {
                 var map = {};
                 allQ.forEach(function(q) { var g = q._fileGroup || 'Manuell'; map[g] = (map[g] || 0) + 1; });
@@ -9302,7 +9323,9 @@
                     : generateQuestionHash(q);
             }
 
-            // Imagemap-Frage?
+            // _contentHash: alter Q_xxxxxxxx-Hash, nur für Import-Duplikat-Erkennung.
+            // Duplikat-Check beim Laden (file-io) prüft ausschließlich questionId —
+            // gleicher Text in verschiedenen Gruppen ist legitim und kein Duplikat.
             const fileGroup = q._fileGroup || null;
 
             if (q.type === QUESTION_TYPES.IMAGEMAP) {
@@ -9537,7 +9560,8 @@
                             if (!q._fileGroup && !q.theme && !qData.theme) noGroupCount++;
                             q._fileGroup = q._fileGroup || q.theme || theme;
                             const normalized = normalizeQuestion(q);
-                            // Duplikat-Check: nur questionId
+                            // Duplikat-Check nur über questionId, nicht _contentHash —
+                            // gleicher Text in zwei Gruppen ist kein Duplikat.
                             const isDupe = normalized.questionId && questions.some(function(eq) {
                                 return eq.questionId === normalized.questionId;
                             });
