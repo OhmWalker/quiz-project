@@ -333,8 +333,8 @@ die Kind-IDs enthalten, muss der nächste `start()`/`open()`-Aufruf diese IDs eb
 - **`corePercent`** (2026-04 entfernt): War ein Slider (0–100%) in den Admin-Settings. Der Multiplikator in `scoreQuestion` hatte nie eine Wirkung, weil Core/Non-Core vor dem Scoring in getrennte Pools aufgeteilt werden. Steuerung des Core-Anteils läuft ausschließlich über `maxCoreFirst` / `maxCoreSubsequent`. Bestehende Master-JSONs mit `corePercent`-Feld funktionieren weiterhin — der Wert wird ignoriert.
 
 ## Offene Punkte
-- **SR-Bug 4:** `consecutiveCorrect` aus alten JSONs kann Fragen einfrieren (Cooldown läuft nie ab wenn Frage nicht neu gespielt wird) — tritt nur bei sehr alten User-JSONs auf
-- **SR-Bug 5:** `pickTop` gibt Scores nicht zurück — Ersatz-Scores beim Kategorie-Cap (`maxPerGroup`) werden neu zufällig berechnet; bei zukünftigen Erweiterungen `pickTop` auf `{q, score}[]` umstellen
+- *(SR-Bug 4 behoben 2026-04: beim Folder-Load wird consecutiveCorrect zurückgesetzt wenn Cooldown längst abgelaufen — `js/32-file-io.js` nach users.push)*
+- *(SR-Bug 5 behoben 2026-04: nonCoreQ wird einmalig vorscored — `nonCoreScoredAll` + `pickNC`-Helper in `js/10-plugin-classic-quiz.js` — Fill verwendet dieselben Scores)*
 
 ## Workflow-Präferenzen
 - User testet Änderungen erst in der Built-Datei, dann CSS-Quellen anpassen

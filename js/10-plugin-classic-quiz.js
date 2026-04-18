@@ -74,6 +74,13 @@ const ClassicQuizPlugin = {
         const coreQ    = active.filter(q => q.isCore);
         const nonCoreQ = active.filter(q => !q.isCore);
 
+        // Non-Core einmalig vorscoren — gleiche Scores für Auswahl und Fill (SR-Bug 5)
+        const nonCoreScoredAll = nonCoreQ
+            .map(q => ({ q, score: scoreQuestion(q) }))
+            .sort((a, b) => b.score - a.score);
+        const pickNC = (predicate, n) =>
+            nonCoreScoredAll.filter(s => predicate(s.q)).slice(0, n).map(s => s.q);
+
         // Cooldown hart ausschließen — Fallback auf Cooldown-Pool wenn nötig
         let cooldownFallbackCount = 0;
         const pickWithCooldownFallback = (pool, n) => {
@@ -93,21 +100,28 @@ const ClassicQuizPlugin = {
         // Fresh-Quota für Non-Core (ab 2. Quiz des Tages)
         let nonCorePicked;
         if (freshQuota > 0 && alreadyPlayedToday && nonCoreSlots > 0) {
-            const freshNC = nonCoreQ.filter(q => { const s = stats[q.questionId]; return !s || (s.asked || 0) <= freshThreshold; });
-            const oldNC   = nonCoreQ.filter(q => { const s = stats[q.questionId]; return s && (s.asked || 0) > freshThreshold; });
-            const freshMin   = Math.min(Math.floor(nonCoreSlots * freshQuota), freshNC.length);
-            const oldPicked  = pickTop(oldNC.filter(q => !isInCooldown(q)), nonCoreSlots - freshMin);
+            const isFresh = q => { const s = stats[q.questionId]; return !s || (s.asked || 0) <= freshThreshold; };
+            const freshCount = nonCoreScoredAll.filter(s => isFresh(s.q)).length;
+            const freshMin   = Math.min(Math.floor(nonCoreSlots * freshQuota), freshCount);
+            const oldPicked  = pickNC(q => !isFresh(q) && !isInCooldown(q), nonCoreSlots - freshMin);
             const freshCount2 = nonCoreSlots - oldPicked.length;
-            nonCorePicked = [...pickTop(freshNC.filter(q => !isInCooldown(q)), freshCount2), ...oldPicked];
+            nonCorePicked = [...pickNC(q => isFresh(q) && !isInCooldown(q), freshCount2), ...oldPicked];
             // Fallback wenn immer noch zu wenig
             const stillNeeded = nonCoreSlots - nonCorePicked.length;
             if (stillNeeded > 0) {
-                const cdFallback = pickTop(nonCoreQ.filter(q => isInCooldown(q)), stillNeeded);
+                const cdFallback = pickNC(q => isInCooldown(q), stillNeeded);
                 cooldownFallbackCount += cdFallback.length;
                 nonCorePicked = [...nonCorePicked, ...cdFallback];
             }
         } else {
-            nonCorePicked = pickWithCooldownFallback(nonCoreQ, nonCoreSlots);
+            const available = pickNC(q => !isInCooldown(q), nonCoreSlots);
+            if (available.length >= nonCoreSlots) {
+                nonCorePicked = available;
+            } else {
+                const cdFallback = pickNC(q => isInCooldown(q), nonCoreSlots - available.length);
+                cooldownFallbackCount += cdFallback.length;
+                nonCorePicked = [...available, ...cdFallback];
+            }
         }
 
         if (cooldownFallbackCount > 0)
@@ -131,13 +145,13 @@ const ClassicQuizPlugin = {
             const missing = nonCorePicked.length - capped.length;
             if (missing > 0) {
                 const usedIds = new Set(capped.map(q => q.questionId));
-                const fillPool = nonCoreQ.filter(q =>
+                const fill = pickNC(q =>
                     !usedIds.has(q.questionId) &&
                     !overflowIds.has(q.questionId) &&
                     !isInCooldown(q) &&
-                    (groupCounts[q._fileGroup || '__none__'] || 0) < maxPerGroup
+                    (groupCounts[q._fileGroup || '__none__'] || 0) < maxPerGroup,
+                    missing
                 );
-                const fill = pickTop(fillPool, missing);
                 nonCorePicked = [...capped, ...fill];
             } else {
                 nonCorePicked = capped;

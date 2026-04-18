@@ -231,6 +231,23 @@ async function loadFromFolderInput(event) {
         users.push(pf.data);
     });
 
+    // SR-Bug 4: consecutiveCorrect aus alten JSONs zurücksetzen wenn Cooldown längst abgelaufen
+    (function() {
+        const sr = quizSettings.spacedRepetition || {};
+        const threshold = sr.streakThreshold || 2;
+        const cooldownMs = (sr.streakCooldown || 48) * 3600000;
+        const now = Date.now();
+        users.forEach(function(u) {
+            if (!u.questionStats) return;
+            Object.values(u.questionStats).forEach(function(s) {
+                if ((s.consecutiveCorrect || 0) >= threshold && s.lastAsked) {
+                    if (now - new Date(s.lastAsked).getTime() >= cooldownMs)
+                        s.consecutiveCorrect = 0;
+                }
+            });
+        });
+    })();
+
     // Cross-Reference: Phone-Joker System (3 Phasen)
     const jokerExpiryMs = CONFIG.TIMER.GHOST_CLEANUP_MONTHS * 30 * 24 * 60 * 60 * 1000;
     const jokerExpiryThreshold = Date.now() - jokerExpiryMs;
