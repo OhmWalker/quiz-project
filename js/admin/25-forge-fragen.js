@@ -557,7 +557,6 @@ function _fqSave() {
     if (_fqEditIdx >= 0) {
         // ── Bestehende Frage aktualisieren ──────────────────────────────────
         const q        = questions[_fqEditIdx];
-        if (q.questionId !== enteredId) q._oldQuestionId = q.questionId;
         q.questionId       = enteredId;
         q.text             = text;
         q.type             = _fqFormType;

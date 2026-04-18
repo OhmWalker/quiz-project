@@ -188,27 +188,19 @@ function hasStableId(id) {
 }
 
 function normalizeQuestion(q) {
-    // Text der Frage
-    const text = q.text || q.frage || '';
+    const text = q.text || '';
 
-    // questionId bestimmen: stabile ID beibehalten, sonst neu vergeben
     const oldQuestionId = q.questionId;
     function resolveId() {
         if (hasStableId(oldQuestionId)) return oldQuestionId;
-        return typeof assignStableId === 'function'
-            ? assignStableId(q._fileGroup || 'Manuell', questions)
-            : generateQuestionHash(q);
+        return assignStableId(q._fileGroup || 'Manuell', questions);
     }
 
-    // _contentHash: alter Q_xxxxxxxx-Hash, nur für Import-Duplikat-Erkennung.
-    // Duplikat-Check beim Laden (file-io) prüft ausschließlich questionId —
-    // gleicher Text in verschiedenen Gruppen ist legitim und kein Duplikat.
     const fileGroup = q._fileGroup || null;
 
     if (q.type === QUESTION_TYPES.IMAGEMAP) {
         return {
             questionId: resolveId(),
-            _contentHash: typeof generateQuestionHash === 'function' ? generateQuestionHash(q) : null,
             _fileGroup: fileGroup,
             text: text,
             type: QUESTION_TYPES.IMAGEMAP,
@@ -223,11 +215,10 @@ function normalizeQuestion(q) {
     }
 
     // Freitext-Frage?
-    if (q.typ === 'freitext' || q.type === QUESTION_TYPES.TEXT || q.antwort || (q.correctAnswer && !q.answers)) {
+    if (q.type === QUESTION_TYPES.TEXT || (q.correctAnswer && !q.answers)) {
         const textAnswers = getCorrectTextAnswers(q);
         return {
             questionId: resolveId(),
-            _contentHash: typeof generateQuestionHash === 'function' ? generateQuestionHash(q) : null,
             _fileGroup: fileGroup,
             text: text,
             type: QUESTION_TYPES.TEXT,
@@ -243,8 +234,8 @@ function normalizeQuestion(q) {
     }
 
     // Multiple-Choice
-    let rawAnswers = q.answers || q.antworten || [];
-    const correctIndex = q.correct !== undefined ? q.correct : (q.richtig !== undefined ? q.richtig : 0);
+    let rawAnswers = q.answers || [];
+    const correctIndex = q.correct !== undefined ? q.correct : 0;
 
     const answers = rawAnswers.map((ans, idx) => {
         if (typeof ans === 'string') {
@@ -257,7 +248,6 @@ function normalizeQuestion(q) {
 
     return {
         questionId: resolveId(),
-        _contentHash: typeof generateQuestionHash === 'function' ? generateQuestionHash(q) : null,
         _fileGroup: fileGroup,
         text: text,
         type: QUESTION_TYPES.MULTIPLE_CHOICE,

@@ -16,7 +16,7 @@ function getCorrectTextAnswers(q) {
         return q.answers[0].correctAnswers;
     }
     // 2. correctAnswer als Array
-    const ca = q.correctAnswer || q.antwort;
+    const ca = q.correctAnswer;
     if (Array.isArray(ca)) return ca;
     // 3. correctAnswer als String (NICHT splitten — Komma kann Teil der Antwort sein)
     if (typeof ca === 'string' && ca.trim()) return [ca.trim()];

@@ -4087,7 +4087,7 @@
                 return q.answers[0].correctAnswers;
             }
             // 2. correctAnswer als Array
-            const ca = q.correctAnswer || q.antwort;
+            const ca = q.correctAnswer;
             if (Array.isArray(ca)) return ca;
             // 3. correctAnswer als String (NICHT splitten — Komma kann Teil der Antwort sein)
             if (typeof ca === 'string' && ca.trim()) return [ca.trim()];
@@ -5590,20 +5590,10 @@
                 const ab = user.abilities;
                 const statValues = this.getStatValues(user);
 
-                // Migration: wenn chargesEarned leer aber Charges/Used vorhanden → Watermark setzen
-                const needsMigration = Object.keys(user.chargesEarned).length === 0 &&
-                    Object.values(ab).some(a => (a.charges || 0) > 0 || (a.used || 0) > 0);
-
                 Object.entries(this.DEFS).forEach(([key, def]) => {
                     if (!ab[key]) ab[key] = { charges: 0, unlocked: false };
                     const statVal = statValues[def.earnStat] || 0;
                     const totalEarned = Math.floor(statVal / (def.earnPer || 5));
-
-                    if (needsMigration) {
-                        // Bestehende Charges bewahren: Watermark = max(stat-basiert, aktuell+used)
-                        user.chargesEarned[key] = Math.max(totalEarned, (ab[key].charges || 0) + (ab[key].used || 0));
-                    }
-
                     const previouslyEarned = user.chargesEarned[key] || 0;
                     const newCharges = totalEarned - previouslyEarned;
 
@@ -8884,8 +8874,8 @@
                 // ── questionStats Auswertung ──────────────────────────────
                 const qs = user.questionStats || {};
                 const qids = Object.keys(qs);
-                const qAsked  = k => qs[k].asked  ?? qs[k].timesAnswered ?? 0;
-                const qCorrect = k => qs[k].correct ?? qs[k].timesCorrect ?? 0;
+                const qAsked  = k => qs[k].asked   ?? 0;
+                const qCorrect = k => qs[k].correct ?? 0;
                 const totalAsked = qids.reduce((s,k)=>s+qAsked(k),0);
                 const totalCorrect = qids.reduce((s,k)=>s+qCorrect(k),0);
                 const overallRate = totalAsked > 0 ? Math.round(totalCorrect/totalAsked*100) : 0;
@@ -9052,52 +9042,6 @@
         PluginRegistry.register('Fragen2Plugin', Fragen2Plugin, {category:'admin'});
         PluginRegistry.register('UserManagementPlugin', UserManagementPlugin, {category:'admin'});
 
-        function hashString(str) {
-            let hash = 5381;
-            for (let i = 0; i < str.length; i++) {
-                hash = ((hash << 5) + hash) + str.charCodeAt(i);
-                hash = hash & hash; // Convert to 32bit integer
-            }
-            return Math.abs(hash).toString(16).padStart(8, '0');
-        }
-
-
-        function generateQuestionHash(question) {
-            // Normalisiere Text (lowercase, trim)
-            const text = (question.text || question.frage || '').toLowerCase().trim();
-
-            // Media-Fingerprint: Pfad oder erste 80 Zeichen des Data-URLs
-            const media = question.media || question.bild || null;
-            const mediaFp = media
-                ? (media.path ? media.path.toLowerCase().trim() : (media.data ? media.data.slice(0, 80) : ''))
-                : '';
-
-            // Für Imagemap: Text + Targets
-            if (question.targets) {
-                const targetStr = JSON.stringify(question.targets);
-                return 'Q_' + hashString(text + '|' + targetStr);
-            }
-
-            // Für Freitext: Text + korrekte Antworten + Media
-            const textAnswers = getCorrectTextAnswers(question);
-            if (textAnswers.length > 0 && (!question.answers || !question.answers[0] || !question.answers[0].text)) {
-                const answer = textAnswers.map(function(a){ return String(a).toLowerCase().trim(); }).sort().join('|');
-                return 'Q_' + hashString(text + '|' + answer + '|' + mediaFp);
-            }
-
-            // Für Multiple-Choice: Text + alle Antwort-Texte + Media
-            if (question.answers || question.antworten) {
-                const answers = question.answers || question.antworten;
-                const answerTexts = answers.map(a => {
-                    if (typeof a === 'string') return a.toLowerCase().trim();
-                    return (a.text || '').toLowerCase().trim();
-                }).join('|');
-                return 'Q_' + hashString(text + '|' + answerTexts + '|' + mediaFp);
-            }
-
-            // Fallback: Text + Media
-            return 'Q_' + hashString(text + '|' + mediaFp);
-        }
 
         function getGroupPrefix(groupName) {
             return (groupName || 'manu').replace(/[^a-zA-ZäöüÄÖÜ]/g, '')
@@ -9311,27 +9255,19 @@
         }
 
         function normalizeQuestion(q) {
-            // Text der Frage
-            const text = q.text || q.frage || '';
+            const text = q.text || '';
 
-            // questionId bestimmen: stabile ID beibehalten, sonst neu vergeben
             const oldQuestionId = q.questionId;
             function resolveId() {
                 if (hasStableId(oldQuestionId)) return oldQuestionId;
-                return typeof assignStableId === 'function'
-                    ? assignStableId(q._fileGroup || 'Manuell', questions)
-                    : generateQuestionHash(q);
+                return assignStableId(q._fileGroup || 'Manuell', questions);
             }
 
-            // _contentHash: alter Q_xxxxxxxx-Hash, nur für Import-Duplikat-Erkennung.
-            // Duplikat-Check beim Laden (file-io) prüft ausschließlich questionId —
-            // gleicher Text in verschiedenen Gruppen ist legitim und kein Duplikat.
             const fileGroup = q._fileGroup || null;
 
             if (q.type === QUESTION_TYPES.IMAGEMAP) {
                 return {
                     questionId: resolveId(),
-                    _contentHash: typeof generateQuestionHash === 'function' ? generateQuestionHash(q) : null,
                     _fileGroup: fileGroup,
                     text: text,
                     type: QUESTION_TYPES.IMAGEMAP,
@@ -9346,11 +9282,10 @@
             }
 
             // Freitext-Frage?
-            if (q.typ === 'freitext' || q.type === QUESTION_TYPES.TEXT || q.antwort || (q.correctAnswer && !q.answers)) {
+            if (q.type === QUESTION_TYPES.TEXT || (q.correctAnswer && !q.answers)) {
                 const textAnswers = getCorrectTextAnswers(q);
                 return {
                     questionId: resolveId(),
-                    _contentHash: typeof generateQuestionHash === 'function' ? generateQuestionHash(q) : null,
                     _fileGroup: fileGroup,
                     text: text,
                     type: QUESTION_TYPES.TEXT,
@@ -9366,8 +9301,8 @@
             }
 
             // Multiple-Choice
-            let rawAnswers = q.answers || q.antworten || [];
-            const correctIndex = q.correct !== undefined ? q.correct : (q.richtig !== undefined ? q.richtig : 0);
+            let rawAnswers = q.answers || [];
+            const correctIndex = q.correct !== undefined ? q.correct : 0;
 
             const answers = rawAnswers.map((ans, idx) => {
                 if (typeof ans === 'string') {
@@ -9380,7 +9315,6 @@
 
             return {
                 questionId: resolveId(),
-                _contentHash: typeof generateQuestionHash === 'function' ? generateQuestionHash(q) : null,
                 _fileGroup: fileGroup,
                 text: text,
                 type: QUESTION_TYPES.MULTIPLE_CHOICE,
@@ -9582,18 +9516,6 @@
                         lastModified: new Date(qf.lastModified).toLocaleString()
                     });
                     if (qErrors > 0) console.warn(qf.name + ': ' + qErrors + ' Fragen übersprungen (Fehler)');
-                });
-            } else if (masterData.questions && masterData.questions.length > 0) {
-                // Rückwärtskompatibel: Fragen aus altem Master laden
-                masterData.questions.forEach(function(q) {
-                    if (!q._fileGroup) q._fileGroup = q.theme || 'Legacy';
-                });
-                questions = masterData.questions.map(normalizeQuestion);
-                loadedQuestionFiles.push({
-                    name: '(aus Master)',
-                    theme: 'Legacy',
-                    count: questions.length,
-                    lastModified: '-'
                 });
             }
             if (noGroupCount > 0)

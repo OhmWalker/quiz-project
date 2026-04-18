@@ -2996,7 +2996,7 @@
                 return q.answers[0].correctAnswers;
             }
             // 2. correctAnswer als Array
-            const ca = q.correctAnswer || q.antwort;
+            const ca = q.correctAnswer;
             if (Array.isArray(ca)) return ca;
             // 3. correctAnswer als String (NICHT splitten — Komma kann Teil der Antwort sein)
             if (typeof ca === 'string' && ca.trim()) return [ca.trim()];
@@ -3856,27 +3856,19 @@
         }
 
         function normalizeQuestion(q) {
-            // Text der Frage
-            const text = q.text || q.frage || '';
+            const text = q.text || '';
 
-            // questionId bestimmen: stabile ID beibehalten, sonst neu vergeben
             const oldQuestionId = q.questionId;
             function resolveId() {
                 if (hasStableId(oldQuestionId)) return oldQuestionId;
-                return typeof assignStableId === 'function'
-                    ? assignStableId(q._fileGroup || 'Manuell', questions)
-                    : generateQuestionHash(q);
+                return assignStableId(q._fileGroup || 'Manuell', questions);
             }
 
-            // _contentHash: alter Q_xxxxxxxx-Hash, nur für Import-Duplikat-Erkennung.
-            // Duplikat-Check beim Laden (file-io) prüft ausschließlich questionId —
-            // gleicher Text in verschiedenen Gruppen ist legitim und kein Duplikat.
             const fileGroup = q._fileGroup || null;
 
             if (q.type === QUESTION_TYPES.IMAGEMAP) {
                 return {
                     questionId: resolveId(),
-                    _contentHash: typeof generateQuestionHash === 'function' ? generateQuestionHash(q) : null,
                     _fileGroup: fileGroup,
                     text: text,
                     type: QUESTION_TYPES.IMAGEMAP,
@@ -3891,11 +3883,10 @@
             }
 
             // Freitext-Frage?
-            if (q.typ === 'freitext' || q.type === QUESTION_TYPES.TEXT || q.antwort || (q.correctAnswer && !q.answers)) {
+            if (q.type === QUESTION_TYPES.TEXT || (q.correctAnswer && !q.answers)) {
                 const textAnswers = getCorrectTextAnswers(q);
                 return {
                     questionId: resolveId(),
-                    _contentHash: typeof generateQuestionHash === 'function' ? generateQuestionHash(q) : null,
                     _fileGroup: fileGroup,
                     text: text,
                     type: QUESTION_TYPES.TEXT,
@@ -3911,8 +3902,8 @@
             }
 
             // Multiple-Choice
-            let rawAnswers = q.answers || q.antworten || [];
-            const correctIndex = q.correct !== undefined ? q.correct : (q.richtig !== undefined ? q.richtig : 0);
+            let rawAnswers = q.answers || [];
+            const correctIndex = q.correct !== undefined ? q.correct : 0;
 
             const answers = rawAnswers.map((ans, idx) => {
                 if (typeof ans === 'string') {
@@ -3925,7 +3916,6 @@
 
             return {
                 questionId: resolveId(),
-                _contentHash: typeof generateQuestionHash === 'function' ? generateQuestionHash(q) : null,
                 _fileGroup: fileGroup,
                 text: text,
                 type: QUESTION_TYPES.MULTIPLE_CHOICE,
@@ -4127,18 +4117,6 @@
                         lastModified: new Date(qf.lastModified).toLocaleString()
                     });
                     if (qErrors > 0) console.warn(qf.name + ': ' + qErrors + ' Fragen übersprungen (Fehler)');
-                });
-            } else if (masterData.questions && masterData.questions.length > 0) {
-                // Rückwärtskompatibel: Fragen aus altem Master laden
-                masterData.questions.forEach(function(q) {
-                    if (!q._fileGroup) q._fileGroup = q.theme || 'Legacy';
-                });
-                questions = masterData.questions.map(normalizeQuestion);
-                loadedQuestionFiles.push({
-                    name: '(aus Master)',
-                    theme: 'Legacy',
-                    count: questions.length,
-                    lastModified: '-'
                 });
             }
             if (noGroupCount > 0)
@@ -5622,7 +5600,6 @@
             if (_fqEditIdx >= 0) {
                 // ── Bestehende Frage aktualisieren ──────────────────────────────────
                 const q        = questions[_fqEditIdx];
-                if (q.questionId !== enteredId) q._oldQuestionId = q.questionId;
                 q.questionId       = enteredId;
                 q.text             = text;
                 q.type             = _fqFormType;

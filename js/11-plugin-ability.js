@@ -84,20 +84,10 @@ const AbilityPlugin = {
         const ab = user.abilities;
         const statValues = this.getStatValues(user);
 
-        // Migration: wenn chargesEarned leer aber Charges/Used vorhanden → Watermark setzen
-        const needsMigration = Object.keys(user.chargesEarned).length === 0 &&
-            Object.values(ab).some(a => (a.charges || 0) > 0 || (a.used || 0) > 0);
-
         Object.entries(this.DEFS).forEach(([key, def]) => {
             if (!ab[key]) ab[key] = { charges: 0, unlocked: false };
             const statVal = statValues[def.earnStat] || 0;
             const totalEarned = Math.floor(statVal / (def.earnPer || 5));
-
-            if (needsMigration) {
-                // Bestehende Charges bewahren: Watermark = max(stat-basiert, aktuell+used)
-                user.chargesEarned[key] = Math.max(totalEarned, (ab[key].charges || 0) + (ab[key].used || 0));
-            }
-
             const previouslyEarned = user.chargesEarned[key] || 0;
             const newCharges = totalEarned - previouslyEarned;
 

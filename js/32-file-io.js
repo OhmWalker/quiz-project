@@ -185,18 +185,6 @@ async function loadFromFolderInput(event) {
             });
             if (qErrors > 0) console.warn(qf.name + ': ' + qErrors + ' Fragen übersprungen (Fehler)');
         });
-    } else if (masterData.questions && masterData.questions.length > 0) {
-        // Rückwärtskompatibel: Fragen aus altem Master laden
-        masterData.questions.forEach(function(q) {
-            if (!q._fileGroup) q._fileGroup = q.theme || 'Legacy';
-        });
-        questions = masterData.questions.map(normalizeQuestion);
-        loadedQuestionFiles.push({
-            name: '(aus Master)',
-            theme: 'Legacy',
-            count: questions.length,
-            lastModified: '-'
-        });
     }
     if (noGroupCount > 0)
         setTimeout(() => Toast.show(`⚠ ${noGroupCount} Frage(n) ohne Gruppe geladen — ID-Präfix wird auf "manu" gesetzt.\nFragen prüfen und _fileGroup / theme vergeben.`, 'warning'), 800);

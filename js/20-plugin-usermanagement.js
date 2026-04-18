@@ -49,8 +49,8 @@ const UserManagementPlugin = {
         // ── questionStats Auswertung ──────────────────────────────
         const qs = user.questionStats || {};
         const qids = Object.keys(qs);
-        const qAsked  = k => qs[k].asked  ?? qs[k].timesAnswered ?? 0;
-        const qCorrect = k => qs[k].correct ?? qs[k].timesCorrect ?? 0;
+        const qAsked  = k => qs[k].asked   ?? 0;
+        const qCorrect = k => qs[k].correct ?? 0;
         const totalAsked = qids.reduce((s,k)=>s+qAsked(k),0);
         const totalCorrect = qids.reduce((s,k)=>s+qCorrect(k),0);
         const overallRate = totalAsked > 0 ? Math.round(totalCorrect/totalAsked*100) : 0;
@@ -217,52 +217,6 @@ PluginRegistry.register('LeaderboardPlugin', LeaderboardPlugin, {category:'featu
 PluginRegistry.register('Fragen2Plugin', Fragen2Plugin, {category:'admin'});
 PluginRegistry.register('UserManagementPlugin', UserManagementPlugin, {category:'admin'});
 
-function hashString(str) {
-    let hash = 5381;
-    for (let i = 0; i < str.length; i++) {
-        hash = ((hash << 5) + hash) + str.charCodeAt(i);
-        hash = hash & hash; // Convert to 32bit integer
-    }
-    return Math.abs(hash).toString(16).padStart(8, '0');
-}
-
-
-function generateQuestionHash(question) {
-    // Normalisiere Text (lowercase, trim)
-    const text = (question.text || question.frage || '').toLowerCase().trim();
-
-    // Media-Fingerprint: Pfad oder erste 80 Zeichen des Data-URLs
-    const media = question.media || question.bild || null;
-    const mediaFp = media
-        ? (media.path ? media.path.toLowerCase().trim() : (media.data ? media.data.slice(0, 80) : ''))
-        : '';
-
-    // Für Imagemap: Text + Targets
-    if (question.targets) {
-        const targetStr = JSON.stringify(question.targets);
-        return 'Q_' + hashString(text + '|' + targetStr);
-    }
-
-    // Für Freitext: Text + korrekte Antworten + Media
-    const textAnswers = getCorrectTextAnswers(question);
-    if (textAnswers.length > 0 && (!question.answers || !question.answers[0] || !question.answers[0].text)) {
-        const answer = textAnswers.map(function(a){ return String(a).toLowerCase().trim(); }).sort().join('|');
-        return 'Q_' + hashString(text + '|' + answer + '|' + mediaFp);
-    }
-
-    // Für Multiple-Choice: Text + alle Antwort-Texte + Media
-    if (question.answers || question.antworten) {
-        const answers = question.answers || question.antworten;
-        const answerTexts = answers.map(a => {
-            if (typeof a === 'string') return a.toLowerCase().trim();
-            return (a.text || '').toLowerCase().trim();
-        }).join('|');
-        return 'Q_' + hashString(text + '|' + answerTexts + '|' + mediaFp);
-    }
-
-    // Fallback: Text + Media
-    return 'Q_' + hashString(text + '|' + mediaFp);
-}
 
 function getGroupPrefix(groupName) {
     return (groupName || 'manu').replace(/[^a-zA-ZäöüÄÖÜ]/g, '')
