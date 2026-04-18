@@ -10841,12 +10841,6 @@
                 if (best) goals.push(best);
             }
 
-            // Streak
-            const streak = user.streak || 0;
-            if (streak > 0) {
-                goals.push({ icon: '🔥', label: `Streak: ${streak} Tag${streak !== 1 ? 'e' : ''}`, detail: `Morgen spielen → ${streak + 1} Tage`, pct: null });
-            }
-
             if (goals.length === 0) { container.innerHTML = ''; return; }
 
             let html = '<div class="next-goals-section"><div class="next-goals-title">🎯 Nächste Ziele</div>';
