@@ -73,6 +73,13 @@
 
 **Nach der Migration:** `_oldQuestionId`-Mechanismus und `buildMigrationMap` können vereinfacht/entfernt werden
 
+### questionStats-Keys migrieren (Spieler-JSONs)
+Nachdem alle Fragen stabile IDs haben, können noch alte `Q_…`-Keys in `user.questionStats` existieren.
+**Tool:** Forge → Tab "Migrationen" → "questionStats-Keys: Hash-IDs → stabile IDs"
+- Zeigt welche Spieler noch Hash-Keys haben
+- Schreibt Keys automatisch um (via `_contentHash` + `_oldQuestionId` → `questionId`)
+- Keys ohne Treffer (Frage gelöscht) bleiben erhalten und werden im Toast aufgelistet
+
 ## Imagemap-Editor (SVG-basiert)
 - **SVG-Overlays** statt div-Elementen (div-Overlays waren unsichtbar — Ursache nie geklärt)
 - Click-Handler direkt per `onclick` auf dem `<img>`, kein addEventListener+setTimeout
@@ -85,11 +92,14 @@
 |---|---|---|
 | `maxCoreFirst` | **7** | Max. Core-Fragen im 1. Quiz des Tages (7 von 10 Slots) |
 | `maxCoreSubsequent` | **3** | Max. Core-Fragen in Folge-Quizzen (3 von 10 Slots) |
+| `maxPerGroup` | **3** | Max. Non-Core-Fragen pro `_fileGroup` (Quelldatei) pro Quiz; `0` = deaktiviert |
 | `freshQuota` | **50** | 50% der Non-Core-Slots für neue/seltene Fragen reserviert |
 | `freshThreshold` | **1** | Frage gilt als "neu" wenn ≤ 1× gestellt |
 | `randomness` | **30** | 30% Zufallsanteil (0 = reines SR, 100 = komplett zufällig) |
 | `streakThreshold` | **2** | Cooldown nach 2 richtigen in Folge (statt 3) |
 | `streakCooldown` | **48** | Cooldown-Dauer in Stunden |
+
+**Hinweis `maxPerGroup`:** Gilt nur für Non-Core-Fragen. Core-System (maxCoreFirst/maxCoreSubsequent) bleibt unberührt. Wenn nach dem Cap Slots fehlen, werden Ersatzfragen aus anderen Gruppen mit freiem Budget nachgezogen (SR-gewichtet, ohne Cooldown-Fragen). Default: 3 — in Master-JSON unter `spacedRepetition.maxPerGroup` überschreibbar.
 
 ### Simulations-Skript
 `tools/simulate.py` — `python3 tools/simulate.py`
@@ -183,9 +193,9 @@ qs.consecutiveCorrect = (qs.consecutiveCorrect || 0) + 1;
 ### SR-Fallback-Defaults (`js/30-globals.js`)
 
 Die Defaults in `js/30-globals.js` (Fallback wenn kein `spacedRepetition`-Block in der Master-JSON) sind auf die produktiven Werte gesetzt:
-`streakThreshold: 2, randomness: 30, freshQuota: 50, maxCoreFirst: 7, maxCoreSubsequent: 3`
+`streakThreshold: 2, randomness: 30, freshQuota: 50, maxCoreFirst: 7, maxCoreSubsequent: 3, maxPerGroup: 3`
 
-**Warum wichtig:** Vorher standen Fallbacks auf `streakThreshold: 3` und `maxCoreFirst: 999` — Code-interne `|| 3` Defaults galten wenn JSON fehlte oder leer war.
+**Warum wichtig:** Vorher standen Fallbacks auf `streakThreshold: 3` und `maxCoreFirst: 999` — Code-interne `|| 3` Defaults galten wenn JSON fehlte oder leer war. Zusätzlich hatte `selectQuestionsForUser` einen eigenen Fallback auf `randomness: 40` (behoben 2026-04 → jetzt 30).
 
 ### SR-Abweichungs-Toast (`js/32-file-io.js`)
 
@@ -335,10 +345,15 @@ die Kind-IDs enthalten, muss der nächste `start()`/`open()`-Aufruf diese IDs eb
 ## Offene Punkte (Scoring)
 - **Engagement vs. Qualität Balance:** Häufiges Spielen mit schlechten Ergebnissen schlägt selten-aber-perfekte Spieler (z.B. Eva 35% täglich > Stefan 95% wöchentlich). Aktuell gewollt, langfristig ggf. Mindest-Qualität als Engagement-Multiplikator einführen.
 
+## Entfernte Settings (nicht mehr vorhanden)
+- **`corePercent`** (2026-04 entfernt): War ein Slider (0–100%) in den Admin-Settings. Der Multiplikator in `scoreQuestion` hatte nie eine Wirkung, weil Core/Non-Core vor dem Scoring in getrennte Pools aufgeteilt werden. Steuerung des Core-Anteils läuft ausschließlich über `maxCoreFirst` / `maxCoreSubsequent`. Bestehende Master-JSONs mit `corePercent`-Feld funktionieren weiterhin — der Wert wird ignoriert.
+
 ## Offene Punkte
-- **Hash → Stabile ID Migration** ausführen (Forge → "ID-Migration") sobald alle `_fileGroup`-Zuordnungen korrekt sind
-- Nach Migration: `buildMigrationMap` + `_oldQuestionId`-Logik vereinfachen
+- **questionStats Hash-Keys migrieren** (Forge → "Migrationen") — prüfen ob Spieler noch `Q_…`-Keys haben
+- Nach vollständiger Migration: `buildMigrationMap` + `_oldQuestionId`-Logik entfernen
 - `used`-Feld in abilities komplett entfernen wenn alle User migriert sind (Forge → "Migrationen")
+- **SR-Bug 4:** `consecutiveCorrect` aus alten JSONs kann Fragen einfrieren (Cooldown läuft nie ab wenn Frage nicht neu gespielt wird) — tritt nur bei sehr alten User-JSONs auf
+- **SR-Bug 5:** `pickTop` gibt Scores nicht zurück — Ersatz-Scores beim Kategorie-Cap (`maxPerGroup`) werden neu zufällig berechnet; bei zukünftigen Erweiterungen `pickTop` auf `{q, score}[]` umstellen
 
 ## Workflow-Präferenzen
 - User testet Änderungen erst in der Built-Datei, dann CSS-Quellen anpassen

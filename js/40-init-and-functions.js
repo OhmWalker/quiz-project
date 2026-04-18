@@ -210,9 +210,6 @@ function showAdminSection(section) {
         document.getElementById('quizNameInput').value = quizSettings.quizName || 'XY Quiz';
         document.getElementById('questionsPerQuizInput').value = quizSettings.questionsPerQuiz;
         document.getElementById('podiumPlacesInput').value = quizSettings.podiumPlaces || 3;
-        const coreEl = document.getElementById('corePercentInput');
-        if (coreEl) { coreEl.value = quizSettings.corePercent || 70; document.getElementById('corePercentValue').textContent = coreEl.value + '%'; }
-        
         // Populate Timer settings
         const ts = quizSettings.timer || {};
 
@@ -533,11 +530,6 @@ function call(plugin, method, ...args) {
 function testMiniGame(plugin, method, ...args) {
     window._mgTestMode = true;
     call(plugin, method, ...args);
-}
-
-function saveCorePercent() {
-    quizSettings.corePercent = parseInt(document.getElementById('corePercentInput').value) || 70;
-    Toast.show('CORE: ' + quizSettings.corePercent + '%', 'info');
 }
 
 function updateRangeDisplay(targetId, suffix, event, element) {

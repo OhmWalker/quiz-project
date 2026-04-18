@@ -3338,18 +3338,6 @@
                     <div style="font-size:0.75rem;opacity:0.5;margin-top:4px;">Steuert die Bildbreite relativ zur Quiz-Breite. Skaliert automatisch auf allen Bildschirmgrößen.</div>
                 </div>
 
-                <!-- ══════ CORE-FRAGEN ══════ -->
-                <div class="section-block">
-                    <div class="section-title">📌 CORE-Fragen</div>
-                    <div class="field-row">
-                        <span class="field-label">CORE-Anteil (1. Quiz/Tag)<span class="hint">0 = deaktiviert</span></span>
-                        <input type="range" id="corePercentInput" min="0" max="100" step="5" value="70"
-                               data-input="updateRangeDisplay" data-args='["corePercentValue", "%"]'>
-                        <span id="corePercentValue" style="font-weight:700;min-width:40px;font-size:0.9rem;">70%</span>
-                        <button class="btn-save" data-action="saveCorePercent">Speichern</button>
-                    </div>
-                </div>
-
                 <!-- ══════ SPACED REPETITION ══════ -->
                 <div class="section-block">
                     <div class="section-title">🔀 Fragen-Mischung (Spaced Repetition)</div>
@@ -4873,7 +4861,7 @@
                 const active = questions.filter(q => q.active !== false);
                 if (active.length === 0) return [];
                 const sr = quizSettings.spacedRepetition || {};
-                const randomness = (sr.randomness !== undefined ? sr.randomness : 40) / 100;
+                const randomness = (sr.randomness !== undefined ? sr.randomness : 30) / 100;
                 const cooldownHours = sr.streakCooldown || 48;
                 const streakThreshold = sr.streakThreshold || 2;
                 const freshQuota = (sr.freshQuota !== undefined ? sr.freshQuota : 0) / 100;
@@ -4881,9 +4869,8 @@
                 const stats = user.questionStats || {};
                 const now = Date.now();
                 const cooldownMs = cooldownHours * 3600000;
-                const corePercent = quizSettings.corePercent || 70;
-
-                const alreadyPlayedToday = (user.dailyQuizCount || 0) > 0;
+                const today = new Date().toDateString();
+                const alreadyPlayedToday = user.lastQuizDate === today && (user.dailyQuizCount || 0) > 0;
                 const maxCore = alreadyPlayedToday
                     ? (sr.maxCoreSubsequent !== undefined ? sr.maxCoreSubsequent : count)
                     : (sr.maxCoreFirst !== undefined ? sr.maxCoreFirst : count);
@@ -4907,7 +4894,6 @@
                     } else {
                         priority = 95;
                     }
-                    if (q.isCore) priority *= (1 + corePercent / 200);
                     return priority + Math.random() * 100 * randomness;
                 };
 
@@ -4921,6 +4907,7 @@
                 const nonCoreQ = active.filter(q => !q.isCore);
 
                 // Cooldown hart ausschließen — Fallback auf Cooldown-Pool wenn nötig
+                let cooldownFallbackCount = 0;
                 const pickWithCooldownFallback = (pool, n) => {
                     const available = pool.filter(q => !isInCooldown(q));
                     if (available.length >= n) return pickTop(available, n);
@@ -4928,11 +4915,7 @@
                     const stillNeeded = n - picked.length;
                     const cooldownPool = pool.filter(q => isInCooldown(q));
                     const fallback = pickTop(cooldownPool, stillNeeded);
-                    if (fallback.length > 0)
-                        setTimeout(() => Toast.show(
-                            `⚠ Pool zu klein: ${fallback.length} Frage(n) aus dem 48h-Ruhemodus geholt.\nMehr aktive Fragen hinzufügen empfohlen.`,
-                            'warning'
-                        ), 500);
+                    cooldownFallbackCount += fallback.length;
                     return [...picked, ...fallback];
                 };
 
@@ -4944,23 +4927,53 @@
                 if (freshQuota > 0 && alreadyPlayedToday && nonCoreSlots > 0) {
                     const freshNC = nonCoreQ.filter(q => { const s = stats[q.questionId]; return !s || (s.asked || 0) <= freshThreshold; });
                     const oldNC   = nonCoreQ.filter(q => { const s = stats[q.questionId]; return s && (s.asked || 0) > freshThreshold; });
-                    const freshCount = Math.min(Math.floor(nonCoreSlots * freshQuota), freshNC.length);
-                    const oldPicked  = pickTop(oldNC.filter(q => !isInCooldown(q)), nonCoreSlots - freshCount);
+                    const freshMin   = Math.min(Math.floor(nonCoreSlots * freshQuota), freshNC.length);
+                    const oldPicked  = pickTop(oldNC.filter(q => !isInCooldown(q)), nonCoreSlots - freshMin);
                     const freshCount2 = nonCoreSlots - oldPicked.length;
                     nonCorePicked = [...pickTop(freshNC.filter(q => !isInCooldown(q)), freshCount2), ...oldPicked];
                     // Fallback wenn immer noch zu wenig
                     const stillNeeded = nonCoreSlots - nonCorePicked.length;
                     if (stillNeeded > 0) {
                         const cdFallback = pickTop(nonCoreQ.filter(q => isInCooldown(q)), stillNeeded);
-                        if (cdFallback.length > 0)
-                            setTimeout(() => Toast.show(
-                                `⚠ Pool zu klein: ${cdFallback.length} Frage(n) aus dem 48h-Ruhemodus geholt.\nMehr aktive Fragen hinzufügen empfohlen.`,
-                                'warning'
-                            ), 500);
+                        cooldownFallbackCount += cdFallback.length;
                         nonCorePicked = [...nonCorePicked, ...cdFallback];
                     }
                 } else {
                     nonCorePicked = pickWithCooldownFallback(nonCoreQ, nonCoreSlots);
+                }
+
+                if (cooldownFallbackCount > 0)
+                    setTimeout(() => Toast.show(
+                        `⚠ Pool zu klein: ${cooldownFallbackCount} Frage(n) aus dem 48h-Ruhemodus geholt.\nMehr aktive Fragen hinzufügen empfohlen.`,
+                        'warning'
+                    ), 500);
+
+                // Kategorie-Cap: max N Non-Core-Fragen pro _fileGroup
+                const maxPerGroup = sr.maxPerGroup !== undefined ? sr.maxPerGroup : 3;
+                if (maxPerGroup > 0) {
+                    const groupCounts = {};
+                    const capped = [];
+                    const overflowIds = new Set();
+                    for (const q of nonCorePicked) {
+                        const g = q._fileGroup || '__none__';
+                        groupCounts[g] = (groupCounts[g] || 0) + 1;
+                        if (groupCounts[g] <= maxPerGroup) capped.push(q);
+                        else overflowIds.add(q.questionId);
+                    }
+                    const missing = nonCorePicked.length - capped.length;
+                    if (missing > 0) {
+                        const usedIds = new Set(capped.map(q => q.questionId));
+                        const fillPool = nonCoreQ.filter(q =>
+                            !usedIds.has(q.questionId) &&
+                            !overflowIds.has(q.questionId) &&
+                            !isInCooldown(q) &&
+                            (groupCounts[q._fileGroup || '__none__'] || 0) < maxPerGroup
+                        );
+                        const fill = pickTop(fillPool, missing);
+                        nonCorePicked = [...capped, ...fill];
+                    } else {
+                        nonCorePicked = capped;
+                    }
                 }
 
                 return shuffleArray([...corePicked, ...nonCorePicked]);
@@ -9181,7 +9194,6 @@
 
         const SETTINGS_DEFAULTS = {
             questionsPerQuiz: CONFIG.QUIZ.DEFAULT_QUESTIONS_PER_QUIZ,
-            corePercent: 70,
             podiumPlaces: 3,
             adminPassword: 'admin',
             superAdminPassword: 'super',
@@ -9340,14 +9352,10 @@
             // Text der Frage
             const text = q.text || q.frage || '';
 
-            // questionId bestimmen:
-            // - Stabile ID (kein Q_-Präfix, nicht rein numerisch): beibehalten
-            // - Q_-Präfix: beibehalten (Migration später)
-            // - Fehlt: neue stabile ID vergeben
+            // questionId bestimmen: stabile ID beibehalten, sonst neu vergeben
             const oldQuestionId = q.questionId;
             function resolveId() {
                 if (hasStableId(oldQuestionId)) return oldQuestionId;
-                if (oldQuestionId && oldQuestionId.startsWith('Q_')) return oldQuestionId;
                 return typeof assignStableId === 'function'
                     ? assignStableId(q._fileGroup || 'Manuell', questions)
                     : generateQuestionHash(q);
@@ -10030,7 +10038,6 @@
             // Multiple-Choice hinzufügen
             multipleChoiceQuestions.forEach(q => {
                 questions.push({
-                    id: id,
                     questionId: String(id).padStart(3, '0'),
                     frage: q.frage,
                     antworten: q.antworten,
@@ -10043,7 +10050,6 @@
             // Freitext hinzufügen
             freetextQuestions.forEach(q => {
                 questions.push({
-                    id: id,
                     questionId: String(id).padStart(3, '0'),
                     frage: q.frage,
                     antwort: q.antwort,
@@ -10060,7 +10066,6 @@
                 settings: {
                     quizName: 'Mein Quiz',
                     questionsPerQuiz: CONFIG.QUIZ.DEFAULT_QUESTIONS_PER_QUIZ,
-                    corePercent: 70,
                     podiumPlaces: 3,
                     adminPassword: 'admin',
                     superAdminPassword: 'super',
@@ -10491,9 +10496,6 @@
                 document.getElementById('quizNameInput').value = quizSettings.quizName || 'XY Quiz';
                 document.getElementById('questionsPerQuizInput').value = quizSettings.questionsPerQuiz;
                 document.getElementById('podiumPlacesInput').value = quizSettings.podiumPlaces || 3;
-                const coreEl = document.getElementById('corePercentInput');
-                if (coreEl) { coreEl.value = quizSettings.corePercent || 70; document.getElementById('corePercentValue').textContent = coreEl.value + '%'; }
-        
                 // Populate Timer settings
                 const ts = quizSettings.timer || {};
 
@@ -10814,11 +10816,6 @@
         function testMiniGame(plugin, method, ...args) {
             window._mgTestMode = true;
             call(plugin, method, ...args);
-        }
-
-        function saveCorePercent() {
-            quizSettings.corePercent = parseInt(document.getElementById('corePercentInput').value) || 70;
-            Toast.show('CORE: ' + quizSettings.corePercent + '%', 'info');
         }
 
         function updateRangeDisplay(targetId, suffix, event, element) {

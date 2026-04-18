@@ -22,6 +22,16 @@ AdminShell.registerPanel('migrationen', 'Migrationen', '🔧', container => {
             check: _migCheckUsedField,
             run:   _migRunUsedField,
         },
+        {
+            id: 'migrate_question_stats_ids',
+            title: 'questionStats-Keys: Hash-IDs → stabile IDs',
+            description: `Prüft ob Spieler in <code>questionStats{}</code> noch alte Hash-Keys (<code>Q_…</code>)
+                          haben. Falls ja: Keys werden auf die stabilen IDs (<code>prefix_NNNNN</code>)
+                          der geladenen Fragen umgeschrieben. Voraussetzung: Fragen-JSONs müssen geladen sein
+                          und alle Fragen bereits stabile IDs haben.`,
+            check: _migCheckQuestionStatsIds,
+            run:   _migRunQuestionStatsIds,
+        },
     ];
 
     const cards = migrations.map(m => {
@@ -93,7 +103,69 @@ function _migRunUsedField() {
 }
 
 
+// ── Migration: questionStats Hash-Keys → stabile IDs ─────────────────────────
+
+function _migCheckQuestionStatsIds() {
+    return users
+        .filter(u => u.questionStats &&
+            Object.keys(u.questionStats).some(k => k.startsWith('Q_')))
+        .map(u => u.name);
+}
+
+function _migRunQuestionStatsIds() {
+    const affected = _migCheckQuestionStatsIds();
+    if (!affected.length) {
+        Toast.show('Keine Spieler mit Hash-IDs in questionStats gefunden.', 'info');
+        return;
+    }
+
+    // Migration-Map aufbauen: Q_... → prefix_NNNNN (aus geladenen Fragen)
+    const map = {};
+    questions.forEach(q => {
+        if (q._contentHash && q._contentHash.startsWith('Q_') && q.questionId) {
+            map[q._contentHash] = q.questionId;
+        }
+        if (q._oldQuestionId && q._oldQuestionId !== q.questionId) {
+            map[q._oldQuestionId] = q.questionId;
+        }
+    });
+
+    const noMapping = new Set();
+    let totalRenamed = 0;
+
+    users.filter(u => affected.includes(u.name)).forEach(u => {
+        const oldStats = u.questionStats;
+        const newStats = {};
+        Object.entries(oldStats).forEach(([key, val]) => {
+            if (key.startsWith('Q_')) {
+                const newKey = map[key];
+                if (newKey) {
+                    newStats[newKey] = val;
+                    totalRenamed++;
+                } else {
+                    noMapping.add(key);
+                    newStats[key] = val; // unverändert lassen
+                }
+            } else {
+                newStats[key] = val;
+            }
+        });
+        u.questionStats = newStats;
+        currentUser = u;
+        saveCurrentPlayer();
+    });
+
+    let msg = `Migration abgeschlossen: ${affected.length} Spieler, ${totalRenamed} Keys umbenannt.`;
+    if (noMapping.size > 0) {
+        msg += `\n⚠ ${noMapping.size} Hash-Key(s) ohne Mapping (Frage nicht mehr vorhanden): ${[...noMapping].slice(0, 5).join(', ')}`;
+    }
+    Toast.show(msg, noMapping.size > 0 ? 'warning' : 'success');
+    AdminShell.showPanel('migrationen');
+}
+
+
 // Dispatcher für Migration-Buttons
 function _migRun(id) {
-    if (id === 'remove_used_field') _migRunUsedField();
+    if (id === 'remove_used_field')        _migRunUsedField();
+    if (id === 'migrate_question_stats_ids') _migRunQuestionStatsIds();
 }

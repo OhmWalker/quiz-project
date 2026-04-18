@@ -604,7 +604,6 @@ function createNewMultiplayerFiles() {
     // Multiple-Choice hinzufügen
     multipleChoiceQuestions.forEach(q => {
         questions.push({
-            id: id,
             questionId: String(id).padStart(3, '0'),
             frage: q.frage,
             antworten: q.antworten,
@@ -617,7 +616,6 @@ function createNewMultiplayerFiles() {
     // Freitext hinzufügen
     freetextQuestions.forEach(q => {
         questions.push({
-            id: id,
             questionId: String(id).padStart(3, '0'),
             frage: q.frage,
             antwort: q.antwort,
@@ -634,7 +632,6 @@ function createNewMultiplayerFiles() {
         settings: {
             quizName: 'Mein Quiz',
             questionsPerQuiz: CONFIG.QUIZ.DEFAULT_QUESTIONS_PER_QUIZ,
-            corePercent: 70,
             podiumPlaces: 3,
             adminPassword: 'admin',
             superAdminPassword: 'super',

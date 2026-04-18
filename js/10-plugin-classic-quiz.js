@@ -29,7 +29,7 @@ const ClassicQuizPlugin = {
         const active = questions.filter(q => q.active !== false);
         if (active.length === 0) return [];
         const sr = quizSettings.spacedRepetition || {};
-        const randomness = (sr.randomness !== undefined ? sr.randomness : 40) / 100;
+        const randomness = (sr.randomness !== undefined ? sr.randomness : 30) / 100;
         const cooldownHours = sr.streakCooldown || 48;
         const streakThreshold = sr.streakThreshold || 2;
         const freshQuota = (sr.freshQuota !== undefined ? sr.freshQuota : 0) / 100;
@@ -37,9 +37,8 @@ const ClassicQuizPlugin = {
         const stats = user.questionStats || {};
         const now = Date.now();
         const cooldownMs = cooldownHours * 3600000;
-        const corePercent = quizSettings.corePercent || 70;
-
-        const alreadyPlayedToday = (user.dailyQuizCount || 0) > 0;
+        const today = new Date().toDateString();
+        const alreadyPlayedToday = user.lastQuizDate === today && (user.dailyQuizCount || 0) > 0;
         const maxCore = alreadyPlayedToday
             ? (sr.maxCoreSubsequent !== undefined ? sr.maxCoreSubsequent : count)
             : (sr.maxCoreFirst !== undefined ? sr.maxCoreFirst : count);
@@ -63,7 +62,6 @@ const ClassicQuizPlugin = {
             } else {
                 priority = 95;
             }
-            if (q.isCore) priority *= (1 + corePercent / 200);
             return priority + Math.random() * 100 * randomness;
         };
 
@@ -77,6 +75,7 @@ const ClassicQuizPlugin = {
         const nonCoreQ = active.filter(q => !q.isCore);
 
         // Cooldown hart ausschließen — Fallback auf Cooldown-Pool wenn nötig
+        let cooldownFallbackCount = 0;
         const pickWithCooldownFallback = (pool, n) => {
             const available = pool.filter(q => !isInCooldown(q));
             if (available.length >= n) return pickTop(available, n);
@@ -84,11 +83,7 @@ const ClassicQuizPlugin = {
             const stillNeeded = n - picked.length;
             const cooldownPool = pool.filter(q => isInCooldown(q));
             const fallback = pickTop(cooldownPool, stillNeeded);
-            if (fallback.length > 0)
-                setTimeout(() => Toast.show(
-                    `⚠ Pool zu klein: ${fallback.length} Frage(n) aus dem 48h-Ruhemodus geholt.\nMehr aktive Fragen hinzufügen empfohlen.`,
-                    'warning'
-                ), 500);
+            cooldownFallbackCount += fallback.length;
             return [...picked, ...fallback];
         };
 
@@ -100,23 +95,53 @@ const ClassicQuizPlugin = {
         if (freshQuota > 0 && alreadyPlayedToday && nonCoreSlots > 0) {
             const freshNC = nonCoreQ.filter(q => { const s = stats[q.questionId]; return !s || (s.asked || 0) <= freshThreshold; });
             const oldNC   = nonCoreQ.filter(q => { const s = stats[q.questionId]; return s && (s.asked || 0) > freshThreshold; });
-            const freshCount = Math.min(Math.floor(nonCoreSlots * freshQuota), freshNC.length);
-            const oldPicked  = pickTop(oldNC.filter(q => !isInCooldown(q)), nonCoreSlots - freshCount);
+            const freshMin   = Math.min(Math.floor(nonCoreSlots * freshQuota), freshNC.length);
+            const oldPicked  = pickTop(oldNC.filter(q => !isInCooldown(q)), nonCoreSlots - freshMin);
             const freshCount2 = nonCoreSlots - oldPicked.length;
             nonCorePicked = [...pickTop(freshNC.filter(q => !isInCooldown(q)), freshCount2), ...oldPicked];
             // Fallback wenn immer noch zu wenig
             const stillNeeded = nonCoreSlots - nonCorePicked.length;
             if (stillNeeded > 0) {
                 const cdFallback = pickTop(nonCoreQ.filter(q => isInCooldown(q)), stillNeeded);
-                if (cdFallback.length > 0)
-                    setTimeout(() => Toast.show(
-                        `⚠ Pool zu klein: ${cdFallback.length} Frage(n) aus dem 48h-Ruhemodus geholt.\nMehr aktive Fragen hinzufügen empfohlen.`,
-                        'warning'
-                    ), 500);
+                cooldownFallbackCount += cdFallback.length;
                 nonCorePicked = [...nonCorePicked, ...cdFallback];
             }
         } else {
             nonCorePicked = pickWithCooldownFallback(nonCoreQ, nonCoreSlots);
+        }
+
+        if (cooldownFallbackCount > 0)
+            setTimeout(() => Toast.show(
+                `⚠ Pool zu klein: ${cooldownFallbackCount} Frage(n) aus dem 48h-Ruhemodus geholt.\nMehr aktive Fragen hinzufügen empfohlen.`,
+                'warning'
+            ), 500);
+
+        // Kategorie-Cap: max N Non-Core-Fragen pro _fileGroup
+        const maxPerGroup = sr.maxPerGroup !== undefined ? sr.maxPerGroup : 3;
+        if (maxPerGroup > 0) {
+            const groupCounts = {};
+            const capped = [];
+            const overflowIds = new Set();
+            for (const q of nonCorePicked) {
+                const g = q._fileGroup || '__none__';
+                groupCounts[g] = (groupCounts[g] || 0) + 1;
+                if (groupCounts[g] <= maxPerGroup) capped.push(q);
+                else overflowIds.add(q.questionId);
+            }
+            const missing = nonCorePicked.length - capped.length;
+            if (missing > 0) {
+                const usedIds = new Set(capped.map(q => q.questionId));
+                const fillPool = nonCoreQ.filter(q =>
+                    !usedIds.has(q.questionId) &&
+                    !overflowIds.has(q.questionId) &&
+                    !isInCooldown(q) &&
+                    (groupCounts[q._fileGroup || '__none__'] || 0) < maxPerGroup
+                );
+                const fill = pickTop(fillPool, missing);
+                nonCorePicked = [...capped, ...fill];
+            } else {
+                nonCorePicked = capped;
+            }
         }
 
         return shuffleArray([...corePicked, ...nonCorePicked]);

@@ -33,7 +33,6 @@ let encryptionKey = CONFIG.FILE.ENCRYPTION_KEY;
 
 const SETTINGS_DEFAULTS = {
     questionsPerQuiz: CONFIG.QUIZ.DEFAULT_QUESTIONS_PER_QUIZ,
-    corePercent: 70,
     podiumPlaces: 3,
     adminPassword: 'admin',
     superAdminPassword: 'super',
@@ -192,14 +191,10 @@ function normalizeQuestion(q) {
     // Text der Frage
     const text = q.text || q.frage || '';
 
-    // questionId bestimmen:
-    // - Stabile ID (kein Q_-Präfix, nicht rein numerisch): beibehalten
-    // - Q_-Präfix: beibehalten (Migration später)
-    // - Fehlt: neue stabile ID vergeben
+    // questionId bestimmen: stabile ID beibehalten, sonst neu vergeben
     const oldQuestionId = q.questionId;
     function resolveId() {
         if (hasStableId(oldQuestionId)) return oldQuestionId;
-        if (oldQuestionId && oldQuestionId.startsWith('Q_')) return oldQuestionId;
         return typeof assignStableId === 'function'
             ? assignStableId(q._fileGroup || 'Manuell', questions)
             : generateQuestionHash(q);
