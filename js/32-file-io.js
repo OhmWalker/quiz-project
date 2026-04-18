@@ -159,8 +159,8 @@ async function loadFromFolderInput(event) {
             let qErrors = 0;
             qList.forEach((q, qi) => {
                 try {
-                    if (!q._fileGroup && !q.theme && !qData.theme) noGroupCount++;
-                    q._fileGroup = q._fileGroup || q.theme || theme;
+                    if (!q._fileGroup) noGroupCount++;
+                    q._fileGroup = q._fileGroup || qData.theme || 'Manuell';
                     const normalized = normalizeQuestion(q);
                     // Duplikat-Check nur über questionId, nicht _contentHash —
                     // gleicher Text in zwei Gruppen ist kein Duplikat.

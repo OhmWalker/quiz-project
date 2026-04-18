@@ -33,6 +33,15 @@ const MIGRATION_HISTORY = [
                  Präfix = erste 4 Buchstaben des Gruppennamens (Umlaute → ae/oe/ue),
                  Nummer 5-stellig nullgepaddert und pro Gruppe fortlaufend.`,
     },
+    {
+        date:  '2026-04',
+        title: '_fileGroup explizit in Fragen-Dateien geschrieben',
+        detail: `Alle Fragen-Dateien wurden über "Gruppen Export" in Forge neu exportiert.
+                 Jede Frage trägt seitdem <code>_fileGroup</code> explizit im JSON-Objekt —
+                 der Fallback über das datei-weite <code>theme</code>-Feld in
+                 <code>file-io</code> entfällt damit. Neue Fragen erhalten <code>_fileGroup</code>
+                 immer beim Erstellen (Forge) oder Einreichen (Herald).`,
+    },
 ];
 
 AdminShell.registerPanel('migrationen', 'Migrationen', '🔧', container => {
