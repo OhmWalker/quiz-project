@@ -39,6 +39,10 @@ AdminShell.registerPanel('nutzer', 'Nutzer', '👤', container => {
                     style="display:none;padding:6px 14px;margin:0;background:var(--overlay-10);box-shadow:none">
                     ✕
                 </button>
+                <button class="btn btn-small btn-secondary" title="Spieler-JSON herunterladen"
+                    onclick="_adminNutzerDownload(${i})" style="padding:6px 10px;margin:0">
+                    ⬇ Datei
+                </button>
             </td>
         </tr>`).join('');
 
@@ -48,6 +52,7 @@ AdminShell.registerPanel('nutzer', 'Nutzer', '👤', container => {
             <p class="text-muted mb-20">
                 Nach dem Umbenennen wird die Spieler-Datei heruntergeladen.
                 Die alte Datei im Ordner manuell löschen.
+                Mit ⬇ Datei kann jede Spieler-JSON einzeln exportiert werden.
             </p>
             <table class="info-table" style="font-size:0.9rem">
                 <thead>
@@ -97,7 +102,15 @@ function _adminNutzerSave(i) {
     currentUser = u;
     saveCurrentPlayer();
 
-    // Label aktualisieren
     document.getElementById('nutzer_name_' + i).textContent = newName;
     _adminNutzerCancelEdit(i);
+}
+
+function _adminNutzerDownload(i) {
+    const u = users[i];
+    const now = new Date();
+    const ts = now.toISOString().slice(0,19).replace('T','_').replace(/:/g,'');
+    const safeName = (u.name || 'unbekannt').replace(/[^a-zA-Z0-9_\-]/g, '_');
+    _adminDownloadJSON(u, `04_operator_${safeName}_${ts}.json`);
+    Toast.show(`${u.name} heruntergeladen.`, 'success');
 }

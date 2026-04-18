@@ -22,6 +22,7 @@ ADMIN_CORE_JS = [
     '04-appstate.js',
     '06-plugin-registry.js',
     '07-event-delegation.js',
+    '16-plugin-badge.js',
     '30-globals.js',
     '32-file-io.js',
 ]
@@ -135,3 +136,19 @@ with open(herald_out, "w", encoding="utf-8") as f:
 size_kb = os.path.getsize(herald_out) / 1024
 print(f"[OK] herald.html             —  {size_kb:.1f} KB  |  CSS: {len(css_files_herald)}  |  Core-JS: {len(core_herald_paths)}  |  Herald-JS: {len(herald_paths)}")
 print(f"     Themen-Kategorien manuell editieren → Ctrl+F nach: HERALD_GRUPPEN_EDIT")
+
+
+# ── LeanQuiz-Build ────────────────────────────────────────────────────────────
+html           = read_file(os.path.join(SCRIPT_DIR, "lean-index.html"))
+css_files_lean = sorted(glob.glob(os.path.join(CSS_DIR, "*.css")))
+js_files_lean  = sorted(glob.glob(os.path.join(JS_DIR, "*.js")))
+
+html = inject(html, build_css(css_files_lean), build_js(js_files_lean))
+html = html.replace('Development Version (Split Files)', 'Single File · 100% Offline · No localStorage')
+
+lean_out = os.path.join(SCRIPT_DIR, "LeanQuiz.html")
+with open(lean_out, "w", encoding="utf-8") as f:
+    f.write(html)
+
+size_kb = os.path.getsize(lean_out) / 1024
+print(f"[OK] LeanQuiz.html           —  {size_kb:.1f} KB  |  CSS: {len(css_files_lean)}  |  JS: {len(js_files_lean)}")

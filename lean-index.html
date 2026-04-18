@@ -1,0 +1,392 @@
+<!-- LeanQuiz — Development Version (Split Files) -->
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz System</title>
+    <link rel="stylesheet" href="css/00-base.css">
+    <link rel="stylesheet" href="css/01-screens.css">
+    <link rel="stylesheet" href="css/02-admin.css">
+    <link rel="stylesheet" href="css/03-plugins.css">
+</head>
+<body>
+<div id="globalBadgeTooltip"></div>
+<!-- Badge Sidebars (links und rechts) -->
+<div class="badge-sidebar badge-sidebar-left" id="badgeSidebarLeft" style="display: none;">
+    <div class="sidebar-header-row">
+        <button class="sidebar-collapse-btn-inline" data-action="toggleSidebarCollapse" data-args='["left"]' title="Einklappen">◀</button>
+        <div class="sidebar-drag-handle-inline" title="Ziehen zum Verschieben">⠿</div>
+        <div class="sidebar-header-username" id="badgeSidebarTitleLeft">Nutzer</div>
+    </div>
+    <button class="sidebar-reset-btn" id="sidebarResetLeft" data-action="resetSidebarPosition" data-args='["left"]' title="Standardposition" style="display:none;">↺</button>
+    <button class="sidebar-save-btn" id="sidebarSaveLeft" data-action="saveSidebarPosition" data-args='["left"]' title="Position für Spieler speichern / wiederherstellen" style="display:none;">📌</button>
+    <div class="sidebar-inner" id="sidebarInnerLeft">
+        <div id="badgeListLeft"></div>
+    </div>
+</div>
+<div class="badge-sidebar badge-sidebar-right" id="badgeSidebarRight" style="display: none;">
+    <div class="sidebar-header-row">
+        <div class="sidebar-header-username" id="badgeSidebarTitleRight">Nutzer</div>
+        <div class="sidebar-drag-handle-inline" title="Ziehen zum Verschieben">⠿</div>
+        <button class="sidebar-collapse-btn-inline" data-action="toggleSidebarCollapse" data-args='["right"]' title="Einklappen">▶</button>
+    </div>
+    <button class="sidebar-reset-btn" id="sidebarResetRight" data-action="resetSidebarPosition" data-args='["right"]' title="Standardposition" style="display:none;">↺</button>
+    <button class="sidebar-save-btn" id="sidebarSaveRight" data-action="saveSidebarPosition" data-args='["right"]' title="Position für Spieler speichern / wiederherstellen" style="display:none;">📌</button>
+    <div class="sidebar-inner" id="sidebarInnerRight">
+        <div id="badgeListRight"></div>
+    </div>
+</div>
+
+<!-- Sidebar Toggle-Buttons (sichtbar wenn Sidebar eingeklappt) -->
+<button class="sidebar-toggle-tab sidebar-toggle-left" id="sidebarToggleLeft" style="display:none;" data-action="toggleSidebarCollapse" data-args='["left"]' title="Badges anzeigen">🏆</button>
+<button class="sidebar-toggle-tab sidebar-toggle-right" id="sidebarToggleRight" style="display:none;" data-action="toggleSidebarCollapse" data-args='["right"]' title="Fähigkeiten anzeigen">⚡</button>
+
+<!-- Features Modal -->
+<div class="features-overlay" id="featuresOverlay">
+    <div class="features-content">
+        <h2 style="text-align: center; font-size: 1.6rem; margin-bottom: 20px;">⚡ Features & Spielsystem</h2>
+        
+        <h3>📈 XP & Level-System</h3>
+        <p>Jedes Quiz bringt XP basierend auf dem Ergebnis. Basis-XP werden mit dem Prozentsatz richtiger Antworten multipliziert. Am ersten Quiz des Tages gibt es +50 Bonus-XP, jedes weitere +10 XP. Das Level steigt progressiv – je höher das Level, desto mehr XP braucht man.</p>
+        
+        <h3>🏅 Rangliste</h3>
+        <p>Die Rangliste zeigt die besten Spieler auf einem Podium (🥇🥈🥉). Klicke auf einen Spieler, um seine Badges und Fähigkeiten zu sehen. Die Anzahl der Podiumsplätze ist im Admin einstellbar.</p>
+        <p>Der <strong>Ranglisten-Score</strong> setzt sich aus drei Komponenten zusammen:</p>
+        <p style="margin-left: 10px;">
+            <strong style="color:#e74c3c;">Qualität (40%)</strong> – Trefferquote der letzten Quiz. Neuere Ergebnisse zählen stärker als ältere (Zeitgewichtung). Wer zuletzt 90% richtig hatte, steht hier besser da als jemand mit 60%.<br><br>
+            <strong style="color:#3498db;">Quantität (30%)</strong> – Wie viele Quiz im Bewertungszeitraum gespielt wurden, gemessen am Zielwert (Standard: 15 Quiz). Wer das Ziel erreicht oder übertrifft, bekommt hier volle Punkte.<br><br>
+            <strong style="color:#2ecc71;">Aktivität (30%)</strong> – Wie kürzlich das letzte Quiz war. Pro Tag ohne Quiz sinkt dieser Wert um 2 Punkte (ab 100). Nach 50 Tagen Inaktivität ist er bei 0.
+        </p>
+        <p style="background:rgba(255,255,255,0.05); padding:12px; border-radius:8px; margin-top:10px;">
+            <strong>📊 Beispiel:</strong> Spieler A hat eine Trefferquote von 80%, hat 12 von 15 Ziel-Quiz gespielt und sein letztes Quiz war vor 3 Tagen.<br>
+            → Qualität: 80 × 0.4 = <strong>32.0</strong><br>
+            → Quantität: (12/15 × 100) × 0.3 = 80 × 0.3 = <strong>24.0</strong><br>
+            → Aktivität: (100 − 3×2) × 0.3 = 94 × 0.3 = <strong>28.2</strong><br>
+            → <strong style="color:var(--accent);">Gesamt-Score: 84.2</strong><br><br>
+            Bei identischem Score entscheidet die Gesamt-XP (Lifetime) als Tiebreaker – wer insgesamt mehr gesammelt hat, steht höher.
+        </p>
+        
+        <h3>🏆 Badge-System (40 Badges × 5 Stufen)</h3>
+        <p>20 Leistungs-Badges + 10 Fähigkeiten-Badges + 10 Mini-Game-Badges. Jeder Badge hat 5 Stufen: <span style="color:#888">⚪ Grau</span> → <span style="color:#2ecc71">🟢 Grün</span> → <span style="color:#3498db">🔵 Blau</span> → <span style="color:#9b59b6">🟣 Lila</span> → <span style="color:#f1c40f">🥇 Gold</span>. Gold ist kalibriert für ~2 Jahre bei 10 Quiz/Tag.</p>
+        <p><strong>Leistungs-Badges:</strong></p>
+        <div class="stats-grid">
+            <span>🌅 <strong>Frühaufsteher</strong> – Quiz vor 07:00</span>
+            <span>🦉 <strong>Nachteule</strong> – Quiz nach 22:00</span>
+            <span>💯 <strong>Perfektionist</strong> – 100% im Quiz</span>
+            <span>🏃 <strong>Ausdauer</strong> – Quiz absolviert</span>
+            <span>📅 <strong>Täglicher Held</strong> – Tage mit Quiz</span>
+            <span>🔥 <strong>Streak</strong> – Tage in Folge</span>
+            <span>🧠 <strong>Wissensmeister</strong> – Richtige Antworten</span>
+            <span>✏️ <strong>Fleißig</strong> – Fragen beantwortet</span>
+            <span>📈 <strong>Aufsteiger</strong> – Level erreicht</span>
+            <span>⭐ <strong>XP-Sammler</strong> – XP gesammelt</span>
+            <span>🚀 <strong>Schnellstarter</strong> – Quiz in unter 2 Min</span>
+            <span>🎉 <strong>Wochenendler</strong> – Quiz am Wochenende</span>
+            <span>💪 <strong>Montagsmotivation</strong> – Quiz am Montag</span>
+            <span>📊 <strong>Verbesserer</strong> – Quiz über 80%</span>
+            <span>🔄 <strong>Comeback</strong> – Nach Pause zurück</span>
+            <span>🏅 <strong>Marathon</strong> – 5+ Quiz an einem Tag</span>
+            <span>🗺️ <strong>Entdecker</strong> – Verschiedene Fragen</span>
+            <span>👑 <strong>Meister</strong> – Platz 1 erreicht</span>
+            <span>🎖️ <strong>Veteran</strong> – Monate aktiv</span>
+        </div>
+        <p><strong>Fähigkeiten-Badges</strong> (zählen Nutzungen der jeweiligen Fähigkeit):</p>
+        <div class="stats-grid">
+            <span>🎯 <strong>Joker-Meister</strong> – 50:50 eingesetzt</span>
+            <span>📞 <strong>Telefonmeister</strong> – Telefon-Joker</span>
+            <span>⏭️ <strong>Springer</strong> – Fragen übersprungen</span>
+            <span>🔄 <strong>Comeback-Kid</strong> – Zweite Chance</span>
+            <span>💡 <strong>Detektiv</strong> – Hinweise genutzt</span>
+            <span>✨ <strong>XP-Booster</strong> – Doppelte XP</span>
+            <span>🛡️ <strong>Verteidiger</strong> – Schutzschild</span>
+            <span>🎲 <strong>Tauscher</strong> – Fragentausch</span>
+            <span>👥 <strong>Teamplayer</strong> – Teambonus</span>
+            <span>⚡ <strong>Alleskönner</strong> – Alle Fähigkeiten genutzt</span>
+        </div>
+        <p><strong>Mini-Game-Badges</strong> (zählen Spiel-Aktivität):</p>
+        <div class="stats-grid">
+            <span>🎰 <strong>Glückspilz</strong> – Glücksrad gedreht</span>
+            <span>💰 <strong>Jackpot</strong> – Spinner-XP gewonnen</span>
+            <span>⚡ <strong>Blitzreflex</strong> – Speed-Tap gespielt</span>
+            <span>🏎️ <strong>Überschall</strong> – Speed-Tap Ø &lt;300ms</span>
+            <span>🐉 <strong>Drachentöter</strong> – Bosse besiegt</span>
+            <span>⚔️ <strong>Herausforderer</strong> – Boss-Fights gespielt</span>
+        </div>
+        
+        <h3>⚡ Fähigkeiten (10 Abilities)</h3>
+        <p>Jede Fähigkeit wird durch Leistung freigeschaltet. Jede erfüllte Bedingung gibt <strong>+1 Ladung</strong> – verbrauchte Ladungen sind weg und müssen neu verdient werden. Pro Frage kann jede Fähigkeit einmal eingesetzt werden. Es gibt <strong>kein Limit</strong> für gesammelte Ladungen.</p>
+        <h4>🎯 50:50 Joker</h4><p>Entfernt 2 falsche MC-Antworten. <strong>+1 Ladung</strong> pro 3 Quiz in 1 Stunde.</p>
+        <h4>📞 Telefon-Joker</h4><p>Frage wird anderem Spieler gestellt – bei richtig: 5× Punkte für beide. <strong>+1 Ladung</strong> pro 5 Quiz mit 80%+.</p>
+        <h4>⏭️ Überspringen</h4><p>Frage ohne Strafe überspringen. <strong>+1 Ladung</strong> pro 10 Quiz absolviert.</p>
+        <h4>🔄 Zweite Chance</h4><p>Bei falscher Antwort nochmal versuchen. <strong>+1 Ladung</strong> pro 3 Tage Streak.</p>
+        <h4>💡 Hinweis</h4><p>Zeigt einen vom Admin hinterlegten Hinweis als Tooltip an. Ist keiner vorhanden, wird die Ladung nicht verbraucht. <strong>+1 Ladung</strong> pro 20 verschiedene Fragen.</p>
+        <h4>✨ Doppelte XP</h4><p>Nächste richtige Antwort = 2× XP. <strong>+1 Ladung</strong> pro perfektes Quiz (100%).</p>
+        <h4>🛡️ Schutzschild</h4><p>Eine falsche Antwort bricht den Streak nicht. <strong>+1 Ladung</strong> pro 7 Tage Streak.</p>
+        <h4>🎲 Fragentausch</h4><p>Aktuelle Frage durch andere ersetzen. <strong>+1 Ladung</strong> pro 5 Marathon-Tage.</p>
+        <h4>👥 Teambonus</h4><p>3× XP für dich und einen Mitspieler. <strong>+1 Ladung</strong> pro 3 genutzte Telefon-Joker.</p>
+        
+        <h3>🔌 Plugin-System (v4.0)</h3>
+        <p>Das Quiz-System ist modular aufgebaut — alle Features sind eigenständige <strong>Plugins</strong>, die einzeln aktiviert oder deaktiviert werden können. Admins können im Admin-Bereich unter "🔌 Plugins" jedes Feature an- oder ausschalten. Deaktivierte Features verschwinden komplett von der Startseite, die zugehörigen Buttons und Sidebars werden ausgeblendet.</p>
+        <p><strong>Pflicht-Features</strong> (immer aktiv): Quiz, Fragen-Manager, Benutzerverwaltung. <strong>Optionale Features</strong>: alle Mini-Games, Badge-System, Bestenliste, Fähigkeiten. Die Plugin-Konfiguration wird automatisch im Master-Backup gespeichert und beim Import wiederhergestellt.</p>
+        
+        <h3>💾 Datenspeicherung</h3>
+        <p>Das Quiz nutzt 3 Dateitypen im Ordner: <strong>02_QUIZ-MASTER</strong> (Einstellungen & Spieler-Backups), <strong>04_operator</strong> (Spielerdaten) und <strong>03_questions</strong> (Fragenkataloge). Fragen können als separate Themenblöcke verwaltet werden – einfach die 03-Datei im Ordner austauschen um andere Fragen zu laden. Im Admin-Bereich kann zwischen Klartext und Base64-Kodierung gewählt werden – die Einstellung gilt für alle drei Dateitypen.</p>
+        
+        <h3>🎮 Mini-Games</h3>
+        <p>Neben dem klassischen Quiz gibt es 5 Mini-Games, die als Belohnung oder eigener Spielmodus verfügbar sind. XP aus Mini-Games sind ein netter Bonus, aber nicht die Hauptquelle – das Quiz bleibt zentral.</p>
+        <h4>🎰 Glücksrad</h4><p>Wird automatisch nach einem Quiz angeboten, wenn genug Fragen richtig beantwortet wurden. Drehe das Rad für Bonus-XP – oder "Nochmal drehen" für eine zweite Chance. Auslöser und Höchstgewinn sind im Admin einstellbar.</p>
+        <h4>⚡ Speed-Tap Reaktionstest</h4><p>Nach einer einstellbaren Anzahl von Quiz am selben Tag erscheint der Reaktionstest. Ein Ziel erscheint an zufälliger Position – so schnell wie möglich antippen! 5 Runden, und je schneller der Durchschnitt, desto mehr Bonus-XP. Unter 300ms = Top-Bonus.</p>
+        <h4>⚔️ Boss-Fight</h4><p>Nach einer Serie starker Quiz-Ergebnisse (>80%) wird ein Boss-Fight freigeschaltet. 5 verschiedene Bosse mit eigenen Angriffen: Timer-Verkürzung, Antworten vernebeln, Antworten mischen. Besiege den Boss durch richtige Antworten – aber Vorsicht, falsche Antworten kosten Leben!</p>
+
+        <div style="text-align: center; margin-top: 25px;">
+            <button class="btn" data-toggle-overlay="featuresOverlay" data-overlay-show="false">Verstanden!</button>
+        </div>
+    </div>
+</div>
+
+
+<div class="container">
+    <header>
+        <div style="display:flex;align-items:center;justify-content:center;gap:20px;">
+            <span class="header-username" id="headerUserLeft" style="font-size:1.7rem;color:var(--accent);font-weight:700;min-width:80px;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></span>
+            <h1 id="quizTitle" style="flex-shrink:0;">XY Quiz</h1>
+            <span class="header-username" id="headerUserRight" style="font-size:1.7rem;color:var(--accent);font-weight:700;min-width:80px;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></span>
+        </div>
+    </header>
+
+    <!-- Start Screen -->
+    <div id="startScreen" class="screen">
+        <div class="card">
+            <!-- Leaderboard Podium -->
+            <div id="leaderboard" class="leaderboard"></div>
+            
+            <h2 class="user-selection-title">Benutzer wählen</h2>
+            <div class="user-select" id="userSelect"></div>
+            <div style="margin-top: 30px; display:flex; flex-direction:column; gap:12px;">
+                <div class="btn" id="startQuizBtn" style="width:100%;font-size:1.3rem;padding:20px;display:flex;align-items:center;cursor:pointer;opacity:0.5;pointer-events:none;justify-content:center;box-sizing:border-box;border:2px solid rgba(0,0,0,0.4);" data-action="startQuiz">
+                    <span style="font-weight:700;">Quiz Starten</span>
+                </div>
+                <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+                    <button class="btn btn-secondary" data-action="saveCurrentPlayer" id="savePlayerBtn">
+                        💾 Spieler speichern
+                    </button>
+                    <button class="btn btn-secondary" data-action="saveMasterBackup" id="exportAllBtn">
+                        💾 Master-Backup
+                    </button>
+                    <button class="btn" data-toggle-overlay="featuresOverlay" style="background: linear-gradient(135deg, #e67e22, #f39c12); box-shadow: 0 10px 30px rgba(230,126,34,0.3);">
+                        ⚡ Features
+                    </button>
+                </div>
+                <div style="display: flex; gap: 15px; flex-wrap: wrap; margin-top: 15px; justify-content: center;">
+                    <div id="modeIndicator" class="btn btn-secondary" style="
+                         background: linear-gradient(135deg, #c0392b, #e74c3c); 
+                         box-shadow: 0 10px 30px rgba(231, 76, 60, 0.3);
+                         cursor: default; pointer-events: none;">
+                        Database: <span id="modeFolder"></span> · Operator Count: <span id="modeOperatorCount">0</span> · <span id="modeDuplicates"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Import Screen (Initial) -->
+    <div id="importScreen" class="screen active">
+        <div class="card">
+            <div style="text-align: center; margin-bottom: 40px;">
+                <div style="font-size: 4rem; margin-bottom: 20px;">📁</div>
+                <h2 style="margin-bottom: 15px;">Quiz-System starten</h2>
+                <p style="font-size: 1.1rem; opacity: 0.8; line-height: 1.8;">
+                    Wählen Sie Ihren Quiz-Ordner aus, um zu starten.
+                </p>
+            </div>
+
+            <!-- Mehrspieler (Ordner) -->
+            <div class="export-card mb-20">
+                <h4>📂 Quiz-Ordner auswählen</h4>
+                <p style="margin-bottom: 15px;">Wählen Sie den Ordner mit Ihren Quiz-Dateien aus.</p>
+                <div class="file-input-wrapper">
+                    <input type="file" id="folderInput" webkitdirectory multiple data-change="loadFromFolderInput">
+                    <label for="folderInput" class="file-input-label" style="width: 100%; text-align: center;">
+                        📂 Ordner auswählen
+                    </label>
+                </div>
+                <div id="folderStatus" style="display: none; margin-top: 15px; padding: 15px; background: rgba(46, 204, 113, 0.1); border-radius: 10px;">
+                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                        <span style="color: var(--correct); font-size: 1.5rem;">✓</span>
+                        <strong id="folderName">Ordner geladen</strong>
+                    </div>
+                    <div id="folderStats" style="font-size: 0.9rem; opacity: 0.8;"></div>
+                </div>
+            </div>
+
+            <!-- Neuen Ordner erstellen -->
+            <div class="export-card">
+                <h4>🆕 Neues Quiz erstellen</h4>
+                <p>Erstellt die Startdateien für ein neues Quiz-System.</p>
+                <button class="btn btn-secondary" data-action="createNewMultiplayerFiles" style="width: 100%; margin-top: 15px;">
+                    Neue Quiz-Dateien erstellen
+                </button>
+            </div>
+
+            <!-- Hinweis-Box -->
+            <div style="background: rgba(52, 152, 219, 0.1); border: 2px solid #3498db; 
+                        padding: 20px; border-radius: 15px; margin-top: 25px;">
+                <h4 style="color: #3498db; margin-bottom: 10px;">💡 So funktioniert's</h4>
+                <ul style="line-height: 1.8; opacity: 0.9; margin: 0; padding-left: 20px;">
+                    <li><strong>02_QUIZ-MASTER_DATUM.json</strong> – Einstellungen & Spieler-Backups</li>
+                    <li><strong>04_operator_NAME_DATUM.json</strong> – Individuelle Spielerdaten</li>
+                    <li><strong>03_questions_THEMA_DATUM.json</strong> – Fragenkatalog</li>
+                    <li>Mehrere Spieler können gleichzeitig spielen</li>
+                    <li>Nach dem Quiz: 💾 Spieler speichern → Datei im Ordner ablegen</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Quiz Screen -->
+    <div id="quizScreen" class="screen">
+        <div class="progress-bar">
+            <div class="progress-fill" id="progressFill"></div>
+        </div>
+        <div class="card">
+            <div class="question-header">
+                <div class="question-number" id="questionNumber"></div>
+                <div class="quiz-xp-counter" id="quizXPCounter">+0 XP</div>
+                <div class="question-number quiz-username" id="currentUserName"></div>
+            </div>
+            <div id="questionMedia" class="question-media"></div>
+            <div class="question-text" id="questionText"></div>
+            <div class="answers" id="answersContainer"></div>
+            <div class="ability-bar" id="abilityBar" style="display:none;"></div>
+            <div id="submitBtnContainer"></div>
+            <div id="explanationContainer" style="display:none; margin-top: 20px; padding: 20px; background: rgba(52, 152, 219, 0.1); border: 2px solid #3498db; border-radius: 15px;">
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                    <span style="font-size: 1.3rem;">📖</span>
+                    <strong style="color: #3498db;">Erklärung</strong>
+                </div>
+                <div id="explanationText" style="line-height: 1.6; opacity: 0.9;"></div>
+            </div>
+            <div style="display: flex; gap: 15px; margin-top: 30px;">
+                <button class="btn btn-secondary" data-action="showExplanation" id="explainBtn" style="display: none; flex: 1;">📖 Erklärung anzeigen</button>
+                <button class="btn" data-action="nextQuestion" id="nextBtn" style="display: none; flex: 1;">Weiter <span style="opacity: 0.7; font-size: 0.85em;">(Enter ↵)</span></button>
+            </div>
+            <div style="margin-top: 15px; text-align: center;">
+                <button class="btn btn-small btn-secondary" id="abandonQuizBtn" data-action="abandonQuiz" title="Quiz vorzeitig beenden (Esc)" style="padding:6px 18px;font-size:0.82rem;opacity:0.5;transition:opacity 0.2s;">✕ Beenden <span style="opacity: 0.6; font-size: 0.8em;">(Esc)</span></button>
+                <div id="quizQuestionIdInfo" style="margin-top:6px;font-size:0.82rem;opacity:0.65;color:var(--text);user-select:text;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Results Screen -->
+    <div id="resultsScreen" class="screen">
+        <div class="card">
+            <div class="results-container">
+                <h2 style="font-size: 2.5rem; margin-bottom: 20px;">Quiz Abgeschlossen!</h2>
+                <div class="results-score" id="finalScore"></div>
+                <div class="results-message" id="resultsMessage"></div>
+                <div class="results-details">
+                    <div class="result-stat">
+                        <div class="result-stat-value" id="correctCount"></div>
+                        <div class="result-stat-label">Richtig</div>
+                    </div>
+                    <div class="result-stat">
+                        <div class="result-stat-value" id="incorrectCount"></div>
+                        <div class="result-stat-label">Falsch</div>
+                    </div>
+                    <div class="result-stat" id="skippedStat" style="display:none">
+                        <div class="result-stat-value" id="skippedCount"></div>
+                        <div class="result-stat-label">Übersprungen</div>
+                    </div>
+                    <div class="result-stat">
+                        <div class="result-stat-value" id="totalQuestions"></div>
+                        <div class="result-stat-label">Gesamt</div>
+                    </div>
+                </div>
+                
+                <div style="background: rgba(247, 184, 1, 0.1); border: 2px solid var(--accent); 
+                            padding: 20px; border-radius: 15px; margin: 30px 0;">
+                    <strong style="color: var(--accent);">💾 Wichtig: Daten speichern!</strong>
+                    <p style="margin-top: 10px; opacity: 0.9;">
+                        Exportieren Sie jetzt Ihre Datendatei, um Ihre Ergebnisse zu sichern.
+                    </p>
+                </div>
+                
+                <div style="display: flex; gap: 15px; justify-content: center;">
+                    <button class="btn" data-action="exportAllDataAndContinue">💾 Daten Exportieren & Weiter</button>
+                    <button class="btn btn-secondary" data-action="restartQuiz">Neues Quiz</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+<!-- ═══ Spinner Overlay ═══ -->
+<div class="spinner-overlay" id="spinnerOverlay">
+    <div class="spinner-container">
+        <h2 style="color: var(--accent); font-size: 1.8rem; margin-bottom: 5px;" id="spinnerTitle">🎰 Glücksrad</h2>
+        <p style="opacity: 0.7; font-size: 0.9rem;" id="spinnerSubtitle">Drehe das Rad für deine Belohnung!</p>
+        <div class="spinner-canvas-wrap">
+            <div class="spinner-pointer">▼</div>
+            <canvas id="spinnerCanvas" width="320" height="320"></canvas>
+        </div>
+        <div class="spinner-result" id="spinnerResult"></div>
+        <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
+            <button class="spinner-btn" id="spinnerSpinBtn" data-action="spin" data-plugin="WheelPlugin">🎰 Drehen!</button>
+            <button class="spinner-btn" id="spinnerCloseBtn" data-action="close" data-plugin="WheelPlugin" style="background: linear-gradient(135deg, var(--secondary), #006BA6); display: none;">Weiter</button>
+        </div>
+    </div>
+</div>
+
+
+<!-- ═══ Boss Fight Overlay ═══ -->
+<div class="boss-overlay" id="bossOverlay">
+    <div class="boss-arena">
+        <div class="boss-header">
+            <h2 style="color: #e74c3c; font-size: 1.6rem; margin-bottom: 10px;" id="bossTitle">⚔️ BOSS-FIGHT</h2>
+            <div class="boss-sprite" id="bossSprite">🐉</div>
+            <div style="font-weight: 700; font-size: 1.2rem; margin: 4px 0;" id="bossName">Drache des Wissens</div>
+            <div id="bossAbilities" style="display:flex;gap:8px;justify-content:center;margin-bottom:8px;flex-wrap:wrap;"></div>
+            <div class="boss-hp-bar">
+                <div class="boss-hp-fill" id="bossHpFill" style="width: 100%;"></div>
+                <div class="boss-hp-text" id="bossHpText">100 / 100</div>
+            </div>
+            <div class="boss-player-bar" id="bossPlayerHearts"></div>
+            <div class="boss-timer-bar" id="bossTimerBar" style="display: none;">
+                <div class="boss-timer-fill" id="bossTimerFill" style="width: 100%;"></div>
+            </div>
+        </div>
+        <div class="boss-effect-text" id="bossEffectText"></div>
+        <div class="boss-question-card" id="bossQuestionCard">
+            <div class="boss-question-text" id="bossQuestionText"></div>
+            <div id="bossAnswerArea"></div>
+        </div>
+        <div style="text-align: center; margin-top: 15px; display: flex; gap: 12px; justify-content: center;">
+            <button class="btn btn-secondary btn-small" data-action="close" data-plugin="BossFightPlugin" id="bossCloseBtn" style="display: none;">← Zurück</button>
+            <button class="btn btn-secondary btn-small" onclick="BossFightPlugin.abort()" id="bossAbortBtn" style="opacity:0.6;">✕ Abbrechen</button>
+        </div>
+    </div>
+</div>
+    <script src="js/01-constants.js"></script>
+    <script src="js/02-toast-dialog.js"></script>
+    <script src="js/03-eventbus.js"></script>
+    <script src="js/04-appstate.js"></script>
+    <script src="js/05-quizcore.js"></script>
+    <script src="js/06-plugin-registry.js"></script>
+    <script src="js/07-event-delegation.js"></script>
+    <script src="js/10-plugin-classic-quiz.js"></script>
+    <script src="js/11-plugin-ability.js"></script>
+    <script src="js/12-plugin-wheel.js"></script>
+    <script src="js/14-plugin-bossfight.js"></script>
+    <script src="js/16-plugin-badge.js"></script>
+    <script src="js/17-plugin-leaderboard.js"></script>
+    <script src="js/18-plugin-question-editor.js"></script>
+    <script src="js/19-plugin-fragen2.js"></script>
+    <script src="js/20-plugin-usermanagement.js"></script>
+    <script src="js/30-globals.js"></script>
+    <script src="js/32-file-io.js"></script>
+    <script src="js/40-init-and-functions.js"></script>
+    <script src="js/50-plugin-ui.js"></script>
+</body>
+</html>

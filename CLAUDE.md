@@ -3,10 +3,12 @@
 ## Projekt-Überblick
 - Quiz-System v4.0, Single-Page-App (HTML/CSS/JS)
 - Modulare Plugin-Architektur: ~20 JS-Dateien, 4 CSS-Dateien
-- Build: `python3 build.py` → drei Dateien:
-  - `quiz-system-built.html` (~601 KB) — das Quiz
-  - `forge.html` (~277 KB) — Admin-/Wartungs-Tool
+- Build: `python3 build.py` → vier Dateien:
+  - `quiz-system-built.html` (~601 KB) — das Quiz + eingebetteter Admin-Bereich (Legacy)
+  - `forge.html` (~343 KB) — Admin-/Wartungs-Tool (Standalone)
   - `herald.html` (~131 KB) — Fragen-Einreichungs-Tool (für Nutzer)
+  - `LeanQuiz.html` (~542 KB) — Quiz-only, kein Admin (Quelle: `lean-index.html`)
+- Langfristig: `quiz-system-built.html` wird durch `forge.html` + `LeanQuiz.html` ersetzt
 
 ## Architektur
 - Plugins kommunizieren über `EventBus` (Events: USER_SELECTED, QUIZ_STARTED, QUIZ_QUESTION, QUIZ_COMPLETED)

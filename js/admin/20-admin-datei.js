@@ -28,6 +28,22 @@ AdminShell.registerPanel('datei', 'Datei', '📂', container => {
                     <tr><td class="td-bold">Fragen-Dateien</td><td id="aSum_qfiles">${loadedQuestionFiles.map(f => f.name).join(', ') || '—'}</td></tr>
                 </table>
             </div>
+
+            <div class="card">
+                <h3 class="section-heading">Export / Download</h3>
+                <p class="text-muted mb-20">
+                    Alle Änderungen (Settings, Badges, Fähigkeiten) werden erst nach dem Export dauerhaft gespeichert.
+                    Die heruntergeladene Datei in den Quiz-Ordner kopieren.
+                </p>
+                <div style="display:flex;gap:10px;flex-wrap:wrap">
+                    <button class="btn btn-small" onclick="saveMasterBackup()">
+                        💾 Master-Backup exportieren
+                    </button>
+                    <button class="btn btn-small btn-secondary" onclick="_adminExportAllPlayers()">
+                        📦 Alle Spieler exportieren
+                    </button>
+                </div>
+            </div>
         </div>`;
 
     document.getElementById('adminFolderInput').addEventListener('change', _adminLoadFolder);
@@ -117,4 +133,31 @@ async function _adminLoadFolder(event) {
 
     // Passwort prüfen → Tabs freischalten (oder direkt wenn leer)
     AdminShell.unlock();
+}
+
+
+function _adminDownloadJSON(data, filename) {
+    let content = JSON.stringify(data, null, 2);
+    if (quizSettings.encryptPlayerData) {
+        try { content = btoa(unescape(encodeURIComponent(content))); } catch(e) {}
+    }
+    const blob = new Blob([content], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+
+function _adminExportAllPlayers() {
+    if (!users.length) { Toast.show('Keine Spieler geladen.', 'warning'); return; }
+    const now = new Date();
+    const ts = now.toISOString().slice(0,19).replace('T','_').replace(/:/g,'');
+    users.forEach(u => {
+        const safeName = (u.name || 'unbekannt').replace(/[^a-zA-Z0-9_\-]/g, '_');
+        _adminDownloadJSON(u, `04_operator_${safeName}_${ts}.json`);
+    });
+    Toast.show(`${users.length} Spieler-Dateien werden heruntergeladen.`, 'success');
 }

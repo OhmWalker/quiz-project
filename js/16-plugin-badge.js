@@ -504,7 +504,8 @@ const BadgePlugin = {
     },
 
     saveBadgeSettings() {
-        Toast.show('Badge-Settings gespeichert', 'success');
+        if (typeof saveMasterBackup === 'function') saveMasterBackup();
+        else Toast.show('Badge-Settings gespeichert', 'success');
     },
 
     selectBadgeIconCircle(badgeId, preset) { this._selectedBadgeCircle = { badgeId, preset }; },
