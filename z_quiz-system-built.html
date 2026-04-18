@@ -9821,6 +9821,22 @@
                 }
             }
 
+            // Fragen-Übersicht: Gesamt + Kategorien
+            const mqEl = document.getElementById('modeQuestions');
+            if (mqEl && typeof questions !== 'undefined') {
+                const active = questions.filter(q => q.active !== false);
+                const groups = {};
+                active.forEach(q => {
+                    const g = q._fileGroup || '?';
+                    groups[g] = (groups[g] || 0) + 1;
+                });
+                const groupStr = Object.entries(groups)
+                    .sort((a, b) => b[1] - a[1])
+                    .map(([g, n]) => g + '\u00a0' + n)
+                    .join(' · ');
+                mqEl.textContent = 'Fragen: ' + active.length + ' — ' + groupStr;
+            }
+
             showScreen('startScreen');
 
             event.target.value = ''; // Reset input
