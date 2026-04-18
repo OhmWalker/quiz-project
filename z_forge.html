@@ -2992,29 +2992,12 @@
             transition: width 0.7s ease;
         }
 
-        .xp-nb-row {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            margin-top: 6px;
-        }
-        .xp-nb-side {
-            flex-shrink: 0;
-            width: 72px;
-            font-size: 0.7rem;
-            line-height: 1.3;
-        }
-        .xp-nb-left { text-align: right; }
-        .xp-nb-right { text-align: left; }
-        .xp-nb-name { opacity: 0.85; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .xp-nb-xp   { opacity: 0.45; font-size: 0.65rem; }
-        .xp-nb-first { opacity: 0.55; font-size: 0.68rem; display: flex; align-items: center; }
-        .xp-nb-track-wrap { flex: 1; }
         .xp-nb-track {
             height: 6px;
             background: rgba(255,255,255,0.1);
             border-radius: 3px;
             position: relative;
+            margin-top: 6px;
         }
         .xp-nb-fill {
             height: 100%;
@@ -3033,15 +3016,30 @@
             border: 2px solid rgba(0,0,0,0.5);
             transition: left 0.7s ease;
         }
+        .xp-nb-labels {
+            position: relative;
+            height: 2.4rem;
+            margin-top: 3px;
+            font-size: 0.68rem;
+        }
+        .xp-nb-label {
+            position: absolute;
+            line-height: 1.3;
+            top: 0;
+        }
+        .xp-nb-label-left  { left: 0; text-align: left; }
+        .xp-nb-label-right { right: 0; text-align: right; }
+        .xp-nb-name  { opacity: 0.85; font-weight: 600; white-space: nowrap; }
+        .xp-nb-xp    { opacity: 0.45; font-size: 0.6rem; }
+        .xp-nb-first { opacity: 0.55; font-size: 0.65rem; top: 0.3rem; }
         .xp-nb-gap {
             position: absolute;
-            top: 10px;
-            font-size: 0.6rem;
+            top: 0.25rem;
+            transform: translateX(-50%);
+            font-size: 0.62rem;
             opacity: 0.5;
             white-space: nowrap;
         }
-        .xp-nb-gap-left  { left: 0; }
-        .xp-nb-gap-right { right: 0; }
     </style>
 </head>
 <body>

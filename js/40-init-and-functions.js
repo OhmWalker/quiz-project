@@ -480,19 +480,27 @@ function renderNextGoals(user) {
                 const gapAboveLabel = gapAbove !== null
                     ? `<span class="xp-nb-gap xp-nb-gap-right">-${gapAbove}</span>` : '';
 
+                const midLeft  = Math.round(pos / 2);
+                const midRight = Math.round(pos + (100 - pos) / 2);
+
+                const leftLabel = below
+                    ? `<div class="xp-nb-label xp-nb-label-left"><div class="xp-nb-name">${sanitizeHTML(below.name)}</div><div class="xp-nb-xp">${belowXP} XP</div></div>`
+                    : '';
+                const rightLabel = above
+                    ? `<div class="xp-nb-label xp-nb-label-right"><div class="xp-nb-name">${sanitizeHTML(above.name)}</div><div class="xp-nb-xp">${aboveXP} XP</div></div>`
+                    : `<div class="xp-nb-label xp-nb-label-right xp-nb-first">1. Platz 🥇</div>`;
+
                 html += `<div class="next-goal-item">
                     <div class="next-goal-header"><span>📊 Rangliste #${myIdx + 1}</span><span class="next-goal-detail">${myXP} XP</span></div>
-                    <div class="xp-nb-row">
-                        ${leftBlock}
-                        <div class="xp-nb-track-wrap">
-                            <div class="xp-nb-track">
-                                <div class="xp-nb-fill" style="width:${pos}%"></div>
-                                <div class="xp-nb-dot" style="left:${pos}%"></div>
-                                ${gapBelowLabel}
-                                ${gapAboveLabel}
-                            </div>
-                        </div>
-                        ${rightBlock}
+                    <div class="xp-nb-track">
+                        <div class="xp-nb-fill" style="width:${pos}%"></div>
+                        <div class="xp-nb-dot" style="left:${pos}%"></div>
+                    </div>
+                    <div class="xp-nb-labels">
+                        ${leftLabel}
+                        ${gapBelow !== null ? `<div class="xp-nb-gap" style="left:${midLeft}%">+${gapBelow}</div>` : ''}
+                        ${gapAbove !== null ? `<div class="xp-nb-gap" style="left:${midRight}%">-${gapAbove}</div>` : ''}
+                        ${rightLabel}
                     </div>
                 </div>`;
             }
