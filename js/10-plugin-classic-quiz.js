@@ -610,6 +610,7 @@ const ClassicQuizPlugin = {
     },
 
     restartQuiz() {
+        if (currentUser && typeof saveCurrentPlayer === 'function') saveCurrentPlayer();
         currentQuestionIndex = 0;
         userAnswers = [];
         syncToAppState();
