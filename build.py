@@ -139,9 +139,14 @@ print(f"     Themen-Kategorien manuell editieren → Ctrl+F nach: HERALD_GRUPPEN
 
 
 # ── LeanQuiz-Build ────────────────────────────────────────────────────────────
+LEAN_EXCLUDE_JS  = {'19-plugin-fragen2.js', '41-admin-functions.js', '20-plugin-usermanagement.js', '33-file-io-admin.js', '51-plugin-ui-admin.js', '16b-plugin-badge-admin.js', '17b-plugin-leaderboard-admin.js'}
+LEAN_EXCLUDE_CSS = {'02-admin.css'}
+
 html           = read_file(os.path.join(SCRIPT_DIR, "lean-index.html"))
-css_files_lean = sorted(glob.glob(os.path.join(CSS_DIR, "*.css")))
-js_files_lean  = sorted(glob.glob(os.path.join(JS_DIR, "*.js")))
+css_files_lean = [f for f in sorted(glob.glob(os.path.join(CSS_DIR, "*.css")))
+                  if os.path.basename(f) not in LEAN_EXCLUDE_CSS]
+js_files_lean  = [f for f in sorted(glob.glob(os.path.join(JS_DIR, "*.js")))
+                  if os.path.basename(f) not in LEAN_EXCLUDE_JS]
 
 html = inject(html, build_css(css_files_lean), build_js(js_files_lean))
 html = html.replace('Development Version (Split Files)', 'Single File · 100% Offline · No localStorage')

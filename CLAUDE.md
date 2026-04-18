@@ -2,12 +2,12 @@
 
 ## Projekt-Überblick
 - Quiz-System v4.0, Single-Page-App (HTML/CSS/JS)
-- Modulare Plugin-Architektur: ~20 JS-Dateien, 4 CSS-Dateien
+- Modulare Plugin-Architektur: ~25 JS-Dateien, 4 CSS-Dateien
 - Build: `python3 build.py` → vier Dateien (Präfix `z_` damit sie in GitHub-Listings ganz unten stehen):
-  - `z_quiz-system-built.html` (~601 KB) — das Quiz + eingebetteter Admin-Bereich (Legacy)
-  - `z_forge.html` (~343 KB) — Admin-/Wartungs-Tool (Standalone)
+  - `z_quiz-system-built.html` (~604 KB) — das Quiz + eingebetteter Admin-Bereich (Legacy)
+  - `z_forge.html` (~330 KB) — Admin-/Wartungs-Tool (Standalone)
   - `z_herald.html` (~131 KB) — Fragen-Einreichungs-Tool (für Nutzer)
-  - `z_LeanQuiz.html` (~542 KB) — Quiz-only, kein Admin (Quelle: `lean-index.html`)
+  - `z_LeanQuiz.html` (~332 KB) — Quiz-only, kein Admin (Quelle: `lean-index.html`)
 - Langfristig: `z_quiz-system-built.html` wird durch `z_forge.html` + `z_LeanQuiz.html` ersetzt
 
 ## Architektur
@@ -20,7 +20,7 @@
 ## Fragen-Verwaltung (Fragen2Plugin)
 - Datei: `js/19-plugin-fragen2.js`
 - Enthält: Fragen-CRUD, Imagemap-Editor, Import/Export, Batch-Aktionen
-- Geometrie-Funktionen (checkImagemapHit, pointInPolygon etc.) in Fragen2Plugin
+- Geometrie-Funktionen (checkImagemapHit, pointInPolygon etc.) in `js/15-imagemap-geometry.js` (Lean-kritisch)
 - Globale Wrapper in `js/40-init-and-functions.js` leiten an Fragen2Plugin weiter
 - Gruppen-Dropdown hat "Neue Gruppe..."-Option (value `__new__`)
 - Neue Gruppennamen werden validiert: mind. 2 Buchstaben, sonst Toast-Fehler
@@ -41,8 +41,8 @@
 - Beispiele: "Core" → `core_00001`, "Allgemeinwissen" → `allg_00042`, "BWL" → `bwl_00003`
 
 ### Relevante Funktionen
-- `getGroupPrefix(groupName)` (`js/20-plugin-usermanagement.js`) → 4-Buchstaben-Präfix
-- `assignStableId(group, allQuestions)` (`js/20-plugin-usermanagement.js`) → nächste freie ID
+- `getGroupPrefix(groupName)` (`js/30-globals.js`) → 4-Buchstaben-Präfix
+- `assignStableId(group, allQuestions)` (`js/30-globals.js`) → nächste freie ID
 - `hasStableId(id)` (`js/30-globals.js`) → prüft ob ID stabil (nicht `Q_`, nicht rein numerisch)
 
 ### Verhalten bei Fragen-Bearbeitung (`js/19-plugin-fragen2.js`)

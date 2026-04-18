@@ -218,22 +218,6 @@ PluginRegistry.register('Fragen2Plugin', Fragen2Plugin, {category:'admin'});
 PluginRegistry.register('UserManagementPlugin', UserManagementPlugin, {category:'admin'});
 
 
-function getGroupPrefix(groupName) {
-    return (groupName || 'manu').replace(/[^a-zA-ZäöüÄÖÜ]/g, '')
-        .replace(/ä/gi,'a').replace(/ö/gi,'o').replace(/ü/gi,'u')
-        .toLowerCase().slice(0, 4) || 'manu';
-}
-
-function assignStableId(group, allQuestions) {
-    const prefix = getGroupPrefix(group);
-    let max = 0;
-    (allQuestions || questions).forEach(q => {
-        if (q.questionId && q.questionId.startsWith(prefix + '_')) {
-            const n = parseInt(q.questionId.split('_')[1], 10);
-            if (!isNaN(n) && n > max) max = n;
-        }
-    });
-    return prefix + '_' + String(max + 1).padStart(5, '0');
-}
+// getGroupPrefix, assignStableId → 30-globals.js
 
 

@@ -187,6 +187,24 @@ function hasStableId(id) {
     return id && !id.startsWith('Q_') && !/^\d+$/.test(String(id));
 }
 
+function getGroupPrefix(groupName) {
+    return (groupName || 'manu').replace(/[^a-zA-ZäöüÄÖÜ]/g, '')
+        .replace(/ä/gi,'a').replace(/ö/gi,'o').replace(/ü/gi,'u')
+        .toLowerCase().slice(0, 4) || 'manu';
+}
+
+function assignStableId(group, allQuestions) {
+    const prefix = getGroupPrefix(group);
+    let max = 0;
+    (allQuestions || questions).forEach(q => {
+        if (q.questionId && q.questionId.startsWith(prefix + '_')) {
+            const n = parseInt(q.questionId.split('_')[1], 10);
+            if (!isNaN(n) && n > max) max = n;
+        }
+    });
+    return prefix + '_' + String(max + 1).padStart(5, '0');
+}
+
 function normalizeQuestion(q) {
     const text = q.text || '';
 
