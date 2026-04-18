@@ -1,5 +1,7 @@
 // === Admin: Datei laden ===
 
+let _adminPlayerDupes = []; // [{ name, count }] — nur Spieler mit count > 1
+
 AdminShell.registerPanel('datei', 'Datei', '📂', container => {
     const loaded = dataLoaded && users.length > 0;
 
@@ -23,7 +25,7 @@ AdminShell.registerPanel('datei', 'Datei', '📂', container => {
                 <h3 class="section-heading">Geladene Daten</h3>
                 <table class="info-table-sm mt-15">
                     <tr><td class="td-bold">Ordner</td><td id="aSum_folder">${loadedFolderName || '—'}</td></tr>
-                    <tr><td class="td-bold">Spieler</td><td id="aSum_users">${users.length}</td></tr>
+                    <tr><td class="td-bold">Spieler</td><td id="aSum_users">${_adminSpielerSummary()}</td></tr>
                     <tr><td class="td-bold">Fragen</td><td id="aSum_questions">${questions.length}</td></tr>
                     <tr><td class="td-bold">Fragen-Dateien</td><td id="aSum_qfiles">${loadedQuestionFiles.map(f => f.name).join(', ') || '—'}</td></tr>
                 </table>
@@ -113,9 +115,12 @@ async function _adminLoadFolder(event) {
     // Spieler laden (neueste Version pro Name)
     users = [];
     loadedPlayerFiles = [];
+    _adminPlayerDupes = [];
     const byName = {};
+    const countByName = {};
     playerFiles.forEach(pf => {
         if (!pf.data || !pf.data.name) return;
+        countByName[pf.data.name] = (countByName[pf.data.name] || 0) + 1;
         if (!byName[pf.data.name] || pf.lastModified > byName[pf.data.name].lastModified)
             byName[pf.data.name] = pf;
     });
@@ -123,6 +128,9 @@ async function _adminLoadFolder(event) {
         users.push(pf.data);
         loadedPlayerFiles.push({ name: pf.name, playerName: pf.data.name });
     });
+    _adminPlayerDupes = Object.entries(countByName)
+        .filter(([, c]) => c > 1)
+        .map(([name, count]) => ({ name, count }));
 
     dataLoaded = true;
     syncToAppState();
@@ -160,4 +168,12 @@ function _adminExportAllPlayers() {
         _adminDownloadJSON(u, `04_operator_${safeName}_${ts}.json`);
     });
     Toast.show(`${users.length} Spieler-Dateien werden heruntergeladen.`, 'success');
+}
+
+
+function _adminSpielerSummary() {
+    if (!_adminPlayerDupes.length) return String(users.length);
+    const dupeList = _adminPlayerDupes.map(d => `${d.name} [${d.count}×]`).join(', ');
+    return `${users.length} <span style="color:var(--incorrect);font-size:0.85em;opacity:0.9">`
+         + `· ${_adminPlayerDupes.length} Duplikat${_adminPlayerDupes.length > 1 ? 'e' : ''}: ${dupeList}</span>`;
 }
