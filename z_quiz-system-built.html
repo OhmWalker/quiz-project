@@ -2850,7 +2850,6 @@
             border-radius: 14px;
             border: 1px solid rgba(255,255,255,0.08);
             text-align: left;
-            max-width: 480px;
         }
         .next-goals-title {
             font-weight: 700;
@@ -3374,17 +3373,8 @@
 
                 <div id="nextGoalsContainer"></div>
 
-                <div style="background: rgba(247, 184, 1, 0.1); border: 2px solid var(--accent);
-                            padding: 20px; border-radius: 15px; margin: 30px 0;">
-                    <strong style="color: var(--accent);">💾 Wichtig: Daten speichern!</strong>
-                    <p style="margin-top: 10px; opacity: 0.9;">
-                        Exportieren Sie jetzt Ihre Datendatei, um Ihre Ergebnisse zu sichern.
-                    </p>
-                </div>
-                
-                <div style="display: flex; gap: 15px; justify-content: center;">
-                    <button class="btn" data-action="exportAllDataAndContinue">💾 Daten Exportieren & Weiter</button>
-                    <button class="btn btn-secondary" data-action="restartQuiz">Neues Quiz</button>
+                <div style="display: flex; justify-content: center; margin-top: 20px;">
+                    <button class="btn" id="exportContinueBtn" data-action="exportAllDataAndContinue">💾 Daten Exportieren & Weiter <span style="opacity: 0.7; font-size: 0.85em;">(Enter ↵)</span></button>
                 </div>
             </div>
         </div>
@@ -11216,6 +11206,15 @@
                 if (e.key === 'Enter' && currentUser) {
                     e.preventDefault();
                     startQuiz();
+                    return;
+                }
+            }
+            // Results Screen: Enter löst Export & Weiter aus
+            const resultsScreen = document.getElementById('resultsScreen');
+            if (resultsScreen && resultsScreen.classList.contains('active')) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    exportAllDataAndContinue();
                     return;
                 }
             }

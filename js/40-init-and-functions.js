@@ -801,6 +801,15 @@ document.addEventListener('keydown', function(e) {
             return;
         }
     }
+    // Results Screen: Enter löst Export & Weiter aus
+    const resultsScreen = document.getElementById('resultsScreen');
+    if (resultsScreen && resultsScreen.classList.contains('active')) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            exportAllDataAndContinue();
+            return;
+        }
+    }
     // Quiz Screen Keyboard Handler
     const quizScreen = document.getElementById('quizScreen');
     if (quizScreen && quizScreen.classList.contains('active')) {

@@ -244,6 +244,38 @@
 
         /* === 01-screens.css === */
         /* 01-screens.css - User Selection, Quiz, Results, Admin Nav */
+
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+            width: 100%;
+        }
+
+        .file-input-wrapper input[type=file] {
+            position: absolute;
+            left: -9999px;
+        }
+
+        .file-input-label {
+            display: block;
+            padding: 12px 24px;
+            background: linear-gradient(135deg, var(--correct), #27AE60);
+            color: white;
+            text-align: center;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 700;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            font-size: 0.9rem;
+            letter-spacing: 1px;
+        }
+
+        .file-input-label:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(46, 204, 113, 0.4);
+        }
         .user-select {
             display: grid;
             grid-template-columns: repeat(5, 1fr);
@@ -1457,37 +1489,7 @@
             gap: 10px;
         }
 
-        .file-input-wrapper {
-            position: relative;
-            overflow: hidden;
-            display: inline-block;
-            width: 100%;
-        }
-
-        .file-input-wrapper input[type=file] {
-            position: absolute;
-            left: -9999px;
-        }
-
-        .file-input-label {
-            display: block;
-            padding: 12px 24px;
-            background: linear-gradient(135deg, var(--correct), #27AE60);
-            color: white;
-            text-align: center;
-            border-radius: 10px;
-            cursor: pointer;
-            font-weight: 700;
-            transition: all 0.3s ease;
-            text-transform: uppercase;
-            font-size: 0.9rem;
-            letter-spacing: 1px;
-        }
-
-        .file-input-label:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 20px rgba(46, 204, 113, 0.4);
-        }
+        /* file-input-wrapper → 01-screens.css (Lean-kritisch) */
 
         .btn-export {
             background: linear-gradient(135deg, var(--primary), var(--accent));
@@ -1592,9 +1594,8 @@
             top: var(--sidebar-top, 120px);
             z-index: 50;
             padding: 14px 10px;
-            background: rgba(26, 26, 46, 0.95);
+            background: rgb(26, 26, 46);
             border-radius: 20px;
-            backdrop-filter: blur(10px);
             border: 1px solid var(--overlay-10);
             max-height: calc(100vh - var(--sidebar-top, 120px) - 10px);
             overflow-y: auto;
@@ -1803,9 +1804,9 @@
             cursor: pointer;
             transition: all 0.3s ease;
             position: relative;
+            color: white;
         }
         .badge-icon-wrap {
-            filter: drop-shadow(0 0 3px rgba(255,255,255,0.55)) drop-shadow(0 1px 2px rgba(0,0,0,0.5));
             pointer-events: none;
             line-height: 1;
         }
@@ -1843,31 +1844,31 @@
 
 
         .badge-gray {
-            background: linear-gradient(135deg, #5a5a5a, #3a3a3a);
+            background: linear-gradient(135deg, #2a2a2a, #1a1a1a);
             border: 2px solid #6a6a6a;
             box-shadow: 0 4px 15px rgba(90, 90, 90, 0.3);
         }
 
         .badge-green {
-            background: linear-gradient(135deg, #27ae60, #1e8449);
+            background: linear-gradient(135deg, #1a2e22, #111d17);
             border: 2px solid #2ecc71;
             box-shadow: 0 4px 15px rgba(46, 204, 113, 0.4);
         }
 
         .badge-blue {
-            background: linear-gradient(135deg, #3498db, #2980b9);
+            background: linear-gradient(135deg, #0f2033, #091525);
             border: 2px solid #5dade2;
             box-shadow: 0 4px 15px rgba(52, 152, 219, 0.4);
         }
 
         .badge-purple {
-            background: linear-gradient(135deg, #9b59b6, #8e44ad);
+            background: linear-gradient(135deg, #1e1028, #140b1c);
             border: 2px solid #bb8fce;
             box-shadow: 0 4px 15px rgba(155, 89, 182, 0.4);
         }
 
         .badge-gold {
-            background: linear-gradient(135deg, #f39c12, #d68910);
+            background: linear-gradient(135deg, #2a1f00, #1a1300);
             border: 2px solid #f7dc6f;
             box-shadow: 0 4px 20px rgba(243, 156, 18, 0.5);
         }
@@ -2843,8 +2844,8 @@
 
         /* === Nächste Ziele (Results Screen) === */
         .next-goals-section {
-            margin: 20px 0;
-            padding: 16px 18px;
+            margin: 20px auto;
+            padding: 18px 22px;
             background: rgba(255,255,255,0.04);
             border-radius: 14px;
             border: 1px solid rgba(255,255,255,0.08);
@@ -2852,24 +2853,25 @@
         }
         .next-goals-title {
             font-weight: 700;
-            font-size: 0.92rem;
-            margin-bottom: 12px;
+            font-size: 1rem;
+            margin-bottom: 14px;
             opacity: 0.85;
+            text-align: center;
         }
         .next-goal-item {
-            margin-bottom: 10px;
+            margin-bottom: 12px;
         }
         .next-goal-item:last-child { margin-bottom: 0; }
         .next-goal-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            font-size: 0.88rem;
+            font-size: 0.96rem;
             margin-bottom: 4px;
         }
         .next-goal-detail {
             opacity: 0.55;
-            font-size: 0.8rem;
+            font-size: 0.88rem;
         }
         .next-goal-bar {
             height: 5px;
@@ -2882,6 +2884,55 @@
             background: var(--accent);
             border-radius: 3px;
             transition: width 0.7s ease;
+        }
+
+        .xp-nb-track {
+            height: 6px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 3px;
+            position: relative;
+            margin-top: 6px;
+        }
+        .xp-nb-fill {
+            height: 100%;
+            background: linear-gradient(90deg, rgba(247,184,1,0.3), var(--accent));
+            border-radius: 3px;
+            transition: width 0.7s ease;
+        }
+        .xp-nb-dot {
+            position: absolute;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            width: 11px;
+            height: 11px;
+            background: var(--accent);
+            border-radius: 50%;
+            border: 2px solid rgba(0,0,0,0.5);
+            transition: left 0.7s ease;
+        }
+        .xp-nb-labels {
+            position: relative;
+            height: 2.4rem;
+            margin-top: 3px;
+            font-size: 0.68rem;
+        }
+        .xp-nb-label {
+            position: absolute;
+            line-height: 1.3;
+            top: 0;
+        }
+        .xp-nb-label-left  { left: 0; text-align: left; }
+        .xp-nb-label-right { right: 0; text-align: right; }
+        .xp-nb-name  { opacity: 0.85; font-weight: 600; white-space: nowrap; }
+        .xp-nb-xp    { opacity: 0.45; font-size: 0.6rem; }
+        .xp-nb-first { opacity: 0.55; font-size: 0.65rem; top: 0.3rem; }
+        .xp-nb-gap {
+            position: absolute;
+            top: 0.25rem;
+            transform: translateX(-50%);
+            font-size: 0.62rem;
+            opacity: 0.5;
+            white-space: nowrap;
         }
     </style>
 </head>
