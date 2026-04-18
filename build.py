@@ -80,12 +80,12 @@ js_files  = sorted(glob.glob(os.path.join(JS_DIR, "*.js")))
 html = inject(html, build_css(css_files), build_js(js_files))
 html = html.replace('Development Version (Split Files)', 'Single File · 100% Offline · No localStorage')
 
-quiz_out = os.path.join(SCRIPT_DIR, "quiz-system-built.html")
+quiz_out = os.path.join(SCRIPT_DIR, "z_quiz-system-built.html")
 with open(quiz_out, "w", encoding="utf-8") as f:
     f.write(html)
 
 size_kb = os.path.getsize(quiz_out) / 1024
-print(f"[OK] quiz-system-built.html  —  {size_kb:.1f} KB  |  CSS: {len(css_files)}  |  JS: {len(js_files)}")
+print(f"[OK] z_quiz-system-built.html  —  {size_kb:.1f} KB  |  CSS: {len(css_files)}  |  JS: {len(js_files)}")
 
 
 # ── Admin-Build ───────────────────────────────────────────────────────────────
@@ -105,12 +105,12 @@ js_files_adm = core_paths + admin_paths
 html = inject(html, build_css(css_files_adm), build_js(js_files_adm))
 html = html.replace('Development Version (Split Files)', 'Single File · 100% Offline · No localStorage')
 
-admin_out = os.path.join(SCRIPT_DIR, "forge.html")
+admin_out = os.path.join(SCRIPT_DIR, "z_forge.html")
 with open(admin_out, "w", encoding="utf-8") as f:
     f.write(html)
 
 size_kb = os.path.getsize(admin_out) / 1024
-print(f"[OK] forge.html              —  {size_kb:.1f} KB  |  CSS: {len(css_files_adm)}  |  Core-JS: {len(core_paths)}  |  Admin-JS: {len(admin_paths)}")
+print(f"[OK] z_forge.html              —  {size_kb:.1f} KB  |  CSS: {len(css_files_adm)}  |  Core-JS: {len(core_paths)}  |  Admin-JS: {len(admin_paths)}")
 
 
 # ── Herald-Build ──────────────────────────────────────────────────────────────
@@ -129,12 +129,12 @@ js_files_herald = core_herald_paths + herald_paths
 html = inject(html, build_css(css_files_herald), build_js(js_files_herald))
 html = html.replace('Development Version (Split Files)', 'Single File · 100% Offline · No localStorage')
 
-herald_out = os.path.join(SCRIPT_DIR, "herald.html")
+herald_out = os.path.join(SCRIPT_DIR, "z_herald.html")
 with open(herald_out, "w", encoding="utf-8") as f:
     f.write(html)
 
 size_kb = os.path.getsize(herald_out) / 1024
-print(f"[OK] herald.html             —  {size_kb:.1f} KB  |  CSS: {len(css_files_herald)}  |  Core-JS: {len(core_herald_paths)}  |  Herald-JS: {len(herald_paths)}")
+print(f"[OK] z_herald.html             —  {size_kb:.1f} KB  |  CSS: {len(css_files_herald)}  |  Core-JS: {len(core_herald_paths)}  |  Herald-JS: {len(herald_paths)}")
 print(f"     Themen-Kategorien manuell editieren → Ctrl+F nach: HERALD_GRUPPEN_EDIT")
 
 
@@ -146,9 +146,9 @@ js_files_lean  = sorted(glob.glob(os.path.join(JS_DIR, "*.js")))
 html = inject(html, build_css(css_files_lean), build_js(js_files_lean))
 html = html.replace('Development Version (Split Files)', 'Single File · 100% Offline · No localStorage')
 
-lean_out = os.path.join(SCRIPT_DIR, "LeanQuiz.html")
+lean_out = os.path.join(SCRIPT_DIR, "z_LeanQuiz.html")
 with open(lean_out, "w", encoding="utf-8") as f:
     f.write(html)
 
 size_kb = os.path.getsize(lean_out) / 1024
-print(f"[OK] LeanQuiz.html           —  {size_kb:.1f} KB  |  CSS: {len(css_files_lean)}  |  JS: {len(js_files_lean)}")
+print(f"[OK] z_LeanQuiz.html           —  {size_kb:.1f} KB  |  CSS: {len(css_files_lean)}  |  JS: {len(js_files_lean)}")
