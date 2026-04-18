@@ -1209,110 +1209,6 @@ function toggleCleanupUser(userId, checked) {
     }
 }
 
-// MIGRATION UI FUNCTIONS
-
-
-
-function showMigrationStatus() {
-    const statusDiv = document.getElementById('migrationStatus');
-    const statusText = document.getElementById('migrationStatusText');
-    
-    let report = '📊 MIGRATION STATUS REPORT\n';
-    report += '═══════════════════════════════════════════════════\n\n';
-    
-    // Fragen analysieren
-    let hashIdCount = 0;
-    let oldIdCount = 0;
-    let migrationMapSize = Object.keys(questionIdMigrationMap).length;
-    
-    questions.forEach(q => {
-        if (q.questionId && q.questionId.startsWith('Q_')) {
-            hashIdCount++;
-        } else {
-            oldIdCount++;
-        }
-    });
-    
-    report += `📋 FRAGEN:\n`;
-    report += `  • Gesamt: ${questions.length}\n`;
-    report += `  • Mit Hash-ID (Q_XXXXXXXX): ${hashIdCount}\n`;
-    report += `  • Mit alter ID (001, 002...): ${oldIdCount}\n\n`;
-    
-    report += `🗺️ MIGRATION MAP:\n`;
-    report += `  • Mappings: ${migrationMapSize}\n`;
-    if (migrationMapSize > 0) {
-        report += `  • Beispiele:\n`;
-        let count = 0;
-        for (const [oldId, newId] of Object.entries(questionIdMigrationMap)) {
-            if (count < 5) {
-                report += `    ${oldId} → ${newId}\n`;
-                count++;
-            }
-        }
-        if (migrationMapSize > 5) {
-            report += `    ... und ${migrationMapSize - 5} weitere\n`;
-        }
-    }
-    report += '\n';
-    
-    // Benutzer analysieren
-    report += `👥 BENUTZER STATISTIKEN:\n`;
-    users.forEach(user => {
-        const stats = user.questionStats || {};
-        const totalQuestions = Object.keys(stats).length;
-        let hashStats = 0;
-        let oldStats = 0;
-        
-        for (const qId in stats) {
-            if (qId.startsWith('Q_')) {
-                hashStats++;
-            } else {
-                oldStats++;
-            }
-        }
-        
-        report += `  • ${user.name}:\n`;
-        report += `    Statistiken für ${totalQuestions} Fragen\n`;
-        report += `    Hash-IDs: ${hashStats}, Alte IDs: ${oldStats}\n`;
-    });
-    
-    statusText.textContent = report;
-    statusDiv.style.display = 'block';
-}
-
-
-function forceMigration() {
-    if (!confirm('Migration jetzt ausführen?\n\nDies wird:\n• Alle Fragen auf Hash-IDs umstellen\n• Die Migration-Map aufbauen\n• Alle Benutzer-Statistiken migrieren\n\nFortfahren?')) {
-        return;
-    }
-    
-    // Normalize all questions (generates hashes)
-    questions = questions.map(q => normalizeQuestion(q));
-    
-    // Build migration map
-    buildMigrationMap();
-    
-    // Migrate all users
-    let migratedUsers = 0;
-    users.forEach(user => {
-        const before = JSON.stringify(user.questionStats);
-        migrateUserQuestionStats(user);
-        const after = JSON.stringify(user.questionStats);
-        if (before !== after) migratedUsers++;
-    });
-    
-    // Update UI
-    updateQuestionsList();
-    
-    Toast.show(`✅ Migration abgeschlossen!\n\n• ${questions.length} Fragen verarbeitet\n• ${Object.keys(questionIdMigrationMap).length} Mappings erstellt\n• ${migratedUsers} Benutzer migriert\n\nZeigen Sie den Status an für Details.`, 'success');
-    
-    console.log('[Migration] Abgeschlossen', {
-        questions: questions.length,
-        mappings: Object.keys(questionIdMigrationMap).length,
-        users: migratedUsers
-    });
-}
-
 // Statistics
 // Export/Import Functions
 
@@ -1449,10 +1345,6 @@ function importAllData(event) {
                     q.active = true;
                 }
             });
-            
-            // Build migration map and migrate user stats
-            buildMigrationMap();
-            users.forEach(user => migrateUserQuestionStats(user));
             
             dataLoaded = true;
             syncToAppState();

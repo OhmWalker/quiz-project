@@ -26,10 +26,10 @@
 
 ## Fragen-ID-System (stabil, seit 2026-03)
 
-### Aktueller Stand (gemischt — Migration noch ausstehend)
-- **Neue Fragen** (ab jetzt): stabile ID `prefix_NNNNN` (z.B. `allg_00042`, `core_00007`)
-- **Bestehende Fragen** (380 Stück): noch Hash-IDs `Q_xxxxxxxx` — warten auf einmalige Migration
-- Die Migration wird über **Forge** (`forge.html` → Tab "ID-Migration") ausgelöst, nicht automatisch
+### Aktueller Stand (vollständig migriert, 2026-04)
+- Alle Fragen haben stabile IDs `prefix_NNNNN` (z.B. `allg_00042`, `core_00007`)
+- Alle Spieler-`questionStats`-Keys sind ebenfalls auf stabile IDs umgeschrieben
+- Hash-IDs (`Q_xxxxxxxx`) existieren nicht mehr im System
 
 ### ID-Format
 - Präfix = erste 4 Buchstaben des `_fileGroup`-Namens, lowercase, nur a-z (Umlaute → ae/oe/ue)
@@ -57,28 +57,13 @@
 - **`_fileGroup` muss VOR dem Aufruf auf `q` gesetzt sein** — `normalizeQuestion` liest es für `assignStableId()` und gibt es im Ergebnis zurück
 - Kein `id`-Feld mehr (entfernt 2026-04) — `questionId` ist der einzige Schlüssel
 
-### Migration Hash → stabile ID (noch durchzuführen)
-**Voraussetzung:** Alle Fragen haben korrekte `_fileGroup`-Zuordnung.
+### Abgeschlossene Migrationen (dokumentiert in Forge → "Migrationen")
+- `abilities.used`-Feld entfernt (2026-04)
+- `questionStats`-Keys: Hash-IDs → stabile IDs (2026-04)
+- `questionStats`-Feldnamen: `timesAnswered/timesCorrect` → `asked/correct` (2026-04)
+- Fragen-IDs: `Q_xxxxxxxx` → `prefix_NNNNN` (2026-04)
 
-**Was die Migration tut:**
-1. Jede Frage mit `Q_...`-ID bekommt neue stabile ID basierend auf `_fileGroup`
-2. Mapping `Q_alt → prefix_neu` wird aufgebaut
-3. Alle User-`questionStats`-Keys werden umgeschrieben (alte Hash-Keys → neue stabile Keys)
-4. Einmalig, irreversibel
-
-**Tool:** Forge (`forge.html`) → Tab "ID-Migration"
-- Lädt Master-JSON + Player-JSONs per Ordner-Import
-- Zeigt Analyse: Hash-IDs vs. stabile IDs, Nutzer-Stats-Zustand
-- Führt Migration aus und lädt betroffene Spieler-Dateien herunter
-
-**Nach der Migration:** `_oldQuestionId`-Mechanismus und `buildMigrationMap` können vereinfacht/entfernt werden
-
-### questionStats-Keys migrieren (Spieler-JSONs)
-Nachdem alle Fragen stabile IDs haben, können noch alte `Q_…`-Keys in `user.questionStats` existieren.
-**Tool:** Forge → Tab "Migrationen" → "questionStats-Keys: Hash-IDs → stabile IDs"
-- Zeigt welche Spieler noch Hash-Keys haben
-- Schreibt Keys automatisch um (via `_contentHash` + `_oldQuestionId` → `questionId`)
-- Keys ohne Treffer (Frage gelöscht) bleiben erhalten und werden im Toast aufgelistet
+Zukünftige Migrationen: immer in `js/admin/50-admin-migrationen.js` als neuen Eintrag in `MIGRATION_HISTORY` ergänzen.
 
 ## Imagemap-Editor (SVG-basiert)
 - **SVG-Overlays** statt div-Elementen (div-Overlays waren unsichtbar — Ursache nie geklärt)
@@ -288,8 +273,7 @@ Reihenfolge in der Nav (von oben nach unten):
 | Nutzer | `30-admin-nutzer.js` | Umbenennen, Übersicht |
 | Einstellungen | `40-admin-einstellungen.js` | earnPer/earnStat für Fähigkeiten |
 | *(Trennlinie)* | `45-admin-separator.js` | `AdminShell.registerSeparator()` |
-| Migrationen | `50-admin-migrationen.js` | `used`-Feld entfernen |
-| ID-Migration | `60-forge-id-migration.js` | Hash-IDs → stabile IDs migrieren |
+| Migrationen | `50-admin-migrationen.js` | Abgeschlossene Migrationen dokumentiert; neue Migrationen hier ergänzen |
 | Einreichungen | `65-forge-einreichungen.js` | Herald-Einreichungen prüfen: annehmen (→ stabile ID + questions[]) oder ablehnen |
 
 ## Herald (`herald.html`)
@@ -349,9 +333,6 @@ die Kind-IDs enthalten, muss der nächste `start()`/`open()`-Aufruf diese IDs eb
 - **`corePercent`** (2026-04 entfernt): War ein Slider (0–100%) in den Admin-Settings. Der Multiplikator in `scoreQuestion` hatte nie eine Wirkung, weil Core/Non-Core vor dem Scoring in getrennte Pools aufgeteilt werden. Steuerung des Core-Anteils läuft ausschließlich über `maxCoreFirst` / `maxCoreSubsequent`. Bestehende Master-JSONs mit `corePercent`-Feld funktionieren weiterhin — der Wert wird ignoriert.
 
 ## Offene Punkte
-- **questionStats Hash-Keys migrieren** (Forge → "Migrationen") — prüfen ob Spieler noch `Q_…`-Keys haben
-- Nach vollständiger Migration: `buildMigrationMap` + `_oldQuestionId`-Logik entfernen
-- `used`-Feld in abilities komplett entfernen wenn alle User migriert sind (Forge → "Migrationen")
 - **SR-Bug 4:** `consecutiveCorrect` aus alten JSONs kann Fragen einfrieren (Cooldown läuft nie ab wenn Frage nicht neu gespielt wird) — tritt nur bei sehr alten User-JSONs auf
 - **SR-Bug 5:** `pickTop` gibt Scores nicht zurück — Ersatz-Scores beim Kategorie-Cap (`maxPerGroup`) werden neu zufällig berechnet; bei zukünftigen Erweiterungen `pickTop` auf `{q, score}[]` umstellen
 
