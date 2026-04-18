@@ -335,6 +335,9 @@ die Kind-IDs enthalten, muss der nächste `start()`/`open()`-Aufruf diese IDs eb
 ## Offene Punkte
 - *(SR-Bug 4 behoben 2026-04: beim Folder-Load wird consecutiveCorrect zurückgesetzt wenn Cooldown längst abgelaufen — `js/32-file-io.js` nach users.push)*
 - *(SR-Bug 5 behoben 2026-04: nonCoreQ wird einmalig vorscored — `nonCoreScoredAll` + `pickNC`-Helper in `js/10-plugin-classic-quiz.js` — Fill verwendet dieselben Scores)*
+- *(Cooldown-Duplikat behoben 2026-04: `_statInCooldown(s, cooldownMs, threshold)` als Modul-Hilfsfunktion in `js/10-plugin-classic-quiz.js` — verwendet von `isInCooldown` und `update_stats`)*
+- *(questionStats._q behoben 2026-04: `_q` wird nur beim Anlegen des Eintrags gesetzt, nicht bei jeder Beantwortung überschrieben)*
+- *(Warnung bei _fileGroup = null 2026-04: `js/32-file-io.js` zählt Fragen ohne Gruppe und zeigt Toast mit "manu"-Präfix-Hinweis)*
 
 ## Workflow-Präferenzen
 - User testet Änderungen erst in der Built-Datei, dann CSS-Quellen anpassen

@@ -149,6 +149,7 @@ async function loadFromFolderInput(event) {
     // Fragen aus 03_questions-Dateien laden
     questions = [];
     loadedQuestionFiles = [];
+    let noGroupCount = 0;
     if (questionFiles.length > 0) {
         questionFiles.forEach(qf => {
             const qData = qf.data;
@@ -158,6 +159,7 @@ async function loadFromFolderInput(event) {
             let qErrors = 0;
             qList.forEach((q, qi) => {
                 try {
+                    if (!q._fileGroup && !q.theme && !qData.theme) noGroupCount++;
                     q._fileGroup = q._fileGroup || q.theme || theme;
                     const normalized = normalizeQuestion(q);
                     // Duplikat-Check: nur questionId
@@ -195,6 +197,8 @@ async function loadFromFolderInput(event) {
             lastModified: '-'
         });
     }
+    if (noGroupCount > 0)
+        setTimeout(() => Toast.show(`⚠ ${noGroupCount} Frage(n) ohne Gruppe geladen — ID-Präfix wird auf "manu" gesetzt.\nFragen prüfen und _fileGroup / theme vergeben.`, 'warning'), 800);
 
     // Spieler aus Dateien laden (neueste Version pro Spieler)
     users = [];
