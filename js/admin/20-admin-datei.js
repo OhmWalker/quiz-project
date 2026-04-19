@@ -139,6 +139,20 @@ async function _adminLoadFolder(event) {
 
     Toast.show(`✅ Geladen: ${users.length} Spieler, ${questions.length} Fragen`, 'success');
 
+    // User-JSON Größen-Warnung
+    if (users.length) {
+        const sizes = users.map(u => JSON.stringify(u).length);
+        const maxSize = Math.max(...sizes);
+        const avgSize = Math.round(sizes.reduce((a, b) => a + b, 0) / sizes.length);
+        const maxUser = users[sizes.indexOf(maxSize)].name || '?';
+        const kb = n => (n / 1024).toFixed(1) + ' KB';
+        const level = maxSize > 400000 ? 'error' : maxSize > 200000 ? 'warning' : 'info';
+        setTimeout(() => Toast.show(
+            `📦 User-JSONs: Ø ${kb(avgSize)} · Größte: ${maxUser} (${kb(maxSize)})`,
+            level, 8000
+        ), 1500);
+    }
+
     // Passwort prüfen → Tabs freischalten (oder direkt wenn leer)
     AdminShell.unlock();
 }
