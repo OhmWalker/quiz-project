@@ -405,7 +405,7 @@ const ClassicQuizPlugin = {
         this._quizXP += xpGain;
         document.getElementById('quizXPCounter').textContent = `+${this._quizXP} XP`;
         // Record answer
-        userAnswers.push({ questionId: q.questionId, correct: isCorrect, xp: xpGain });
+        userAnswers.push({ questionId: q.questionId, correct: isCorrect, xp: xpGain, group: q._fileGroup || '__none__' });
         // Update user question stats
         if (currentUser) {
             if (!currentUser.questionStats) currentUser.questionStats = {};
@@ -431,6 +431,9 @@ const ClassicQuizPlugin = {
                     qs.consecutiveCorrect = 0;
                 qs.consecutiveCorrect = (qs.consecutiveCorrect || 0) + 1;
             } else { qs.consecutiveCorrect = 0; }
+            if (!qs.askLog) qs.askLog = [];
+            qs.askLog.push({ d: qs.lastAsked, c: isCorrect });
+            if (qs.askLog.length > 15) qs.askLog.shift();
         }
         // Resolve phone joker
         this._resolvePhoneJoker(q, isCorrect);
@@ -542,7 +545,13 @@ const ClassicQuizPlugin = {
             if (new Date().getDay() === 1) bs.mondayQuizzes = (bs.mondayQuizzes || 0) + 1;
             // History
             if (!currentUser.history) currentUser.history = [];
-            currentUser.history.push({ date: new Date().toISOString(), correct, total, xp: finalXP, score: pct, skipped: skipped || undefined });
+            const _histGroups = {};
+            userAnswers.forEach(a => {
+                const g = a.group || '__none__';
+                if (!_histGroups[g]) _histGroups[g] = { asked: 0, correct: 0 };
+                if (!a.skipped) { _histGroups[g].asked++; if (a.correct) _histGroups[g].correct++; }
+            });
+            currentUser.history.push({ date: new Date().toISOString(), correct, total, xp: finalXP, score: pct, skipped: skipped || undefined, groups: _histGroups });
             // Streak
             const today = new Date().toDateString();
             if (!currentUser._lastStreakDate || currentUser._lastStreakDate !== today) {
