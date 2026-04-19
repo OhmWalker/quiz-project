@@ -794,6 +794,7 @@ const Fragen2Plugin = {
             newQ._fileGroup = fg;
         }
 
+        newQ._createdAt = new Date().toISOString();
         questions.push(newQ);
         this._showNewForm = false;
         Toast.show('Frage ' + newQ.questionId + ' erstellt!', 'success');

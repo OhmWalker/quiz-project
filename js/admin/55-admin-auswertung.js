@@ -1,6 +1,6 @@
 // === Admin: Auswertung ===
 
-let _avState = { view: 'nutzer', nutzerIdx: 0, fragenGrp: '__all__', fragenSort: 'difficulty' };
+let _avState = { view: 'nutzer', nutzerIdx: 0, fragenGrp: '__all__', fragenSort: 'difficulty', hideNew: true };
 
 AdminShell.registerPanel('auswertung', 'Auswertung', '📊', container => {
     if (!dataLoaded || !users.length) {
@@ -84,20 +84,39 @@ function _avUserGroupStats(user) {
 }
 
 function _avAggregateStats() {
-    // Returns { qid: { asked, correct, userCount, _q, users[] } }
+    // Returns { qid: { asked, correct, userCount, _q, users[], monthlyStats{} } }
     const agg = {};
     users.forEach(u => {
         Object.entries(u.questionStats || {}).forEach(([qid, stat]) => {
-            if (!agg[qid]) agg[qid] = { asked: 0, correct: 0, userCount: 0, _q: stat._q || '', users: [] };
+            if (!agg[qid]) agg[qid] = { asked: 0, correct: 0, userCount: 0, _q: stat._q || '', users: [], monthlyStats: {} };
             agg[qid].asked    += stat.asked   || 0;
             agg[qid].correct  += stat.correct || 0;
             agg[qid].userCount++;
             agg[qid].users.push({ name: u.name, asked: stat.asked || 0, correct: stat.correct || 0,
                 consecutiveCorrect: stat.consecutiveCorrect || 0, lastAsked: stat.lastAsked,
-                askLog: stat.askLog || [] });
+                askLog: stat.askLog || [], monthlyStats: stat.monthlyStats || {} });
+            // Merge monthly stats across users
+            Object.entries(stat.monthlyStats || {}).forEach(([mo, ms]) => {
+                if (!agg[qid].monthlyStats[mo]) agg[qid].monthlyStats[mo] = { asked: 0, correct: 0 };
+                agg[qid].monthlyStats[mo].asked   += ms.asked   || 0;
+                agg[qid].monthlyStats[mo].correct += ms.correct || 0;
+            });
         });
     });
     return agg;
+}
+
+function _avIsNew(qid, daysThreshold = 30) {
+    if (typeof questions === 'undefined') return false;
+    const q = questions.find(q => q.questionId === qid);
+    if (!q || !q._createdAt) return false;
+    return (Date.now() - new Date(q._createdAt).getTime()) < daysThreshold * 86400000;
+}
+
+function _avCreatedAt(qid) {
+    if (typeof questions === 'undefined') return null;
+    const q = questions.find(qq => qq.questionId === qid);
+    return q ? q._createdAt : null;
 }
 
 function _avSR() {
@@ -530,11 +549,14 @@ function _avVizSchwaechenMonitor(qs) {
     if (!entries.length) return `<p class="text-muted">Noch zu wenig Daten (mind. 2× gestellt).</p>`;
 
     const rows = entries.map(({ qid, pct, asked, _q }) => {
-        const status = pct < 40 ? '🔴' : pct < 70 ? '🟡' : '🟢';
-        const grp = _avGroupLabel(_avGroupPrefix(qid));
+        const status  = pct < 40 ? '🔴' : pct < 70 ? '🟡' : '🟢';
+        const grp     = _avGroupLabel(_avGroupPrefix(qid));
+        const isNew   = _avIsNew(qid);
+        const newBadge = isNew ? ` <span style="background:var(--accent);color:#000;font-size:0.62rem;
+            font-weight:700;padding:1px 4px;border-radius:5px;vertical-align:middle">NEU</span>` : '';
         return `<tr>
             <td style="opacity:0.45;font-size:0.8rem">${qid}</td>
-            <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${_esc(_q)}">${_esc(_q) || '–'}</td>
+            <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${_esc(_q)}">${_esc(_q) || '–'}${newBadge}</td>
             <td style="opacity:0.6;white-space:nowrap">${grp}</td>
             <td style="text-align:right;white-space:nowrap">${asked}×</td>
             <td style="text-align:right;font-weight:700;color:${_avScoreColor(pct)}">${pct}%</td>
@@ -660,6 +682,12 @@ function _avRenderFragen(el) {
             <select style="background:var(--overlay-8);border:1px solid var(--overlay-15);color:var(--text);
                 padding:8px 14px;border-radius:10px;font-size:0.9rem"
                 onchange="_avState.fragenSort=this.value;_avFragenRefresh()">${sortOpts}</select>
+            <label style="display:flex;align-items:center;gap:6px;font-size:0.85rem;cursor:pointer;white-space:nowrap">
+                <input type="checkbox" ${_avState.hideNew ? 'checked' : ''}
+                    onchange="_avState.hideNew=this.checked;_avFragenRefresh()"
+                    style="width:15px;height:15px;accent-color:var(--accent)">
+                Neue Fragen ausblenden (&lt;30 Tage)
+            </label>
         </div>
         <div id="av-fragen-charts"></div>`;
 
@@ -676,6 +704,7 @@ function _avFragenRefresh() {
 
     let entries = Object.entries(agg);
     if (grp !== '__all__') entries = entries.filter(([qid]) => _avGroupPrefix(qid) === grp);
+    if (_avState.hideNew) entries = entries.filter(([qid]) => !_avIsNew(qid));
 
     if (sort === 'difficulty') entries.sort((a, b) => {
         const pa = _avPct(a[1].correct, a[1].asked) ?? 101;
@@ -689,6 +718,12 @@ function _avFragenRefresh() {
         return da.localeCompare(db);
     });
 
+    const newCount = Object.entries(agg).filter(([qid]) => _avIsNew(qid)).length;
+    const newBadge = newCount > 0
+        ? `<span style="background:var(--accent);color:#000;padding:2px 8px;border-radius:10px;
+            font-size:0.75rem;font-weight:700">${newCount} neue Fragen (&lt;30 Tage)</span>`
+        : '';
+
     el.innerHTML = [
         _avVizCard('VIZ-F1', 'Schwierigkeits-Histogramm', _avVizHistogramm(entries)),
         `<div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">`,
@@ -696,7 +731,8 @@ function _avFragenRefresh() {
             _avVizCard('VIZ-F3', 'Häufigkeits-Ranking', _avVizHaeufigkeitsRanking(entries)),
         '</div>',
         _avVizCard('VIZ-F4', 'Fortschritts-Ringe', _avVizFortschrittsRinge(entries)),
-        _avVizCard('VIZ-F5', 'Fragen-Vergleichs-Tabelle', _avVizFragenTabelle(entries)),
+        _avVizCard('VIZ-F6', 'Monats-Trend', _avVizMonatsTrend(entries)),
+        _avVizCard('VIZ-F5', `Fragen-Vergleichs-Tabelle ${newBadge}`, _avVizFragenTabelle(entries, agg)),
     ].join('');
 }
 
@@ -840,44 +876,140 @@ function _avVizFortschrittsRinge(entries) {
     </div>`;
 }
 
+// VIZ-F6: Monats-Trend ────────────────────────────────────────────────────────
+
+function _avVizMonatsTrend(entries) {
+    // Summiere monthlyStats aller gefilterten Fragen
+    const monthly = {};
+    entries.forEach(([, s]) => {
+        Object.entries(s.monthlyStats || {}).forEach(([mo, ms]) => {
+            if (!monthly[mo]) monthly[mo] = { asked: 0, correct: 0 };
+            monthly[mo].asked   += ms.asked   || 0;
+            monthly[mo].correct += ms.correct || 0;
+        });
+    });
+
+    const keys = Object.keys(monthly).sort();
+    if (keys.length < 2) return `<p class="text-muted">Noch zu wenig Daten — wird ab dem nächsten Quiz aufgezeichnet.</p>`;
+
+    const W = 560, H = 160, PL = 40, PR = 12, PT = 10, PB = 36;
+    const iW = W - PL - PR, iH = H - PT - PB;
+    const n  = keys.length;
+    const maxAsked = Math.max(...keys.map(k => monthly[k].asked), 1);
+
+    const toX  = i  => PL + (i / (n - 1)) * iW;
+    const toYA = v  => PT + (1 - v / maxAsked) * iH;
+    const toYP = pct => PT + (1 - pct / 100) * iH;
+
+    const askedPts = keys.map((k, i) => [toX(i), toYA(monthly[k].asked)]);
+    const pctPts   = keys.map((k, i) => {
+        const pct = _avPct(monthly[k].correct, monthly[k].asked) ?? 0;
+        return [toX(i), toYP(pct)];
+    });
+
+    const gridH = [0, 50, 100].map(v =>
+        `<line x1="${PL}" y1="${toYP(v)}" x2="${W-PR}" y2="${toYP(v)}"
+            stroke="var(--overlay-8)" stroke-width="1"/>
+        <text x="${PL-3}" y="${toYP(v)+4}" font-size="9" fill="var(--text)" opacity="0.4" text-anchor="end">${v}%</text>`
+    ).join('');
+
+    const xLabels = keys.map((k, i) =>
+        `<text x="${toX(i).toFixed(1)}" y="${H - 6}" font-size="9"
+            fill="var(--text)" opacity="0.4" text-anchor="middle">${k.slice(5)}.${k.slice(2,4)}</text>`
+    ).join('');
+
+    // Balken für Anzahl (sekundäre Achse, skaliert auf halbe Höhe)
+    const barW = Math.max(4, iW / n - 4);
+    const bars = keys.map((k, i) => {
+        const bh = (monthly[k].asked / maxAsked) * (iH * 0.4);
+        const x  = toX(i) - barW / 2;
+        const y  = PT + iH - bh;
+        return `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${bh.toFixed(1)}"
+            rx="3" fill="var(--primary)" fill-opacity="0.2">
+            <title>${k}: ${monthly[k].asked}× gestellt</title></rect>`;
+    }).join('');
+
+    const pctLine  = `<path d="${_avLinePath(pctPts)}" stroke="var(--correct)" stroke-width="2.5" fill="none" stroke-linejoin="round"/>`;
+    const pctDots  = pctPts.map(([x, y], i) => {
+        const pct = _avPct(monthly[keys[i]].correct, monthly[keys[i]].asked) ?? 0;
+        return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="4" fill="var(--correct)">
+            <title>${keys[i]}: ${pct}% richtig, ${monthly[keys[i]].asked}×</title></circle>`;
+    }).join('');
+
+    const legend = `<div style="display:flex;gap:16px;margin-top:8px;font-size:0.75rem;opacity:0.6">
+        <div style="display:flex;align-items:center;gap:5px">
+            <div style="width:20px;height:3px;background:var(--correct);border-radius:2px"></div> % richtig
+        </div>
+        <div style="display:flex;align-items:center;gap:5px">
+            <div style="width:14px;height:10px;background:var(--primary);opacity:0.4;border-radius:3px"></div> Anzahl Aufrufe
+        </div>
+    </div>`;
+
+    return `${_avSVG(W, H, gridH + bars + pctLine + pctDots + xLabels)}${legend}`;
+}
+
 // VIZ-F5: Fragen-Vergleichs-Tabelle ──────────────────────────────────────────
 
-function _avVizFragenTabelle(entries) {
+function _avVizFragenTabelle(entries, allAgg) {
     if (!entries.length) return `<p class="text-muted">Keine Daten.</p>`;
+
+    // Neue Fragen separat anzeigen wenn ausgeblendet
+    const newEntries = _avState.hideNew && allAgg
+        ? Object.entries(allAgg).filter(([qid]) => _avIsNew(qid))
+        : [];
+
     const shown = entries.slice(0, 30);
 
     const rows = shown.map(([qid, s]) => {
-        const pct  = _avPct(s.correct, s.asked);
-        const grp  = _avGroupLabel(_avGroupPrefix(qid));
-        const status = pct === null ? '–' : pct < 40 ? '🔴' : pct < 70 ? '🟡' : '✅';
+        const pct     = _avPct(s.correct, s.asked);
+        const grp     = _avGroupLabel(_avGroupPrefix(qid));
+        const isNew   = _avIsNew(qid);
+        const created = _avCreatedAt(qid);
+        const status  = pct === null ? '–' : pct < 40 ? '🔴' : pct < 70 ? '🟡' : '✅';
+        const newBadge = isNew ? `<span style="background:var(--accent);color:#000;font-size:0.65rem;
+            font-weight:700;padding:1px 5px;border-radius:6px;margin-left:4px">NEU</span>` : '';
         const userBreakdown = s.users.map(u =>
             `${_esc(u.name)}: ${u.asked}×, ${_avPct(u.correct, u.asked) ?? '?'}%`
         ).join(' | ');
+        const monthRow = Object.keys(s.monthlyStats).length
+            ? Object.entries(s.monthlyStats).sort((a,b)=>a[0].localeCompare(b[0])).slice(-6)
+                .map(([mo, ms]) => `${mo.slice(5)}.${mo.slice(2,4)}: ${ms.asked}× (${_avPct(ms.correct,ms.asked)??'?'}%)`).join(' · ')
+            : '';
         return `<tr style="cursor:pointer" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'':'none'">
             <td style="opacity:0.45;font-size:0.8rem;white-space:nowrap">${qid}</td>
-            <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${_esc(s._q)}">${_esc(s._q) || '–'}</td>
+            <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${_esc(s._q)}">${_esc(s._q) || '–'}${newBadge}</td>
             <td style="opacity:0.6;white-space:nowrap">${grp}</td>
+            <td style="opacity:0.45;font-size:0.8rem;white-space:nowrap">${created ? created.slice(0,10) : '–'}</td>
             <td style="text-align:right">${s.asked}</td>
             <td style="text-align:right;font-weight:700;color:${_avScoreColor(pct)}">${pct ?? '–'}%</td>
             <td style="text-align:center">${status}</td>
         </tr>
         <tr style="display:none">
-            <td colspan="6" style="font-size:0.78rem;opacity:0.5;padding:4px 12px 10px;font-style:italic">
-                ${userBreakdown}</td>
+            <td colspan="7" style="font-size:0.78rem;opacity:0.5;padding:4px 12px 10px">
+                <div>${userBreakdown}</div>
+                ${monthRow ? `<div style="margin-top:3px;font-style:italic">Monatlich: ${monthRow}</div>` : ''}
+            </td>
         </tr>`;
     }).join('');
 
     const more = entries.length > 30 ? `<p class="text-muted" style="margin-top:8px">+${entries.length - 30} weitere (Filter verwenden)</p>` : '';
 
+    const newSection = newEntries.length ? `
+        <p style="margin-top:16px;font-size:0.82rem;opacity:0.55">
+            ✨ ${newEntries.length} neue Fragen (&lt;30 Tage) ausgeblendet —
+            <span style="cursor:pointer;text-decoration:underline"
+                onclick="_avState.hideNew=false;_avFragenRefresh()">einblenden</span>
+        </p>` : '';
+
     return `<table class="info-table" style="font-size:0.82rem;width:100%">
         <thead><tr style="opacity:0.5;font-size:0.75rem;text-transform:uppercase;letter-spacing:1px">
-            <td>ID</td><td>Frage</td><td>Gruppe</td>
+            <td>ID</td><td>Frage</td><td>Gruppe</td><td>Erstellt</td>
             <td style="text-align:right">Gestellt</td>
             <td style="text-align:right">Ø %</td>
             <td style="text-align:center">Status</td>
         </tr></thead>
         <tbody>${rows}</tbody>
-    </table>${more}`;
+    </table>${more}${newSection}`;
 }
 
 // ── Ansicht: Gruppen ──────────────────────────────────────────────────────────

@@ -342,6 +342,7 @@ function _eiAccept(idx) {
     q.questionId = newId;
     q.active     = true;
 
+    q._createdAt = new Date().toISOString();
     delete q._pending;
     delete q._submittedAt;
 

@@ -3834,8 +3834,13 @@
                     const prevLastAsked = qs.lastAsked; // VOR Überschreibung merken für Cooldown-Check
                     qs.asked++;
                     qs.lastAsked = new Date().toISOString();
+                    const _mo = qs.lastAsked.slice(0, 7);
+                    if (!qs.monthlyStats) qs.monthlyStats = {};
+                    if (!qs.monthlyStats[_mo]) qs.monthlyStats[_mo] = { asked: 0, correct: 0 };
+                    qs.monthlyStats[_mo].asked++;
                     if (isCorrect) {
                         qs.correct++;
+                        qs.monthlyStats[_mo].correct++;
                         // Cooldown abgelaufen? → consecutiveCorrect zurücksetzen bevor increment
                         // verhindert Endlosschleife: Cooldown → 1x richtig → sofort wieder Cooldown
                         const sr = quizSettings.spacedRepetition || {};
