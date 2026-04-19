@@ -46,8 +46,10 @@ function _fqMatchesSearch(q, term) {
 }
 
 function _fqSearch(val) {
-    _fqSearchTerm = val.trim();
+    _fqSearchTerm = val;
     AdminShell.showPanel('fragen');
+    const inp = document.getElementById('fqSearchInput');
+    if (inp) { inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); }
 }
 
 function _fqRenderList(container) {
