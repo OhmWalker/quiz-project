@@ -116,7 +116,7 @@ function _nutzerSortBy(key) {
         _nutzerSort.key = key;
         _nutzerSort.asc = true;
     }
-    const panel = document.getElementById('adminContent');
+    const panel = document.getElementById('adminPanel_nutzer');
     if (panel) _renderNutzer(panel);
 }
 

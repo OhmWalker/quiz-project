@@ -5,6 +5,7 @@ let _fqShowForm    = false;
 let _fqFormType    = QUESTION_TYPES.MULTIPLE_CHOICE;
 let _fqOpenGroups  = new Set();
 let _fqEditIdx     = -1;   // -1 = neue Frage, >= 0 = Index in questions[]
+let _fqSearchTerm  = '';
 
 // Imagemap editor state
 let _fqImMode         = 'circle';
@@ -33,18 +34,47 @@ AdminShell.registerPanel('fragen', 'Fragen', '🗂', container => {
 
 // ── Listen-Ansicht ────────────────────────────────────────────────────────────
 
+function _fqMatchesSearch(q, term) {
+    if (!term) return true;
+    const t = term.toLowerCase();
+    if ((q.text || '').toLowerCase().includes(t)) return true;
+    if ((q.questionId || '').toLowerCase().includes(t)) return true;
+    if ((q._fileGroup || '').toLowerCase().includes(t)) return true;
+    if (q.answers && q.answers.some(a => (a.text || '').toLowerCase().includes(t))) return true;
+    if ((q.answer || '').toLowerCase().includes(t)) return true;
+    return false;
+}
+
+function _fqSearch(val) {
+    _fqSearchTerm = val.trim();
+    AdminShell.showPanel('fragen');
+}
+
 function _fqRenderList(container) {
     const typeIcon = t => t === QUESTION_TYPES.TEXT ? '📝' : t === QUESTION_TYPES.IMAGEMAP ? '🗺' : '☑';
+    const term     = _fqSearchTerm;
+    const isSearch = term.length > 0;
 
     const groups = [...new Set(questions.map(q => q._fileGroup || 'Manuell'))].sort();
 
     const tableRows = groups.map(g => {
-        const groupQs = questions
+        const allGroupQs = questions
             .map((q, idx) => ({ q, idx }))
             .filter(({ q }) => (q._fileGroup || 'Manuell') === g);
-        const isOpen = _fqOpenGroups.has(g);
+
+        const groupQs = isSearch
+            ? allGroupQs.filter(({ q }) => _fqMatchesSearch(q, term))
+            : allGroupQs;
+
+        if (isSearch && groupQs.length === 0) return '';
+
+        const isOpen = isSearch ? true : _fqOpenGroups.has(g);
         const arrow  = isOpen ? '▼' : '▶';
         const escapedG = _fqEsc(g);
+
+        const countLabel = isSearch
+            ? `<span style="opacity:0.45;font-size:0.8rem;margin-left:8px">${groupQs.length} / ${allGroupQs.length}</span>`
+            : `<span style="opacity:0.45;font-size:0.8rem;margin-left:8px">(${allGroupQs.length})</span>`;
 
         const header = `
         <tr style="background:var(--overlay-8);cursor:pointer;user-select:none"
@@ -52,7 +82,7 @@ function _fqRenderList(container) {
             <td colspan="5" style="padding:10px 14px;font-weight:600;font-size:0.9rem">
                 <span style="opacity:0.6;margin-right:8px;font-size:0.8rem">${arrow}</span>
                 ${escapedG}
-                <span style="opacity:0.45;font-size:0.8rem;margin-left:8px">(${groupQs.length})</span>
+                ${countLabel}
             </td>
         </tr>`;
 
@@ -77,12 +107,20 @@ function _fqRenderList(container) {
         return header + qRows;
     }).join('');
 
+    const totalHits = isSearch ? questions.filter(q => _fqMatchesSearch(q, term)).length : null;
+    const headline  = isSearch
+        ? `${totalHits} Treffer in ${questions.length} Fragen`
+        : `${questions.length} Fragen / ${groups.length} Gruppen`;
+
     container.innerHTML = `
         <div class="card">
             <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
                 <div style="flex:1;min-width:160px">
-                    <h2 style="margin:0;font-size:1.2rem">${questions.length} Fragen / ${groups.length} Gruppen</h2>
+                    <h2 style="margin:0;font-size:1.2rem">${headline}</h2>
                 </div>
+                <input type="text" id="fqSearchInput" placeholder="Suche…" value="${_fqEsc(term)}"
+                    oninput="_fqSearch(this.value)"
+                    style="width:200px;padding:6px 10px;border-radius:6px;border:1px solid var(--overlay-20);background:var(--overlay-8);color:inherit;font-size:0.88rem">
                 <button class="btn btn-small btn-secondary" onclick="_fqStartExport()">
                     ↓ Exportieren
                 </button>
@@ -109,7 +147,7 @@ function _fqRenderList(container) {
                     </tr>
                 </thead>
                 <tbody>
-                    ${tableRows || '<tr><td colspan="5" style="text-align:center;padding:30px;opacity:0.4">Keine Fragen geladen</td></tr>'}
+                    ${tableRows || '<tr><td colspan="5" style="text-align:center;padding:30px;opacity:0.4">Keine Treffer</td></tr>'}
                 </tbody>
             </table>
         </div>`;
@@ -143,13 +181,18 @@ function _fqBuildInlineHTML(idx) {
     let answerFields;
     if (isMC) {
         const mcAnswers = (q.type === QUESTION_TYPES.MULTIPLE_CHOICE ? q.answers : null) || [];
+        const isAnyMode = q.correctMode === 'any';
         answerFields = Array.from({ length: 4 }, (_, i) => {
             const a = mcAnswers[i] || { text: '', correct: false };
             return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
                 <input type="checkbox" id="fqCorr_${i}" style="width:auto;margin:0;flex-shrink:0" ${a.correct ? 'checked' : ''}>
                 <input type="text" id="fqAns_${i}" placeholder="Antwort ${i + 1}" value="${_fqEsc(a.text)}" style="margin:0;flex:1;padding:6px 10px;font-size:0.88rem">
             </div>`;
-        }).join('');
+        }).join('') + `
+        <label style="display:flex;align-items:center;gap:6px;margin-top:6px;font-size:0.8rem;opacity:0.75;cursor:pointer">
+            <input type="checkbox" id="fqCorrectModeAny" style="width:auto;margin:0" ${isAnyMode ? 'checked' : ''}>
+            ODER-Wertung — eine der markierten Antworten reicht
+        </label>`;
     } else if (isText) {
         const textVal = (q.type === QUESTION_TYPES.TEXT) ? getCorrectTextAnswers(q).join('\n') : '';
         answerFields = `<textarea id="fqTextAns" rows="3" placeholder="Eine korrekte Antwort pro Zeile" style="margin:0;resize:vertical;font-size:0.88rem">${_fqEsc(textVal)}</textarea>`;
@@ -510,7 +553,7 @@ function _fqSave() {
         : groupSel;
 
     // Antworten validieren
-    let answers, correctAnswer, targets;
+    let answers, correctAnswer, targets, correctMode;
     if (_fqFormType === QUESTION_TYPES.MULTIPLE_CHOICE) {
         answers = Array.from({ length: 4 }, (_, i) => ({
             text:    (document.getElementById('fqAns_' + i)?.value || '').trim(),
@@ -518,6 +561,7 @@ function _fqSave() {
         })).filter(a => a.text);
         if (!answers.length) { Toast.show('Mindestens eine Antwort angeben.', 'warning'); return; }
         if (!answers.some(a => a.correct)) { Toast.show('Mindestens eine Antwort als korrekt markieren.', 'warning'); return; }
+        correctMode = document.getElementById('fqCorrectModeAny')?.checked ? 'any' : null;
     } else if (_fqFormType === QUESTION_TYPES.TEXT) {
         const raw = (document.getElementById('fqTextAns')?.value || '').trim();
         if (!raw) { Toast.show('Mindestens eine korrekte Antwort angeben.', 'warning'); return; }
@@ -566,7 +610,7 @@ function _fqSave() {
         q.explanationMedia = explMedia ? { type: 'image', path: explMedia } : null;
         q.hint             = hintText  || null;
         q.hintMedia        = hintMedia ? { type: 'image', path: hintMedia } : null;
-        delete q.answers; delete q.correctAnswer; delete q.targets;
+        delete q.answers; delete q.correctAnswer; delete q.targets; delete q.correctMode;
         if (_fqFormType === QUESTION_TYPES.TEXT) {
             q.correctAnswer = correctAnswer;
             q.answers       = answers;
@@ -574,6 +618,7 @@ function _fqSave() {
             q.targets = targets;
         } else {
             q.answers = answers;
+            if (correctMode) q.correctMode = correctMode;
         }
         Toast.show(`Frage ${q.questionId} aktualisiert.`, 'success');
     } else {
@@ -597,6 +642,7 @@ function _fqSave() {
             newQ.targets = targets;
         } else {
             newQ.answers = answers;
+            if (correctMode) newQ.correctMode = correctMode;
         }
         questions.push(newQ);
         Toast.show(`Frage ${enteredId} erstellt (${group}).`, 'success');

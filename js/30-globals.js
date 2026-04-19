@@ -270,6 +270,7 @@ function normalizeQuestion(q) {
         text: text,
         type: QUESTION_TYPES.MULTIPLE_CHOICE,
         answers: answers,
+        ...(q.correctMode === 'any' ? { correctMode: 'any' } : {}),
         active: q.active !== false,
         media: q.media || null,
         explanation: q.explanation || null,

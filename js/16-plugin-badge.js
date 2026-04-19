@@ -414,6 +414,71 @@ const BadgePlugin = {
         });
     },
 
+    renderBadgeAdmin() {
+        const container = document.getElementById('adminBadges');
+        if (!container) return;
+        const defs     = this.getBadgeDefinitions();
+        const catLabel = { leistung: '📈 Leistung', faehigkeit: '🃏 Fähigkeiten', minigame: '🎰 Mini-Games' };
+        const cats     = ['leistung', 'faehigkeit', 'minigame'];
+
+        const rows = cats.map(cat => {
+            const badges = Object.values(defs).filter(b => b.cat === cat);
+            const badgeRows = badges.map(b => `
+                <tr>
+                    <td style="width:36px;text-align:center;font-size:1.2rem">
+                        <input type="text" id="badgeIcon_${b.id}" value="${b.customIcon || b.emoji}"
+                            style="width:36px;text-align:center;padding:2px;font-size:1.1rem;background:var(--overlay-8);border:1px solid var(--overlay-20);border-radius:4px;color:inherit">
+                    </td>
+                    <td style="font-weight:600;font-size:0.88rem">${b.name}</td>
+                    <td style="opacity:0.6;font-size:0.82rem">${b.desc}</td>
+                    <td style="width:60px;text-align:center">
+                        <input type="checkbox" id="badgeActive_${b.id}" ${b.active !== false ? 'checked' : ''}
+                            style="width:auto;margin:0;cursor:pointer">
+                    </td>
+                </tr>`).join('');
+            return `
+                <tr style="background:var(--overlay-8)">
+                    <td colspan="4" style="padding:8px 12px;font-weight:700;font-size:0.82rem;opacity:0.7;text-transform:uppercase;letter-spacing:1px">
+                        ${catLabel[cat] || cat}
+                    </td>
+                </tr>
+                ${badgeRows}`;
+        }).join('');
+
+        container.innerHTML = `
+            <table class="info-table" style="font-size:0.88rem;margin:0 0 16px">
+                <thead>
+                    <tr style="opacity:0.5;font-size:0.78rem;text-transform:uppercase;letter-spacing:1px;background:var(--overlay-5)">
+                        <td style="padding:8px">Icon</td>
+                        <td style="padding:8px">Badge</td>
+                        <td style="padding:8px">Beschreibung</td>
+                        <td style="padding:8px;text-align:center">Aktiv</td>
+                    </tr>
+                </thead>
+                <tbody>${rows}</tbody>
+            </table>
+            <button class="btn btn-small" onclick="BadgePlugin.saveBadgeAdmin()">💾 Badge-Settings speichern</button>`;
+    },
+
+    saveBadgeAdmin() {
+        const defs = this.DEFAULT_BADGES;
+        if (!quizSettings.badges) quizSettings.badges = {};
+        Object.keys(defs).forEach(id => {
+            const iconEl   = document.getElementById('badgeIcon_' + id);
+            const activeEl = document.getElementById('badgeActive_' + id);
+            if (!iconEl || !activeEl) return;
+            const icon   = iconEl.value.trim();
+            const active = activeEl.checked;
+            const entry  = quizSettings.badges[id] || {};
+            if (icon && icon !== defs[id].emoji) entry.customIcon = icon; else delete entry.customIcon;
+            if (!active) entry.active = false; else delete entry.active;
+            if (Object.keys(entry).length) quizSettings.badges[id] = entry;
+            else delete quizSettings.badges[id];
+        });
+        if (typeof exportMasterData === 'function') exportMasterData();
+        Toast.show('Badge-Settings gespeichert.', 'success');
+    },
+
     enable() {
         if (currentUser) this.renderSidebars(currentUser);
     },

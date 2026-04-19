@@ -415,5 +415,6 @@ const BossFightPlugin = {
         if (abortBtn) abortBtn.style.display = '';
         document.getElementById('bossOverlay').classList.remove('active');
         window._mgTestMode = false;
+        setTimeout(() => document.getElementById('exportContinueBtn')?.focus(), 100);
     }
 };

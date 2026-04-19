@@ -55,6 +55,13 @@
 - **`_fileGroup` muss VOR dem Aufruf auf `q` gesetzt sein** — wird für `assignStableId()` benötigt
 - Kein `id`-Feld, kein `_contentHash` — `questionId` ist der einzige Schlüssel
 
+### MC-Fragen: `correctMode` (2026-04)
+- `correctMode: 'any'` auf der Frage → eine der als `correct: true` markierten Antworten reicht
+- Kein `correctMode` oder `'all'` → heutiges Verhalten (alle richtigen müssen ausgewählt werden)
+- `correctMode` wird **nur gesetzt wenn `'any'`** — nie als `'all'` gespeichert (kein Rauschen in JSONs)
+- UI: `'any'` rendert Radio-Buttons + Hinweis "☝ Eine richtige Antwort reicht"; Feedback markiert alle richtigen Antworten grün
+- Forge: Checkbox "ODER-Wertung" unter den Antworten im MC-Edit-Formular
+
 ### Abgeschlossene Migrationen (dokumentiert in Forge → "Migrationen")
 - `abilities.used`-Feld entfernt (2026-04)
 - `questionStats`-Keys: Hash-IDs → stabile IDs (2026-04)
@@ -184,12 +191,19 @@ Kritisch: Phase 2 (Quittungen aufräumen) muss **vor** Phase 3 (sentPhoneJokers 
 | Tab | Datei | Funktion |
 |---|---|---|
 | Datei | `20-admin-datei.js` | Ordner laden (Master-JSON + Spieler-JSONs) |
-| Fragen | `25-forge-fragen.js` | Fragen erstellen/bearbeiten (MC, Text, Bildklick) + Export + **📥 Import**; Klick auf Zeile klappt Inline-Edit auf; ID editierbar mit Duplikat-Prüfung |
-| Nutzer | `30-admin-nutzer.js` | Umbenennen, Übersicht |
+| Fragen | `25-forge-fragen.js` | Fragen erstellen/bearbeiten (MC, Text, Bildklick) + Export + **📥 Import**; Klick auf Zeile klappt Inline-Edit auf; ID editierbar mit Duplikat-Prüfung; **Suchfeld** filtert alle Gruppen live |
+| Nutzer | `30-admin-nutzer.js` | Umbenennen, Übersicht, sortierbar; **Bug (gefixt 2026-04):** Sort muss `adminPanel_nutzer` verwenden, nicht `adminContent` — sonst werden alle anderen Panels zerstört |
 | Einstellungen | `40-admin-einstellungen.js` | earnPer/earnStat für Fähigkeiten |
+| Badges | `42-admin-badges.js` | Badges aktivieren/deaktivieren, Icon anpassen; speichert in `quizSettings.badges` (Overrides auf `BadgePlugin.DEFAULT_BADGES`) |
 | *(Trennlinie)* | `45-admin-separator.js` | `AdminShell.registerSeparator()` |
 | Migrationen | `50-admin-migrationen.js` | Abgeschlossene Migrationen dokumentiert; neue Migrationen hier ergänzen |
 | Einreichungen | `65-forge-einreichungen.js` | Herald-Einreichungen prüfen: annehmen (→ stabile ID + questions[]) oder ablehnen |
+
+### Fragen-Suchfunktion (`js/admin/25-forge-fragen.js`)
+- State: `_fqSearchTerm` — persistiert beim Tab-Wechsel
+- Suche über: Fragetext, Antworttext (MC + Freitext), Fragen-ID
+- Gruppen ohne Treffer ausgeblendet; Gruppen mit Treffern automatisch aufgeklappt
+- Gruppen-Header zeigt `Treffer / Gesamt` (z.B. `3 / 200`) während Suche aktiv
 
 ## Herald (`herald.html`)
 - Gebaut via `python3 build.py` — nur `01-constants.js` + `02-toast-dialog.js` + `js/herald/*.js`
@@ -232,6 +246,12 @@ document.getElementById('bossQuestionCard').innerHTML =
 - `#bossAbilities` zeigt beim Start **dauerhaft beide Fähigkeiten** als Chips
 - Beim Einsatz: Puls-Animation (`.active`-Klasse, 2,1 Sek.) + `#bossEffectText`
 - `_showAbilityNotification(ability)` sucht Chip per Index (`bossChip0` / `bossChip1`)
+
+## Mini-Game-Kette nach Quiz (`js/10-plugin-classic-quiz.js`)
+- Reihenfolge: Glücksrad → Boss-Fight → Export-Button-Fokus
+- **Race Condition (gefixt 2026-04):** Export-Button darf erst fokussiert werden wenn die Mini-Game-Kette abgeschlossen ist — sonst kann Enter den Download auslösen bevor Rad/Boss ihre XP gutgeschrieben haben
+- Fokus-Punkte: Ende von `_checkBossTrigger()` (kein Mini-Game) + `BossFightPlugin.close()` (nach Boss)
+- Rad-XP und Boss-XP werden in `currentUser` geschrieben; der Export liest `currentUser` → Reihenfolge ist korrekt wenn Fokus erst nach Kette kommt
 
 ## Feedback & Toasts
 - **Toast-Dauer:** 8 Sekunden (`TOAST_DURATION_MS` in `js/01-constants.js`)

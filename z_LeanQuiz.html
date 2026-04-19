@@ -3651,22 +3651,27 @@
                     submitCont.innerHTML = `<button class="btn" onclick="submitAnswer()" id="submitBtn" style="width:100%;margin-top:15px;">Antwort prüfen</button>`;
                     setTimeout(() => { const inp = document.getElementById('textAnswerInput'); if (inp) inp.focus(); }, 100);
                 } else {
-                    // Multiple choice with checkboxes
+                    // Multiple choice
                     const answers = q.answers || [];
                     const correctCount = answers.filter(a => typeof a === 'object' && a.correct).length;
-                    const multipleCorrect = correctCount > 1;
-                    const instruction = multipleCorrect
-                        ? '<div style="text-align: center; margin-bottom: 20px; color: var(--accent); font-weight: 700;">⚠️ Mehrfachauswahl möglich! ⚠️</div>'
-                        : '';
+                    const isAnyMode = q.correctMode === 'any';
+                    const multipleCorrect = !isAnyMode && correctCount > 1;
+                    const instruction = isAnyMode
+                        ? '<div style="text-align:center;margin-bottom:20px;color:var(--accent);font-weight:700">☝ Eine richtige Antwort reicht</div>'
+                        : multipleCorrect
+                            ? '<div style="text-align:center;margin-bottom:20px;color:var(--accent);font-weight:700">⚠️ Mehrfachauswahl möglich! ⚠️</div>'
+                            : '';
                     // Shuffle answers while keeping original indices
                     const shuffled = answers.map((a, i) => ({ answer: a, originalIndex: i }));
                     shuffleArray(shuffled);
                     let html = instruction;
                     shuffled.forEach(({ answer, originalIndex }, displayIndex) => {
                         const text = typeof answer === 'string' ? answer : (answer.text || '');
+                        const inputType = isAnyMode ? 'radio' : 'checkbox';
+                        const nameAttr  = isAnyMode ? ' name="answer-radio"' : '';
                         html += '<div class="answer-checkbox-container">' +
                             '<label class="answer-checkbox-label">' +
-                            '<input type="checkbox" class="answer-checkbox" value="' + originalIndex + '" data-index="' + originalIndex + '">' +
+                            '<input type="' + inputType + '" class="answer-checkbox"' + nameAttr + ' value="' + originalIndex + '" data-index="' + originalIndex + '">' +
                             '<span class="answer-checkbox-custom">' + (displayIndex + 1) + '</span>' +
                             '<span class="answer-text">' + sanitizeHTML(text) + '</span>' +
                             '</label></div>';
@@ -3678,15 +3683,19 @@
                         document.querySelectorAll('.answer-checkbox-container').forEach(cont => {
                             cont.addEventListener('click', function(e) {
                                 if (e.target.tagName === 'INPUT' || e.target.tagName === 'LABEL') {
-                                    if (timerModeActive && !multipleCorrect) {
+                                    if (timerModeActive && (isAnyMode || !multipleCorrect)) {
                                         setTimeout(function(){ submitAnswer(); }, 150);
                                     }
                                     return;
                                 }
-                                const checkbox = this.querySelector('.answer-checkbox');
-                                if (checkbox && !checkbox.disabled) {
-                                    checkbox.checked = !checkbox.checked;
-                                    if (timerModeActive && !multipleCorrect) {
+                                const input = this.querySelector('.answer-checkbox');
+                                if (input && !input.disabled) {
+                                    if (isAnyMode) {
+                                        input.checked = true;
+                                    } else {
+                                        input.checked = !input.checked;
+                                    }
+                                    if (timerModeActive && (isAnyMode || !multipleCorrect)) {
                                         setTimeout(function(){ submitAnswer(); }, 150);
                                     }
                                 }
@@ -3739,7 +3748,9 @@
                     selectedIndices = Array.from(checkboxes).map(cb => parseInt(cb.value));
                     const answers = q.answers || [];
                     const correctIndices = answers.map((a, i) => (typeof a === 'object' && a.correct) ? i : -1).filter(i => i >= 0);
-                    isCorrect = correctIndices.length === selectedIndices.length && correctIndices.every(ci => selectedIndices.includes(ci));
+                    isCorrect = q.correctMode === 'any'
+                        ? selectedIndices.some(si => correctIndices.includes(si))
+                        : correctIndices.length === selectedIndices.length && correctIndices.every(ci => selectedIndices.includes(ci));
                 }
                 this._processAnswer(isCorrect, { selectedIndices });
             },
@@ -3984,9 +3995,8 @@
                 renderUserSelect();
                 showScreen('resultsScreen');
                 renderNextGoals(currentUser);
-                setTimeout(() => document.getElementById('exportContinueBtn')?.focus(), 100);
                 EventBus.emit(EventBus.EVENTS.QUIZ_COMPLETED, { user: currentUser?.name, correct, total, xp: finalXP, pct });
-                // Mini-game cascade
+                // Mini-game cascade — Autofokus erst nach Abschluss aller Mini-Games
                 setTimeout(() => this._checkMiniGameTriggers(), 1500);
             },
 
@@ -4024,6 +4034,8 @@
                         return;
                     }
                 }
+                // Kein Mini-Game mehr — Export-Button fokussieren
+                setTimeout(() => document.getElementById('exportContinueBtn')?.focus(), 100);
             },
 
             restartQuiz() {
@@ -5084,6 +5096,7 @@
                 if (abortBtn) abortBtn.style.display = '';
                 document.getElementById('bossOverlay').classList.remove('active');
                 window._mgTestMode = false;
+                setTimeout(() => document.getElementById('exportContinueBtn')?.focus(), 100);
             }
         };
 
@@ -5555,6 +5568,71 @@
                 });
             },
 
+            renderBadgeAdmin() {
+                const container = document.getElementById('adminBadges');
+                if (!container) return;
+                const defs     = this.getBadgeDefinitions();
+                const catLabel = { leistung: '📈 Leistung', faehigkeit: '🃏 Fähigkeiten', minigame: '🎰 Mini-Games' };
+                const cats     = ['leistung', 'faehigkeit', 'minigame'];
+
+                const rows = cats.map(cat => {
+                    const badges = Object.values(defs).filter(b => b.cat === cat);
+                    const badgeRows = badges.map(b => `
+                        <tr>
+                            <td style="width:36px;text-align:center;font-size:1.2rem">
+                                <input type="text" id="badgeIcon_${b.id}" value="${b.customIcon || b.emoji}"
+                                    style="width:36px;text-align:center;padding:2px;font-size:1.1rem;background:var(--overlay-8);border:1px solid var(--overlay-20);border-radius:4px;color:inherit">
+                            </td>
+                            <td style="font-weight:600;font-size:0.88rem">${b.name}</td>
+                            <td style="opacity:0.6;font-size:0.82rem">${b.desc}</td>
+                            <td style="width:60px;text-align:center">
+                                <input type="checkbox" id="badgeActive_${b.id}" ${b.active !== false ? 'checked' : ''}
+                                    style="width:auto;margin:0;cursor:pointer">
+                            </td>
+                        </tr>`).join('');
+                    return `
+                        <tr style="background:var(--overlay-8)">
+                            <td colspan="4" style="padding:8px 12px;font-weight:700;font-size:0.82rem;opacity:0.7;text-transform:uppercase;letter-spacing:1px">
+                                ${catLabel[cat] || cat}
+                            </td>
+                        </tr>
+                        ${badgeRows}`;
+                }).join('');
+
+                container.innerHTML = `
+                    <table class="info-table" style="font-size:0.88rem;margin:0 0 16px">
+                        <thead>
+                            <tr style="opacity:0.5;font-size:0.78rem;text-transform:uppercase;letter-spacing:1px;background:var(--overlay-5)">
+                                <td style="padding:8px">Icon</td>
+                                <td style="padding:8px">Badge</td>
+                                <td style="padding:8px">Beschreibung</td>
+                                <td style="padding:8px;text-align:center">Aktiv</td>
+                            </tr>
+                        </thead>
+                        <tbody>${rows}</tbody>
+                    </table>
+                    <button class="btn btn-small" onclick="BadgePlugin.saveBadgeAdmin()">💾 Badge-Settings speichern</button>`;
+            },
+
+            saveBadgeAdmin() {
+                const defs = this.DEFAULT_BADGES;
+                if (!quizSettings.badges) quizSettings.badges = {};
+                Object.keys(defs).forEach(id => {
+                    const iconEl   = document.getElementById('badgeIcon_' + id);
+                    const activeEl = document.getElementById('badgeActive_' + id);
+                    if (!iconEl || !activeEl) return;
+                    const icon   = iconEl.value.trim();
+                    const active = activeEl.checked;
+                    const entry  = quizSettings.badges[id] || {};
+                    if (icon && icon !== defs[id].emoji) entry.customIcon = icon; else delete entry.customIcon;
+                    if (!active) entry.active = false; else delete entry.active;
+                    if (Object.keys(entry).length) quizSettings.badges[id] = entry;
+                    else delete quizSettings.badges[id];
+                });
+                if (typeof exportMasterData === 'function') exportMasterData();
+                Toast.show('Badge-Settings gespeichert.', 'success');
+            },
+
             enable() {
                 if (currentUser) this.renderSidebars(currentUser);
             },
@@ -5997,6 +6075,7 @@
                 text: text,
                 type: QUESTION_TYPES.MULTIPLE_CHOICE,
                 answers: answers,
+                ...(q.correctMode === 'any' ? { correctMode: 'any' } : {}),
                 active: q.active !== false,
                 media: q.media || null,
                 explanation: q.explanation || null,

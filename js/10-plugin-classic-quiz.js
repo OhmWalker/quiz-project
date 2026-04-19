@@ -235,22 +235,27 @@ const ClassicQuizPlugin = {
             submitCont.innerHTML = `<button class="btn" onclick="submitAnswer()" id="submitBtn" style="width:100%;margin-top:15px;">Antwort prüfen</button>`;
             setTimeout(() => { const inp = document.getElementById('textAnswerInput'); if (inp) inp.focus(); }, 100);
         } else {
-            // Multiple choice with checkboxes
+            // Multiple choice
             const answers = q.answers || [];
             const correctCount = answers.filter(a => typeof a === 'object' && a.correct).length;
-            const multipleCorrect = correctCount > 1;
-            const instruction = multipleCorrect
-                ? '<div style="text-align: center; margin-bottom: 20px; color: var(--accent); font-weight: 700;">⚠️ Mehrfachauswahl möglich! ⚠️</div>'
-                : '';
+            const isAnyMode = q.correctMode === 'any';
+            const multipleCorrect = !isAnyMode && correctCount > 1;
+            const instruction = isAnyMode
+                ? '<div style="text-align:center;margin-bottom:20px;color:var(--accent);font-weight:700">☝ Eine richtige Antwort reicht</div>'
+                : multipleCorrect
+                    ? '<div style="text-align:center;margin-bottom:20px;color:var(--accent);font-weight:700">⚠️ Mehrfachauswahl möglich! ⚠️</div>'
+                    : '';
             // Shuffle answers while keeping original indices
             const shuffled = answers.map((a, i) => ({ answer: a, originalIndex: i }));
             shuffleArray(shuffled);
             let html = instruction;
             shuffled.forEach(({ answer, originalIndex }, displayIndex) => {
                 const text = typeof answer === 'string' ? answer : (answer.text || '');
+                const inputType = isAnyMode ? 'radio' : 'checkbox';
+                const nameAttr  = isAnyMode ? ' name="answer-radio"' : '';
                 html += '<div class="answer-checkbox-container">' +
                     '<label class="answer-checkbox-label">' +
-                    '<input type="checkbox" class="answer-checkbox" value="' + originalIndex + '" data-index="' + originalIndex + '">' +
+                    '<input type="' + inputType + '" class="answer-checkbox"' + nameAttr + ' value="' + originalIndex + '" data-index="' + originalIndex + '">' +
                     '<span class="answer-checkbox-custom">' + (displayIndex + 1) + '</span>' +
                     '<span class="answer-text">' + sanitizeHTML(text) + '</span>' +
                     '</label></div>';
@@ -262,15 +267,19 @@ const ClassicQuizPlugin = {
                 document.querySelectorAll('.answer-checkbox-container').forEach(cont => {
                     cont.addEventListener('click', function(e) {
                         if (e.target.tagName === 'INPUT' || e.target.tagName === 'LABEL') {
-                            if (timerModeActive && !multipleCorrect) {
+                            if (timerModeActive && (isAnyMode || !multipleCorrect)) {
                                 setTimeout(function(){ submitAnswer(); }, 150);
                             }
                             return;
                         }
-                        const checkbox = this.querySelector('.answer-checkbox');
-                        if (checkbox && !checkbox.disabled) {
-                            checkbox.checked = !checkbox.checked;
-                            if (timerModeActive && !multipleCorrect) {
+                        const input = this.querySelector('.answer-checkbox');
+                        if (input && !input.disabled) {
+                            if (isAnyMode) {
+                                input.checked = true;
+                            } else {
+                                input.checked = !input.checked;
+                            }
+                            if (timerModeActive && (isAnyMode || !multipleCorrect)) {
                                 setTimeout(function(){ submitAnswer(); }, 150);
                             }
                         }
@@ -323,7 +332,9 @@ const ClassicQuizPlugin = {
             selectedIndices = Array.from(checkboxes).map(cb => parseInt(cb.value));
             const answers = q.answers || [];
             const correctIndices = answers.map((a, i) => (typeof a === 'object' && a.correct) ? i : -1).filter(i => i >= 0);
-            isCorrect = correctIndices.length === selectedIndices.length && correctIndices.every(ci => selectedIndices.includes(ci));
+            isCorrect = q.correctMode === 'any'
+                ? selectedIndices.some(si => correctIndices.includes(si))
+                : correctIndices.length === selectedIndices.length && correctIndices.every(ci => selectedIndices.includes(ci));
         }
         this._processAnswer(isCorrect, { selectedIndices });
     },
@@ -568,9 +579,8 @@ const ClassicQuizPlugin = {
         renderUserSelect();
         showScreen('resultsScreen');
         renderNextGoals(currentUser);
-        setTimeout(() => document.getElementById('exportContinueBtn')?.focus(), 100);
         EventBus.emit(EventBus.EVENTS.QUIZ_COMPLETED, { user: currentUser?.name, correct, total, xp: finalXP, pct });
-        // Mini-game cascade
+        // Mini-game cascade — Autofokus erst nach Abschluss aller Mini-Games
         setTimeout(() => this._checkMiniGameTriggers(), 1500);
     },
 
@@ -608,6 +618,8 @@ const ClassicQuizPlugin = {
                 return;
             }
         }
+        // Kein Mini-Game mehr — Export-Button fokussieren
+        setTimeout(() => document.getElementById('exportContinueBtn')?.focus(), 100);
     },
 
     restartQuiz() {
