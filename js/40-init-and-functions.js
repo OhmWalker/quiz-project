@@ -641,9 +641,8 @@ function exportAllData() {
 }
 
 function exportAllDataAndContinue() {
-    // Im Multiplayer-Modus: Spieler-Datei speichern
+    // Im Multiplayer-Modus: restartQuiz() übernimmt saveCurrentPlayer()
     if (multiPlayerMode && currentUser) {
-        saveCurrentPlayer();
         setTimeout(() => {
             restartQuiz();
         }, TIMING.EXPORT_CONTINUE_DELAY_MS);
