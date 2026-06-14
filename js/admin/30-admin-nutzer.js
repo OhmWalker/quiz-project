@@ -3,7 +3,7 @@
 let _nutzerSort = { key: null, asc: true };
 
 AdminShell.registerPanel('nutzer', 'Nutzer', '👤', container => {
-    if (!dataLoaded || !users.length) {
+    if (!dataLoaded) {
         container.innerHTML = `
             <div class="card">
                 <p class="text-muted" style="text-align:center;padding:30px 0">
@@ -80,7 +80,13 @@ function _renderNutzer(container) {
 
     container.innerHTML = `
         <div class="card">
-            <h2 class="section-title" style="margin-top:0">Nutzer (${users.length})</h2>
+            <h2 class="section-title" style="margin-top:0;display:flex;align-items:center;gap:12px;justify-content:space-between">
+                <span>Nutzer (${users.length})</span>
+                <button class="btn btn-small" onclick="_adminNutzerNew()"
+                    style="padding:6px 14px;margin:0;font-size:0.85rem;text-transform:none;letter-spacing:0">
+                    ＋ Neuer Spieler
+                </button>
+            </h2>
             <p class="text-muted mb-20">
                 Nach dem Umbenennen wird die Spieler-Datei heruntergeladen.
                 Die alte Datei im Ordner manuell löschen.
@@ -103,7 +109,9 @@ function _renderNutzer(container) {
                         </td>
                     </tr>
                 </thead>
-                <tbody>${rows}</tbody>
+                <tbody>${rows || `<tr><td colspan="7" class="text-muted" style="text-align:center;padding:24px 0">
+                    Noch keine Spieler. Oben mit <strong>＋ Neuer Spieler</strong> anlegen.
+                </td></tr>`}</tbody>
             </table>
         </div>`;
 }
@@ -159,6 +167,18 @@ function _adminNutzerSave(i) {
 
     document.getElementById('nutzer_name_' + i).textContent = newName;
     _adminNutzerCancelEdit(i);
+}
+
+function _adminNutzerNew() {
+    GameDialog.showPrompt('🧑', 'Neuer Spieler', 'Name des neuen Spielers:', function(name) {
+        const user = createUser(name);
+        if (!user) return false; // Validierung fehlgeschlagen → Dialog offen lassen
+        const panel = document.getElementById('adminPanel_nutzer');
+        if (panel) _renderNutzer(panel);
+        // Neue Spieler-JSON herunterladen, damit sie in den Ordner gelegt werden kann
+        _adminNutzerDownload(users.indexOf(user));
+        Toast.show(`Spieler "${user.name}" angelegt & heruntergeladen.`, 'success');
+    }, { placeholder: 'Name…', okLabel: 'Anlegen' });
 }
 
 function _adminNutzerDownload(i) {

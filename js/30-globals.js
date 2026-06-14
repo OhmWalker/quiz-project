@@ -183,6 +183,26 @@ function syncFromAppState() {
 syncToAppState();
 
 
+// Legt einen neuen Spieler an und hängt ihn an `users`.
+// Gemeinsam genutzt von Lean, Forge und Legacy-Quiz (liegt in 30-globals, das
+// alle drei Builds einbinden — anders als das UserManagementPlugin).
+// Gibt das neue User-Objekt zurück oder null bei Fehler (mit Toast).
+function createUser(name) {
+    name = (name || '').trim();
+    if (!name) { Toast.show('Name eingeben!', 'warning'); return null; }
+    if (users.find(u => u.name === name)) { Toast.show('Name existiert bereits!', 'warning'); return null; }
+    const user = {
+        id: Date.now(), name,
+        correctAnswers: 0, totalAnswers: 0, quizzesTaken: 0,
+        xp: 0, totalXP: 0, level: 1, streak: 0,
+        lastQuizDate: null, achievements: [], quizHistory: [], history: [],
+        dailyQuizCount: 0, questionStats: {}, badgeStats: {}
+    };
+    users.push(user);
+    return user;
+}
+
+
 function hasStableId(id) {
     return id && !id.startsWith('Q_') && !/^\d+$/.test(String(id));
 }

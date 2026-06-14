@@ -4400,6 +4400,42 @@
                 document.getElementById('gdBtnOk').onclick = function() { self._close(); };
             },
     
+            // Text-Eingabe-Dialog. onSubmit(value) erhält den getrimmten Wert.
+            // Gibt onSubmit explizit `false` zurück, bleibt der Dialog offen (z.B. bei Validierungsfehler).
+            showPrompt(icon, title, label, onSubmit, opts) {
+                opts = opts || {};
+                const overlay = this._ensureOverlay();
+                const safeVal = String(opts.value || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+                overlay.innerHTML = `
+                    <div style="background:var(--glass-bg,rgba(30,30,50,0.95));border:1px solid rgba(255,255,255,0.15);border-radius:16px;padding:30px;max-width:420px;width:90%;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,0.5);">
+                        <div style="font-size:3rem;margin-bottom:10px;">${icon}</div>
+                        <h3 style="color:var(--accent);margin:0 0 10px;">${title}</h3>
+                        ${label ? `<p style="color:#ddd;margin:0 0 14px;line-height:1.5;">${label}</p>` : ''}
+                        <input id="gdPromptInput" type="text" value="${safeVal}" placeholder="${opts.placeholder || ''}"
+                            style="width:100%;box-sizing:border-box;margin:0 0 20px;padding:12px 14px;font-size:1rem;border-radius:8px;border:1px solid rgba(255,255,255,0.2);background:rgba(0,0,0,0.3);color:#fff;">
+                        <div style="display:flex;gap:10px;justify-content:center;">
+                            <button id="gdPromptCancel" class="btn btn-secondary" style="min-width:90px;">Abbrechen</button>
+                            <button id="gdPromptOk" class="btn" style="min-width:90px;background:linear-gradient(135deg,var(--accent),#e67e22);">${opts.okLabel || 'OK'}</button>
+                        </div>
+                    </div>`;
+                overlay.style.display = 'flex';
+                const self = this;
+                const input = document.getElementById('gdPromptInput');
+                const submit = function() {
+                    const val = (input.value || '').trim();
+                    const keepOpen = onSubmit && onSubmit(val) === false;
+                    if (keepOpen) { input.focus(); input.select(); }
+                    else self._close();
+                };
+                document.getElementById('gdPromptOk').onclick = submit;
+                document.getElementById('gdPromptCancel').onclick = function() { self._close(); };
+                input.onkeydown = function(e) {
+                    if (e.key === 'Enter') { e.preventDefault(); submit(); }
+                    else if (e.key === 'Escape') { self._close(); }
+                };
+                setTimeout(() => input.focus(), 50);
+            },
+
             _close() {
                 if (this._overlay) this._overlay.style.display = 'none';
             }
@@ -9125,9 +9161,7 @@
             addUser(e){
                 if(e)e.preventDefault();
                 const input=document.getElementById('newUserName');if(!input)return;
-                const name=input.value.trim();if(!name){Toast.show('Name eingeben!','warning');return;}
-                if(users.find(u=>u.name===name)){Toast.show('Name existiert bereits!','warning');return;}
-                users.push({id:Date.now(),name,correctAnswers:0,totalAnswers:0,quizzesTaken:0,xp:0,totalXP:0,level:1,streak:0,lastQuizDate:null,achievements:[],quizHistory:[],history:[],dailyQuizCount:0,questionStats:{},badgeStats:{}});
+                const user=createUser(input.value);if(!user)return;
                 input.value='';this.updateUsersList();renderUserSelect();Toast.show('Benutzer erstellt!','success');
             },
             deleteUser(id){
@@ -9508,6 +9542,26 @@
 
         // Initial sync
         syncToAppState();
+
+
+        // Legt einen neuen Spieler an und hängt ihn an `users`.
+        // Gemeinsam genutzt von Lean, Forge und Legacy-Quiz (liegt in 30-globals, das
+        // alle drei Builds einbinden — anders als das UserManagementPlugin).
+        // Gibt das neue User-Objekt zurück oder null bei Fehler (mit Toast).
+        function createUser(name) {
+            name = (name || '').trim();
+            if (!name) { Toast.show('Name eingeben!', 'warning'); return null; }
+            if (users.find(u => u.name === name)) { Toast.show('Name existiert bereits!', 'warning'); return null; }
+            const user = {
+                id: Date.now(), name,
+                correctAnswers: 0, totalAnswers: 0, quizzesTaken: 0,
+                xp: 0, totalXP: 0, level: 1, streak: 0,
+                lastQuizDate: null, achievements: [], quizHistory: [], history: [],
+                dailyQuizCount: 0, questionStats: {}, badgeStats: {}
+            };
+            users.push(user);
+            return user;
+        }
 
 
         function hasStableId(id) {
@@ -10836,7 +10890,7 @@
                         </div>
                         <div class="user-info">
                             <div class="user-name">
-                                ${user.name}
+                                ${sanitizeHTML(user.name)}
                                 <span class="user-level">Lvl ${level}</span>
                             </div>
                             <div class="user-xp-container">
@@ -10852,13 +10906,22 @@
                     </div>
                 </div>
                 `;
-            }).join('');
-    
+            }).join('') + `
+                <div class="user-card user-card-add" onclick="promptNewUser()"
+                     style="display:flex;align-items:center;justify-content:center;cursor:pointer;border:2px dashed rgba(255,255,255,0.25);min-height:120px;">
+                    <div style="text-align:center;opacity:0.8;">
+                        <div style="font-size:2.2rem;line-height:1;">＋</div>
+                        <div style="margin-top:6px;font-weight:600;">Neuer Spieler</div>
+                    </div>
+                </div>`;
+
             // Letzte Zeile zentrieren: Spacer-Divs einfügen
             // Ermittle aktuelle Spaltenanzahl basierend auf Viewport
+            // +1 = die "Neuer Spieler"-Karte, die mit im Grid liegt
             const vw = window.innerWidth;
             const cols = vw <= 600 ? 2 : vw <= 900 ? 3 : vw <= 1200 ? 4 : 5;
-            const remainder = sortedUsers.length % cols;
+            const totalCards = sortedUsers.length + 1;
+            const remainder = totalCards % cols;
             if (remainder > 0) {
                 const spacers = Math.floor((cols - remainder) / 2);
                 let spacerHTML = '';
@@ -11048,6 +11111,15 @@
         }
 
         function selectUser(userId, event) { ClassicQuizPlugin.selectUser(userId, event); }
+        function promptNewUser() {
+            GameDialog.showPrompt('🧑', 'Neuer Spieler', 'Name des neuen Spielers:', function(name) {
+                const user = createUser(name);
+                if (!user) return false; // Validierung fehlgeschlagen → Dialog offen lassen
+                renderUserSelect();
+                if (typeof selectUser === 'function') selectUser(user.id);
+                Toast.show(`Spieler "${user.name}" erstellt!`, 'success');
+            }, { placeholder: 'Name…', okLabel: 'Anlegen' });
+        }
         function startQuiz() { ClassicQuizPlugin.startQuiz(); }
         function submitAnswer() { ClassicQuizPlugin.submitAnswer(); }
         function showExplanation() { ClassicQuizPlugin.showExplanation(); }

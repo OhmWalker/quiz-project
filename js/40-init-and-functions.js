@@ -333,7 +333,7 @@ function renderUserSelect() {
                 </div>
                 <div class="user-info">
                     <div class="user-name">
-                        ${user.name}
+                        ${sanitizeHTML(user.name)}
                         <span class="user-level">Lvl ${level}</span>
                     </div>
                     <div class="user-xp-container">
@@ -349,13 +349,22 @@ function renderUserSelect() {
             </div>
         </div>
         `;
-    }).join('');
-    
+    }).join('') + `
+        <div class="user-card user-card-add" onclick="promptNewUser()"
+             style="display:flex;align-items:center;justify-content:center;cursor:pointer;border:2px dashed rgba(255,255,255,0.25);min-height:120px;">
+            <div style="text-align:center;opacity:0.8;">
+                <div style="font-size:2.2rem;line-height:1;">＋</div>
+                <div style="margin-top:6px;font-weight:600;">Neuer Spieler</div>
+            </div>
+        </div>`;
+
     // Letzte Zeile zentrieren: Spacer-Divs einfügen
     // Ermittle aktuelle Spaltenanzahl basierend auf Viewport
+    // +1 = die "Neuer Spieler"-Karte, die mit im Grid liegt
     const vw = window.innerWidth;
     const cols = vw <= 600 ? 2 : vw <= 900 ? 3 : vw <= 1200 ? 4 : 5;
-    const remainder = sortedUsers.length % cols;
+    const totalCards = sortedUsers.length + 1;
+    const remainder = totalCards % cols;
     if (remainder > 0) {
         const spacers = Math.floor((cols - remainder) / 2);
         let spacerHTML = '';
@@ -545,6 +554,15 @@ function updateHeaderUserNames() {
 }
 
 function selectUser(userId, event) { ClassicQuizPlugin.selectUser(userId, event); }
+function promptNewUser() {
+    GameDialog.showPrompt('🧑', 'Neuer Spieler', 'Name des neuen Spielers:', function(name) {
+        const user = createUser(name);
+        if (!user) return false; // Validierung fehlgeschlagen → Dialog offen lassen
+        renderUserSelect();
+        if (typeof selectUser === 'function') selectUser(user.id);
+        Toast.show(`Spieler "${user.name}" erstellt!`, 'success');
+    }, { placeholder: 'Name…', okLabel: 'Anlegen' });
+}
 function startQuiz() { ClassicQuizPlugin.startQuiz(); }
 function submitAnswer() { ClassicQuizPlugin.submitAnswer(); }
 function showExplanation() { ClassicQuizPlugin.showExplanation(); }
