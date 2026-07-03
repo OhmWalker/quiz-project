@@ -42,6 +42,18 @@ const MIGRATION_HISTORY = [
                  <code>file-io</code> entfällt damit. Neue Fragen erhalten <code>_fileGroup</code>
                  immer beim Erstellen (Forge) oder Einreichen (Herald).`,
     },
+    {
+        date:  '2026-07',
+        title: 'Spieler-Schema: Normalisierung beim Load',
+        detail: `Alte Spieler-JSONs (frühere App-Versionen) hatten teils weniger Felder oder
+                 nutzten den alten History-Feldnamen <code>xpEarned</code> statt <code>xp</code>.
+                 Beim Ordner-Load laufen geladene Spieler jetzt durch <code>normalizeUser()</code>
+                 (<code>30-globals.js</code>): fehlende Felder werden auf die
+                 <code>createUser</code>-Defaults gesetzt und <code>history[].xpEarned</code> →
+                 <code>history[].xp</code> umbenannt. Die Normalisierung ist idempotent und läuft
+                 nur im Speicher — die Datei auf der Platte bleibt bis zum nächsten Export des
+                 Nutzers unverändert.`,
+    },
 ];
 
 AdminShell.registerPanel('migrationen', 'Migrationen', '🔧', container => {

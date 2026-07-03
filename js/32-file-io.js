@@ -221,7 +221,7 @@ async function loadFromFolderInput(event) {
     }));
 
     Object.values(playersByName).forEach(pf => {
-        users.push(pf.data);
+        users.push(normalizeUser(pf.data));
     });
 
     // SR-Bug 4: consecutiveCorrect aus alten JSONs zurücksetzen wenn Cooldown längst abgelaufen

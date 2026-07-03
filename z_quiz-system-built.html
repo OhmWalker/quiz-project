@@ -9564,6 +9564,40 @@
         }
 
 
+        // Bringt einen geladenen Spieler auf das kanonische Schema (Baseline = createUser).
+        // Alte Spieler-JSONs (frühere App-Versionen) haben teils weniger Felder oder nutzen
+        // den alten History-Feldnamen `xpEarned` statt `xp`. Normalisierung läuft nur im
+        // Speicher beim Load — die Datei auf der Platte bleibt unverändert bis zum nächsten
+        // Export des Nutzers. Idempotent: vorhandene Werte (auch 0/false/leere Arrays)
+        // werden nie überschrieben.
+        function normalizeUser(u) {
+            if (!u || typeof u !== 'object') return u;
+            if (u.correctAnswers == null) u.correctAnswers = 0;
+            if (u.totalAnswers == null) u.totalAnswers = 0;
+            if (u.quizzesTaken == null) u.quizzesTaken = 0;
+            if (u.xp == null) u.xp = 0;
+            if (u.totalXP == null) u.totalXP = 0;
+            if (u.level == null) u.level = 1;
+            if (u.streak == null) u.streak = 0;
+            if (u.lastQuizDate === undefined) u.lastQuizDate = null;
+            if (u.dailyQuizCount == null) u.dailyQuizCount = 0;
+            if (!Array.isArray(u.achievements)) u.achievements = [];
+            if (!Array.isArray(u.quizHistory)) u.quizHistory = [];
+            if (!Array.isArray(u.history)) u.history = [];
+            if (!u.questionStats || typeof u.questionStats !== 'object') u.questionStats = {};
+            if (!u.badgeStats || typeof u.badgeStats !== 'object') u.badgeStats = {};
+
+            // History-Feld `xpEarned` (alte Versionen) → `xp` (kanonisch)
+            u.history.forEach(function(h) {
+                if (!h || typeof h !== 'object') return;
+                if (h.xp === undefined && h.xpEarned !== undefined) h.xp = h.xpEarned;
+                delete h.xpEarned;
+            });
+
+            return u;
+        }
+
+
         function hasStableId(id) {
             return id && !id.startsWith('Q_') && !/^\d+$/.test(String(id));
         }
@@ -9886,7 +9920,7 @@
             }));
 
             Object.values(playersByName).forEach(pf => {
-                users.push(pf.data);
+                users.push(normalizeUser(pf.data));
             });
 
             // SR-Bug 4: consecutiveCorrect aus alten JSONs zurücksetzen wenn Cooldown längst abgelaufen
@@ -10473,7 +10507,7 @@
                     }
 
                     if (importedData.users) {
-                        users = importedData.users;
+                        users = importedData.users.map(normalizeUser);
                     }
 
                     // Master-Datei erstellen OHNE Fragen

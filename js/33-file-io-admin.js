@@ -134,7 +134,7 @@ function importLegacyFile(event) {
             }
 
             if (importedData.users) {
-                users = importedData.users;
+                users = importedData.users.map(normalizeUser);
             }
 
             // Master-Datei erstellen OHNE Fragen
