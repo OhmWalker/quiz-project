@@ -1,55 +1,38 @@
 # Quiz System v4.0 — Modulares Projekt
 
+Offline-Quiz als Single-File-HTML. Drei Werkzeuge, alle aus denselben Quellen gebaut:
+
+| Datei | Zweck |
+|---|---|
+| `z_LeanQuiz.html` | das Quiz für die Spieler |
+| `z_forge.html` | Admin: Fragen, Nutzer, Einstellungen, Fokus-Quiz, Sicherung, Auswertung |
+| `z_herald.html` | Fragen einreichen (Spieler schlagen Fragen vor, Admin nimmt sie in Forge an) |
+
+Ausführliche Projekt-Doku: [CLAUDE.md](CLAUDE.md).
+
 ## Projektstruktur
 
 ```
 quiz-project/
-├── index.html              ← Entwicklungs-HTML (lädt separate Dateien)
-├── forge-index.html        ← Forge Entwicklungs-HTML
-├── build.py                ← Build-Script: beide HTML-Dateien bauen
-├── quiz-system-built.html  ← Gebautes Quiz (Single-File)
-├── forge.html              ← Gebautes Forge (Single-File)
-├── 01_quiz-Referenz.html   ← Alte monolithische Version (Referenz)
+├── lean-index.html     ← Quelle Quiz      → z_LeanQuiz.html
+├── forge-index.html    ← Quelle Forge     → z_forge.html
+├── herald-index.html   ← Quelle Herald    → z_herald.html
+├── build.py            ← baut alle drei Single-File-HTMLs
 ├── css/
-│   ├── 00-base.css         ← Grundlagen, Variablen, Container
-│   ├── 01-screens.css      ← Screen-Layouts (Start, Quiz, Results, Admin)
-│   ├── 02-admin.css        ← Forge Styles
-│   └── 03-plugins.css      ← Badges, Sidebars, Abilities, Mini-Games
-└── js/
-    ├── 01-constants.js            ← QUESTION_TYPES, LIMITS, TIMING, CONFIG
-    ├── 02-toast-dialog.js         ← Toast-Benachrichtigungen, GameDialog
-    ├── 03-eventbus.js             ← EventBus (Publish/Subscribe)
-    ├── 04-appstate.js             ← AppState (zentraler Zustand)
-    ├── 05-quizcore.js             ← QuizCore Namespace-Wrapper
-    ├── 06-plugin-registry.js      ← PluginRegistry (Plugin-Verwaltung)
-    ├── 07-event-delegation.js     ← Event-Delegation (ersetzt inline onclick)
-    ├── 10-plugin-classic-quiz.js  ← Classic Quiz (Hauptlogik)
-    ├── 11-plugin-ability.js       ← Fähigkeiten-System (9 Abilities)
-    ├── 12-plugin-wheel.js         ← Glücksrad Mini-Game
-    ├── 14-plugin-bossfight.js     ← Boss-Fight Mini-Game
-    ├── 16-plugin-badge.js         ← Badge/Achievement-System
-    ├── 17-plugin-leaderboard.js   ← Bestenliste/Podium
-    ├── 19-plugin-fragen2.js       ← Fragen-Manager v2
-    ├── 20-plugin-usermanagement.js ← Benutzer-Verwaltung + Plugin-Registrierung
-    ├── 30-globals.js              ← Globale Variablen, Settings, Bridges
-    ├── 32-file-io.js              ← Datei-Import/Export (Ordner, Spieler, Master)
-    ├── 40-init-and-functions.js   ← init(), Utility-Funktionen
-    ├── 50-plugin-ui.js            ← Plugin-UI, State-Bridges, Initialisierung
-    └── admin/                     ← Forge Module (nur in forge.html)
-        ├── 10-admin-shell.js         ← Tab-System, Passwort-Modal
-        ├── 20-admin-datei.js         ← Ordner laden (Admin-spezifischer Loader)
-        ├── 30-admin-nutzer.js        ← Nutzer umbenennen, Übersicht
-        ├── 40-admin-einstellungen.js ← earnPer/earnStat für Fähigkeiten
-        ├── 50-admin-migrationen.js   ← Daten-Migrationen (z.B. "used"-Feld)
-        ├── 60-forge-id-migration.js  ← Hash-ID → stabile ID Migration
-        └── 70-forge-fragen.js        ← Fragen erstellen (MC, Text, Bildklick) + Export
+│   ├── 00-base.css     ← Grundlagen, Variablen, Container
+│   ├── 01-screens.css  ← Screen-Layouts (Start, Quiz, Ergebnis)
+│   ├── 02-admin.css    ← Forge (nicht im Quiz)
+│   └── 03-plugins.css  ← Badges, Sidebars, Fähigkeiten, Mini-Games, Fokus-Quiz
+├── js/                 ← Quiz (alle Dateien landen in z_LeanQuiz.html)
+│   ├── 01–07           ← Core: Konstanten, Toast/Dialog, EventBus, AppState, Registry, Event-Delegation
+│   ├── 10–17           ← Plugins: Quiz, Fähigkeiten, Glücksrad, Fokus-Quiz, BossFight, Badges, Bestenliste
+│   ├── 18              ← Plugin-Registrierung
+│   ├── 30, 32          ← Globale Variablen/Settings, Datei-Laden/-Speichern
+│   ├── 40, 50          ← init(), Hilfsfunktionen, Plugin-Sichtbarkeit
+│   ├── admin/          ← Forge-Tabs (nur z_forge.html)
+│   └── herald/         ← Herald (nur z_herald.html)
+└── tools/simulate.py   ← Simulation der Spaced-Repetition-Auswahl
 ```
-
-## Entwicklung (VS Code)
-
-1. Ordner `quiz-project/` in VS Code öffnen
-2. Einzelne Dateien bearbeiten (CSS/JS)
-3. `index.html` im Browser öffnen (mit Live Server Extension)
 
 ## Build
 
@@ -57,15 +40,9 @@ quiz-project/
 python3 build.py
 ```
 
-Erzeugt zwei Dateien:
-- `quiz-system-built.html` — Quiz, vollständig inline, 100% offline
-- `forge.html` — Forge (Core-JS + js/admin/*.js), 100% offline
+Danach im Browser `Ctrl + Shift + R`.
 
 ## Nummerierung
 
-Die JS-Dateien sind nummeriert, um die **Ladereihenfolge** sicherzustellen:
-- `01-07`: Core-System (Konstanten, State, EventBus, Registry, Delegation)
-- `10-20`: Plugins (müssen nach Registry geladen werden)
-- `30-32`: Globale Variablen, Settings, File-IO
-- `40`: Utility-Funktionen und init()
-- `50`: Plugin-UI und finale Initialisierung
+Die Zahl am Dateianfang bestimmt die **Reihenfolge, in der der Build die Dateien zusammensetzt**
+(`sorted(glob.glob(...))`). Beim Umbenennen das Präfix behalten.

@@ -1,6 +1,5 @@
 // 50-plugin-ui.js
 // Plugin visibility, mini-game XP, final init — Lean-kritisch
-// Admin-UI (renderPluginManager, togglePlugin) → 51-plugin-ui-admin.js
 // ============================================================
 
 const PLUGIN_BUTTON_MAP = {};

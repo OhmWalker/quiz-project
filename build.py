@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """
-Build Script: Builds quiz-system-built.html and forge.html
+Build Script: baut drei Single-File-HTMLs
+  z_forge.html     — Admin (forge-index.html + Core-JS + js/admin/*)
+  z_herald.html    — Fragen-Einreichung (herald-index.html + js/herald/*)
+  z_LeanQuiz.html  — Quiz (lean-index.html + alle js/*.js)
 Run from quiz-project directory: python3 build.py
 """
 
@@ -72,22 +75,6 @@ def inject(html, css_combined, js_combined):
     return html
 
 
-# ── Quiz-Build ────────────────────────────────────────────────────────────────
-html      = read_file(os.path.join(SCRIPT_DIR, "index.html"))
-css_files = sorted(glob.glob(os.path.join(CSS_DIR, "*.css")))
-js_files  = sorted(glob.glob(os.path.join(JS_DIR, "*.js")))
-
-html = inject(html, build_css(css_files), build_js(js_files))
-html = html.replace('Development Version (Split Files)', 'Single File · 100% Offline · No localStorage')
-
-quiz_out = os.path.join(SCRIPT_DIR, "z_quiz-system-built.html")
-with open(quiz_out, "w", encoding="utf-8") as f:
-    f.write(html)
-
-size_kb = os.path.getsize(quiz_out) / 1024
-print(f"[OK] z_quiz-system-built.html  —  {size_kb:.1f} KB  |  CSS: {len(css_files)}  |  JS: {len(js_files)}")
-
-
 # ── Admin-Build ───────────────────────────────────────────────────────────────
 html           = read_file(os.path.join(SCRIPT_DIR, "forge-index.html"))
 css_files_adm  = sorted(glob.glob(os.path.join(CSS_DIR, "*.css")))
@@ -139,14 +126,13 @@ print(f"     Themen-Kategorien manuell editieren → Ctrl+F nach: HERALD_GRUPPEN
 
 
 # ── LeanQuiz-Build ────────────────────────────────────────────────────────────
-LEAN_EXCLUDE_JS  = {'19-plugin-fragen2.js', '41-admin-functions.js', '20-plugin-usermanagement.js', '33-file-io-admin.js', '51-plugin-ui-admin.js', '16b-plugin-badge-admin.js', '17b-plugin-leaderboard-admin.js'}
+# Alle js/*.js gehören zum Quiz (der Legacy-Admin wurde 2026-10 entfernt).
 LEAN_EXCLUDE_CSS = {'02-admin.css'}
 
 html           = read_file(os.path.join(SCRIPT_DIR, "lean-index.html"))
 css_files_lean = [f for f in sorted(glob.glob(os.path.join(CSS_DIR, "*.css")))
                   if os.path.basename(f) not in LEAN_EXCLUDE_CSS]
-js_files_lean  = [f for f in sorted(glob.glob(os.path.join(JS_DIR, "*.js")))
-                  if os.path.basename(f) not in LEAN_EXCLUDE_JS]
+js_files_lean  = sorted(glob.glob(os.path.join(JS_DIR, "*.js")))
 
 html = inject(html, build_css(css_files_lean), build_js(js_files_lean))
 html = html.replace('Development Version (Split Files)', 'Single File · 100% Offline · No localStorage')

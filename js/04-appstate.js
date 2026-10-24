@@ -37,8 +37,6 @@ const AppState = {
         currentMediaData: null,
         currentMediaPath: null,
         viewingUserId: null,
-        superAdminAuthenticated: false,
-        superAdminTargetSection: null,
         previousRanks: {},
         selectedAvatarPresets: {}
     },

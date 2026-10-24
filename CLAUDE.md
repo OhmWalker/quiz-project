@@ -2,29 +2,31 @@
 
 ## Projekt-Überblick
 - Quiz-System v4.0, Single-Page-App (HTML/CSS/JS)
-- Modulare Plugin-Architektur: ~25 JS-Dateien, 4 CSS-Dateien
-- Build: `python3 build.py` → vier Dateien (Präfix `z_` damit sie in GitHub-Listings ganz unten stehen):
-  - `z_quiz-system-built.html` (~610 KB) — das Quiz + eingebetteter Admin-Bereich (Legacy)
-  - `z_forge.html` (~332 KB) — Admin-/Wartungs-Tool (Standalone)
-  - `z_herald.html` (~133 KB) — Fragen-Einreichungs-Tool (für Nutzer)
-  - `z_LeanQuiz.html` (~336 KB) — Quiz-only, kein Admin (Quelle: `lean-index.html`)
-- Langfristig: `z_quiz-system-built.html` wird durch `z_forge.html` + `z_LeanQuiz.html` ersetzt
+- Modulare Plugin-Architektur: 20 Quiz-JS-Dateien (`js/*.js`), Forge-Tabs in `js/admin/`, 4 CSS-Dateien
+- Build: `python3 build.py` → drei Dateien (Präfix `z_` damit sie in GitHub-Listings ganz unten stehen):
+  - `z_LeanQuiz.html` (~395 KB) — das Quiz (Quelle: `lean-index.html` + alle `js/*.js`) — läuft auf dem Live-Rechner
+  - `z_forge.html` (~475 KB) — Admin-/Wartungs-Tool (Quelle: `forge-index.html` + Core-JS + `js/admin/*`)
+  - `z_herald.html` (~140 KB) — Fragen-Einreichungs-Tool (für Nutzer)
+- Der frühere Komplett-Build `z_quiz-system-built.html` (Quiz + eingebetteter Legacy-Admin, Quelle `index.html`)
+  wurde 2026-10 entfernt — siehe „Entfernte Settings / Funktionen"
 
 ## Architektur
 - Plugins kommunizieren über `EventBus` (Events: USER_SELECTED, QUIZ_STARTED, QUIZ_QUESTION, QUIZ_COMPLETED)
 - Globale Variablen: `currentUser`, `users`, `currentQuizQuestions`, `quizSettings`
-- Wichtige Plugins: ClassicQuizPlugin, AbilityPlugin, BadgePlugin, LeaderboardPlugin, Fragen2Plugin
-- Plugin-Registrierung in `js/20-plugin-usermanagement.js`
+- Wichtige Plugins: ClassicQuizPlugin, AbilityPlugin, BadgePlugin, LeaderboardPlugin, FocusQuizPlugin
+- Plugin-Registrierung in `js/18-plugin-registration.js` (einzige Stelle)
+- Forge registriert **keine** Plugins; es bindet nur Core-JS ein (`ADMIN_CORE_JS` in `build.py`)
 - Settings in `js/30-globals.js`, File-IO in `js/32-file-io.js`
 
-## Fragen-Verwaltung (Fragen2Plugin)
-- Datei: `js/19-plugin-fragen2.js`
-- Enthält: Fragen-CRUD, Imagemap-Editor, Import/Export, Batch-Aktionen
-- Geometrie-Funktionen (checkImagemapHit, pointInPolygon etc.) in `js/15-imagemap-geometry.js` (Lean-kritisch)
-- Globale Wrapper in `js/40-init-and-functions.js` leiten an Fragen2Plugin weiter
-- Gruppen-Dropdown hat "Neue Gruppe..."-Option (value `__new__`)
-- Neue Gruppennamen werden validiert: mind. 2 Buchstaben, sonst Toast-Fehler
-- Batch-Aktionen (Aktivieren/Deaktivieren/Export) arbeiten mit **ID-Präfix** (z.B. `allg`, `core`)
+## Fragen-Verwaltung (Forge → Fragen, `js/admin/25-forge-fragen.js`)
+- Fragen-CRUD (MC, Freitext, Bildklick mit Imagemap-Editor), Import, Export, Live-Suche
+- Geometrie-Funktionen (checkImagemapHit, pointInPolygon etc.) in `js/15-imagemap-geometry.js` (Quiz braucht sie)
+- Gruppen-Dropdown hat „+ Neue Gruppe…"-Option (value `__new__`)
+- **Aktiv/Inaktiv:** Kästchen pro Frage, „alle an"/„alle aus" pro Gruppe, Kopfzeile zeigt `aktiv N/M`
+  (ersetzt die früheren Präfix-Batch-Aktionen des Legacy-Editors). Dauerhaft erst nach „↓ Exportieren".
+- **Export-Dateinamen** (`_fqExportFiles`, auch von der Sicherung genutzt): eine Datei pro Gruppe, Core getrennt.
+  Core erkennt der Lader am Namen `/^03_questions_CORE/i` — Core-Gruppen bekommen den Präfix `CORE_`,
+  Nicht-Core-Gruppen, deren Name mit „core" beginnt, den Präfix `G_`.
 
 ## Fragen-ID-System
 
@@ -45,10 +47,10 @@
 - `assignStableId(group, allQuestions)` (`js/30-globals.js`) → nächste freie ID
 - `hasStableId(id)` (`js/30-globals.js`) → prüft ob ID stabil (nicht `Q_`, nicht rein numerisch)
 
-### Verhalten bei Fragen-Bearbeitung (`js/19-plugin-fragen2.js`)
-- Inhalt ändert sich → ID bleibt unverändert
-- Gruppe wechselt → neue stabile ID mit neuem Präfix wird automatisch vergeben
-- Admin kann ID manuell überschreiben (Feld im Edit-Formular) — hat immer Vorrang
+### Verhalten bei Fragen-Bearbeitung (Forge)
+- ID ist ein Pflichtfeld im Formular; neue Fragen bekommen die nächste freie ID vorgeschlagen
+- Inhalt oder Gruppe ändert sich → ID bleibt, Forge zeigt die nächste freie ID der neuen Gruppe als Hinweis
+- Duplikat-Prüfung: eine vergebene ID wird abgelehnt (Toast nennt die nächste freie)
 
 ### `normalizeQuestion` (`js/30-globals.js`)
 - Gibt vollständiges kanonisches Fragen-Objekt zurück
@@ -215,10 +217,10 @@ Kritisch: Phase 2 (Quittungen aufräumen) muss **vor** Phase 3 (sentPhoneJokers 
 |---|---|---|
 | Datei | `20-admin-datei.js` | Ordner laden (Master-JSON + Spieler-JSONs) |
 | Fragen | `25-forge-fragen.js` | Fragen erstellen/bearbeiten (MC, Text, Bildklick) + Export + **📥 Import**; Klick auf Zeile klappt Inline-Edit auf; ID editierbar mit Duplikat-Prüfung; **Suchfeld** filtert alle Gruppen live |
-| Nutzer | `30-admin-nutzer.js` | Umbenennen, Übersicht, sortierbar; **Bug (gefixt 2026-04):** Sort muss `adminPanel_nutzer` verwenden, nicht `adminContent` — sonst werden alle anderen Panels zerstört |
+| Nutzer | `30-admin-nutzer.js` | Anlegen, Umbenennen, ♻ Statistik zurücksetzen (Lernstand + Quiz-/Antwort-Zähler, lädt neue Datei), 🗑 Entfernen (aus den geladenen Daten — Dateien im Ordner von Hand löschen), Einzel-/Sammel-Export, sortierbar; **Bug (gefixt 2026-04):** Sort muss `adminPanel_nutzer` verwenden, nicht `adminContent` — sonst werden alle anderen Panels zerstört |
 | Sicherung | `22-forge-sicherung.js` | **Sicherung** als ein ZIP (Master + Fragen je Gruppe + aktuelle Spieler-Dateien) und **Spieler-Dateien aufräumen** (siehe unten) |
 | Fokus-Quiz | `35-forge-fokus.js` | Einstellungen, Rotationsplan (↑/↓, Woche/Monat), Vorschau der nächsten Zeiträume |
-| Einstellungen | `40-admin-einstellungen.js` | earnPer/earnStat für Fähigkeiten |
+| Einstellungen | `40-admin-einstellungen.js` | Allgemein, Bild, SR, XP, Bestenliste, **Glücksrad**, BossFight, Avatare, Passwort, earnPer der Fähigkeiten. Glücksrad/BossFight an/aus wird zusätzlich in die `pluginConfig` geschrieben (`_forgeSyncPluginEnabled`) |
 | Badges | `42-admin-badges.js` | Badges aktivieren/deaktivieren, Icon anpassen; speichert in `quizSettings.badges` (Overrides auf `BadgePlugin.DEFAULT_BADGES`) |
 | *(Trennlinie)* | `45-admin-separator.js` | `AdminShell.registerSeparator()` |
 | Migrationen | `50-admin-migrationen.js` | Abgeschlossene Migrationen dokumentiert; neue Migrationen hier ergänzen |
@@ -361,10 +363,20 @@ Ziel: Spieler-Datei verkleinern, ohne dass Erfolge verloren gehen. Gemessen (Sim
 - **Legacy-Feldnamen** `frage`, `antworten`, `richtig`, `antwort`, `typ` (2026-04): Alle Fragen im kanonischen Format
 - **Watermark-Migrations-Block** in AbilityPlugin (2026-04): `used`-Feld und Migration entfernt
 - **`migrateUserQuestionStats()`** (2026-04): Konvertierung alter Feldnamen entfernt
+- **Legacy-Admin + `z_quiz-system-built.html`** (2026-10): gelöscht wurden `index.html`, `01_quiz-Referenz.html`
+  (Monolith vor der Aufteilung) und die sieben Admin-Dateien `19-plugin-fragen2.js`, `41-admin-functions.js`,
+  `20-plugin-usermanagement.js`, `33-file-io-admin.js`, `16b-plugin-badge-admin.js`, `51-plugin-ui-admin.js`,
+  `17b-plugin-leaderboard-admin.js`. Lean- und Forge-Build waren danach byte-gleich (die Dateien gehörten nie dazu).
+  Vorher nach Forge übernommen: Glücksrad-Einstellungen, Nutzer zurücksetzen/entfernen, Fragen aktiv/inaktiv.
+  Die alte Aufräumfunktion (löschte History/Fragen-Stats ohne Archiv → Fähigkeiten-Ladungen und Badge-Fortschritt
+  fielen zurück) ist durch Forge → Sicherung ersetzt. **Super-Admin-Ebene gestrichen** (`superAdminPassword` wird beim
+  Laden verworfen) — im `file://`-Betrieb ist jedes Passwort nur Sichtschutz. Wiederherstellbar über Git (Commit 5a98c64).
 - **Timer-Modus** (2026-10): komplett entfernt — `quizSettings.timer`, `SETTINGS_DEFAULTS.timer`, `CONFIG.TIMER`, der Forge-Einstellungsblock „⏱️ Timer-Modus", `clearAutoAdvance()`/`autoAdvanceTimeout` und die undeklarierte Variable `timerModeActive` im Quiz. Im Quiz war seit langem keine Timer-Logik mehr vorhanden; `timerModeActive` warf bei jedem Antwort-Klick einen Fehler. Ein alter `settings.timer`-Block wird in `ensureSettingsDefaults()` beim Laden verworfen. Mit entfernt: die Boss-Timerleiste (`bossTimerBar`/`bossTimerFill` + `.boss-timer-*`-CSS) — sie stand in beiden Quiz-Vorlagen auf `display:none` und wurde von **keiner** Zeile JavaScript angesteuert; kein Boss-Angriff arbeitet mit Zeitdruck. Der Feature-Text nannte „Timer-Verkürzung" als Boss-Angriff, den es nie gab — ebenfalls korrigiert.
 
 ## Workflow-Präferenzen
 - Nach CSS/JS-Änderung immer `python3 build.py` ausführen
+- `lean-index.html` bindet im Entwicklungsmodus alle `js/*.js` per Script-Tag ein — neue Quiz-Datei dort mit eintragen
+  (der Build ersetzt die Tags ohnehin durch das zusammengesetzte Skript)
 - Browser-Cache: `Ctrl + Shift + R` nach Build
 - Git: SSH-Zugang, E-Mail: `OhmWalker@users.noreply.github.com`
 - Commit-Messages auf Deutsch

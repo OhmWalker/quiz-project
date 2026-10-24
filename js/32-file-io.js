@@ -350,8 +350,6 @@ async function loadFromFolderInput(event) {
 
     renderUserSelect();
     renderLeaderboard();
-    updateQuestionsList();
-    updateUsersList();
 
     // Ordner-Anzeige
     document.getElementById('modeFolder').textContent = loadedFolderName;
@@ -616,7 +614,6 @@ function createNewMultiplayerFiles() {
             questionsPerQuiz: CONFIG.QUIZ.DEFAULT_QUESTIONS_PER_QUIZ,
             podiumPlaces: 3,
             adminPassword: 'admin',
-            superAdminPassword: 'super',
             xpSystem: { ...SETTINGS_DEFAULTS.xpSystem }
         },
         badges: null,

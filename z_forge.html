@@ -3555,8 +3555,6 @@
                 currentMediaData: null,
                 currentMediaPath: null,
                 viewingUserId: null,
-                superAdminAuthenticated: false,
-                superAdminTargetSection: null,
                 previousRanks: {},
                 selectedAvatarPresets: {}
             },
@@ -3675,14 +3673,6 @@
                 if (typeof entry.instance.enable === 'function') {
                     entry.instance.enable();
                 }
-
-                if (typeof PLUGIN_SETTINGS_MAP !== 'undefined') {
-                    const settingsKey = PLUGIN_SETTINGS_MAP[name];
-                    if (settingsKey && typeof getMG === 'function') {
-                        const mg = getMG();
-                        if (mg[settingsKey]) mg[settingsKey].enabled = true;
-                    }
-                }
         
                 EventBus.emit('plugin:enabled', { name });
                 console.log(`[PluginRegistry] Plugin "${name}" aktiviert`);
@@ -3697,14 +3687,6 @@
                 entry.enabled = false;
                 if (typeof entry.instance.disable === 'function') {
                     entry.instance.disable();
-                }
-
-                if (typeof PLUGIN_SETTINGS_MAP !== 'undefined') {
-                    const settingsKey = PLUGIN_SETTINGS_MAP[name];
-                    if (settingsKey && typeof getMG === 'function') {
-                        const mg = getMG();
-                        if (mg[settingsKey]) mg[settingsKey].enabled = false;
-                    }
                 }
 
                 for (const [depName, depEntry] of Object.entries(this._plugins)) {
@@ -4392,7 +4374,6 @@
             questionsPerQuiz: CONFIG.QUIZ.DEFAULT_QUESTIONS_PER_QUIZ,
             podiumPlaces: 3,
             adminPassword: 'admin',
-            superAdminPassword: 'super',
             avatarPreset: 1,
             compactPlayerFiles: false,   // Spieler-Dateien ohne Einrückung speichern (~halbe Größe) — Forge → Sicherung
             spacedRepetition: {
@@ -4463,6 +4444,8 @@
             // Timer-Modus wurde 2026-10 entfernt — Altbestand aus Master-JSONs werfen,
             // damit der Block nicht bei jedem Export mitwandert.
             if (settings && 'timer' in settings) delete settings.timer;
+            // Super-Admin-Ebene gab es nur im Legacy-Admin (2026-10 entfernt)
+            if (settings && 'superAdminPassword' in settings) delete settings.superAdminPassword;
 
             for (const [key, defaultVal] of Object.entries(SETTINGS_DEFAULTS)) {
                 if (typeof defaultVal === 'object' && defaultVal !== null) {
@@ -4549,7 +4532,7 @@
 
         // Legt einen neuen Spieler an und hängt ihn an `users`.
         // Gemeinsam genutzt von Lean, Forge und Legacy-Quiz (liegt in 30-globals, das
-        // alle drei Builds einbinden — anders als das UserManagementPlugin).
+        // alle drei Builds einbinden).
         // Gibt das neue User-Objekt zurück oder null bei Fehler (mit Toast).
         function createUser(name) {
             name = (name || '').trim();
@@ -5252,8 +5235,6 @@
 
             renderUserSelect();
             renderLeaderboard();
-            updateQuestionsList();
-            updateUsersList();
 
             // Ordner-Anzeige
             document.getElementById('modeFolder').textContent = loadedFolderName;
@@ -5518,7 +5499,6 @@
                     questionsPerQuiz: CONFIG.QUIZ.DEFAULT_QUESTIONS_PER_QUIZ,
                     podiumPlaces: 3,
                     adminPassword: 'admin',
-                    superAdminPassword: 'super',
                     xpSystem: { ...SETTINGS_DEFAULTS.xpSystem }
                 },
                 badges: null,
@@ -5894,21 +5874,6 @@
         }
 
 
-        function _adminDownloadJSON(data, filename) {
-            let content = JSON.stringify(data, null, 2);
-            if (quizSettings.encryptPlayerData) {
-                try { content = btoa(unescape(encodeURIComponent(content))); } catch(e) {}
-            }
-            const blob = new Blob([content], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url; a.download = filename;
-            document.body.appendChild(a); a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        }
-
-
         function _adminExportAllPlayers() {
             if (!users.length) { Toast.show('Keine Spieler geladen.', 'warning'); return; }
             const now = new Date();
@@ -6056,27 +6021,8 @@
         function _fsBackupFiles(now) {
             const files = [{ name: masterFileName(now), text: encodeDataFile(buildMasterData(), false) }];
 
-            // Fragen: eine Datei pro Gruppe, Format wie Forge-Export (_fqBuildExportQ).
-            // Core wird beim Laden am Dateinamen erkannt (/^03_questions_CORE/i) — darum
-            // getrennt nach Core/Nicht-Core und der Präfix passend gesetzt bzw. vermieden.
-            const byGroup = {};
-            questions.forEach(q => {
-                const g = q._fileGroup || 'Manuell';
-                const key = (q.isCore ? '1' : '0') + g;
-                if (!byGroup[key]) byGroup[key] = { group: g, core: !!q.isCore, qs: [] };
-                byGroup[key].qs.push(q);
-            });
-            const ts = _fileTimestamp(now);
-            Object.values(byGroup).forEach(g => {
-                const safe = g.group.replace(/[^a-zA-Z0-9äöüÄÖÜß_-]/g, '_');
-                const name = g.core
-                    ? (/^core/i.test(safe) ? safe : `CORE_${safe}`)
-                    : (/^core/i.test(safe) ? `G_${safe}` : safe);   // "Corey" darf nicht als Core laden
-                files.push({
-                    name: `03_questions_${name}_${ts}.json`,
-                    text: encodeDataFile({ theme: g.group, questions: g.qs.map(_fqBuildExportQ) }, false)
-                });
-            });
+            // Fragen: eine Datei pro Gruppe, Benennung wie „↓ Exportieren" (_fqExportFiles)
+            _fqExportFiles(now).forEach(f => files.push({ name: f.name, text: encodeDataFile(f.data, false) }));
 
             // Spieler: aktueller Stand (= neueste Datei pro Spieler beim Laden)
             users.forEach(u => files.push({ name: playerFileName(u, now), text: serializePlayer(u) }));
@@ -6319,6 +6265,7 @@
         let _fqOpenGroups  = new Set();
         let _fqEditIdx     = -1;   // -1 = neue Frage, >= 0 = Index in questions[]
         let _fqSearchTerm  = '';
+        let _fqGroupList   = [];   // Gruppen in Anzeige-Reihenfolge — Handler bekommen Indizes, nie Namen
 
         // Imagemap editor state
         let _fqImMode         = 'circle';
@@ -6380,8 +6327,9 @@
             const isSearch = term.length > 0;
 
             const groups = [...new Set(questions.map(q => q._fileGroup || 'Manuell'))].sort();
+            _fqGroupList = groups;
 
-            const tableRows = groups.map(g => {
+            const tableRows = groups.map((g, gi) => {
                 const allGroupQs = questions
                     .map((q, idx) => ({ q, idx }))
                     .filter(({ q }) => (q._fileGroup || 'Manuell') === g);
@@ -6396,17 +6344,27 @@
                 const arrow  = isOpen ? '▼' : '▶';
                 const escapedG = _fqEsc(g);
 
+                const activeCount = allGroupQs.filter(({ q }) => q.active !== false).length;
                 const countLabel = isSearch
                     ? `<span style="opacity:0.45;font-size:0.8rem;margin-left:8px">${groupQs.length} / ${allGroupQs.length}</span>`
                     : `<span style="opacity:0.45;font-size:0.8rem;margin-left:8px">(${allGroupQs.length})</span>`;
+                const activeLabel = `<span style="font-size:0.78rem;margin-left:10px;${activeCount < allGroupQs.length ? 'color:var(--accent-warning,#f39c12)' : 'opacity:0.45'}">aktiv ${activeCount}/${allGroupQs.length}</span>`;
+                const grpBtn = 'padding:2px 8px;margin:0 0 0 6px;font-size:0.72rem;text-transform:none;letter-spacing:0';
 
                 const header = `
                 <tr style="background:var(--overlay-8);cursor:pointer;user-select:none"
                     onclick="_fqToggleGroup('${_fqEscJs(g)}')">
-                    <td colspan="5" style="padding:10px 14px;font-weight:600;font-size:0.9rem">
+                    <td colspan="6" style="padding:10px 14px;font-weight:600;font-size:0.9rem">
                         <span style="opacity:0.6;margin-right:8px;font-size:0.8rem">${arrow}</span>
                         ${escapedG}
                         ${countLabel}
+                        ${activeLabel}
+                        <span style="float:right">
+                            <button class="btn btn-small btn-secondary" style="${grpBtn}" title="Alle Fragen der Gruppe aktivieren"
+                                onclick="event.stopPropagation();_fqSetGroupActive(${gi}, true)">✅ alle an</button>
+                            <button class="btn btn-small btn-secondary" style="${grpBtn}" title="Alle Fragen der Gruppe deaktivieren"
+                                onclick="event.stopPropagation();_fqSetGroupActive(${gi}, false)">⛔ alle aus</button>
+                        </span>
                     </td>
                 </tr>`;
 
@@ -6416,8 +6374,14 @@
                     const expanded = _fqEditIdx === idx;
                     const rowBg    = expanded ? 'background:rgba(247,184,1,0.07);' : '';
                     const rowArrow = expanded ? '▼' : '▶';
+                    const inactive = q.active === false;
                     const mainRow  = `
-                <tr style="${rowBg}cursor:pointer;user-select:none" onclick="_fqOpenEdit(${idx})">
+                <tr style="${rowBg}cursor:pointer;user-select:none;${inactive ? 'opacity:0.45;' : ''}" onclick="_fqOpenEdit(${idx})">
+                    <td style="width:28px;text-align:center" title="${inactive ? 'inaktiv — wird im Quiz nicht gestellt' : 'aktiv'}"
+                        onclick="event.stopPropagation()">
+                        <input type="checkbox" ${inactive ? '' : 'checked'} style="width:16px;height:16px;margin:0;cursor:pointer;accent-color:var(--accent)"
+                            onchange="_fqSetActive(${idx}, this.checked)">
+                    </td>
                     <td style="width:28px;text-align:center;opacity:0.6" title="${q.type}">${typeIcon(q.type)}</td>
                     <td style="max-width:360px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">${_fqEsc(q.text)}</td>
                     <td class="td-muted td-nowrap" style="font-size:0.82rem">${_fqEsc(q._fileGroup || 'Manuell')}</td>
@@ -6425,7 +6389,7 @@
                     <td style="width:20px;text-align:center;opacity:0.4;font-size:0.7rem">${rowArrow}</td>
                 </tr>`;
                     if (!expanded) return mainRow;
-                    return mainRow + `<tr><td colspan="5" style="padding:0">${_fqBuildInlineHTML(idx)}</td></tr>`;
+                    return mainRow + `<tr><td colspan="6" style="padding:0">${_fqBuildInlineHTML(idx)}</td></tr>`;
                 }).join('');
 
                 return header + qRows;
@@ -6463,6 +6427,7 @@
                     <table class="info-table" style="font-size:0.88rem;margin:0">
                         <thead>
                             <tr style="opacity:0.5;font-size:0.78rem;text-transform:uppercase;letter-spacing:1px;background:var(--overlay-5)">
+                                <td style="padding:10px 8px;width:28px" title="aktiv">✓</td>
                                 <td style="padding:10px 8px;width:28px"></td>
                                 <td style="padding:10px 8px">Frage</td>
                                 <td style="padding:10px 8px">Gruppe</td>
@@ -6471,10 +6436,41 @@
                             </tr>
                         </thead>
                         <tbody>
-                            ${tableRows || '<tr><td colspan="5" style="text-align:center;padding:30px;opacity:0.4">Keine Treffer</td></tr>'}
+                            ${tableRows || '<tr><td colspan="6" style="text-align:center;padding:30px;opacity:0.4">Keine Treffer</td></tr>'}
                         </tbody>
                     </table>
                 </div>`;
+        }
+
+        // ── Aktiv / Inaktiv ───────────────────────────────────────────────────────────
+        // Inaktive Fragen stellt das Quiz nicht (auch nicht im Fokus-Quiz). Dauerhaft
+        // erst nach „↓ Exportieren" — wie alle Fragen-Änderungen in Forge.
+
+        let _fqActiveHintShown = false;
+        function _fqActiveHint() {
+            if (_fqActiveHintShown) return;
+            _fqActiveHintShown = true;
+            Toast.show('Aktiv/Inaktiv-Änderungen werden mit „↓ Exportieren" dauerhaft gespeichert.', 'info', 4000);
+        }
+
+        function _fqSetActive(idx, active) {
+            const q = questions[idx];
+            if (!q) return;
+            q.active = !!active;
+            _fqActiveHint();
+            AdminShell.showPanel('fragen');
+        }
+
+        function _fqSetGroupActive(gi, active) {
+            const g = _fqGroupList[gi];
+            if (g === undefined) return;
+            let n = 0;
+            questions.forEach(q => {
+                if ((q._fileGroup || 'Manuell') === g && (q.active !== false) !== active) { q.active = active; n++; }
+            });
+            Toast.show(`${active ? '✅' : '⛔'} ${g}: ${n} Frage(n) ${active ? 'aktiviert' : 'deaktiviert'}.`, 'success', 4000);
+            _fqActiveHint();
+            AdminShell.showPanel('fragen');
         }
 
         function _fqToggleGroup(groupName) {
@@ -6979,30 +6975,36 @@
 
         // ── Export ────────────────────────────────────────────────────────────────────
 
-        function _fqStartExport() {
-            if (!questions.length) { Toast.show('Keine Fragen zum Exportieren.', 'warning'); return; }
-
-            // Fragen nach Gruppe gruppieren
+        // Fragen → Export-Dateien: eine pro Gruppe, Core getrennt von Nicht-Core.
+        // Core erkennt der Lader am Dateinamen (/^03_questions_CORE/i) — darum den
+        // Präfix für Core-Gruppen setzen und für Nicht-Core-Gruppen wie „Corey" vermeiden.
+        // Gemeinsam genutzt von „↓ Exportieren" und Forge → Sicherung.
+        function _fqExportFiles(now) {
             const byGroup = {};
             questions.forEach(q => {
                 const g = q._fileGroup || 'Manuell';
-                if (!byGroup[g]) byGroup[g] = [];
-                byGroup[g].push(q);
+                const key = (q.isCore ? '1' : '0') + g;
+                if (!byGroup[key]) byGroup[key] = { group: g, core: !!q.isCore, qs: [] };
+                byGroup[key].qs.push(q);
             });
-
-            const ts = new Date().toISOString().slice(0, 19).replace('T', '_').replace(/:/g, '');
-
-            Object.entries(byGroup).forEach(([group, qs]) => {
-                const safeName = group.replace(/[^a-zA-Z0-9äöüÄÖÜß_-]/g, '_');
-                const data = {
-                    theme:     group,
-                    questions: qs.map(_fqBuildExportQ)
+            const ts = _fileTimestamp(now);
+            return Object.values(byGroup).map(g => {
+                const safe = g.group.replace(/[^a-zA-Z0-9äöüÄÖÜß_-]/g, '_');
+                const name = g.core
+                    ? (/^core/i.test(safe) ? safe : `CORE_${safe}`)
+                    : (/^core/i.test(safe) ? `G_${safe}` : safe);
+                return {
+                    name: `03_questions_${name}_${ts}.json`,
+                    data: { theme: g.group, questions: g.qs.map(_fqBuildExportQ) }
                 };
-                const filename = `03_questions_${safeName}_${ts}.json`;
-                _fqDownload(JSON.stringify(data, null, 2), filename);
             });
+        }
 
-            Toast.show(`${Object.keys(byGroup).length} Datei(en) exportiert.`, 'success');
+        function _fqStartExport() {
+            if (!questions.length) { Toast.show('Keine Fragen zum Exportieren.', 'warning'); return; }
+            const files = _fqExportFiles(new Date());
+            files.forEach(f => _fqDownload(JSON.stringify(f.data, null, 2), f.name));
+            Toast.show(`${files.length} Datei(en) exportiert.`, 'success');
         }
 
         function _fqBuildExportQ(q) {
@@ -7464,6 +7466,14 @@
                             onclick="_adminNutzerDownload(${oi})" style="padding:6px 10px;margin:0">
                             ⬇ Datei
                         </button>
+                        <button class="btn btn-small btn-secondary" title="Lernstand und Quiz-Zähler auf 0 setzen"
+                            onclick="_adminNutzerReset(${oi})" style="padding:6px 10px;margin:0">
+                            ♻
+                        </button>
+                        <button class="btn btn-small btn-danger" title="Spieler entfernen"
+                            onclick="_adminNutzerDelete(${oi})" style="padding:6px 10px;margin:0">
+                            🗑
+                        </button>
                     </td>
                 </tr>`;
             }).join('');
@@ -7481,6 +7491,7 @@
                         Nach dem Umbenennen wird die Spieler-Datei heruntergeladen.
                         Die alte Datei im Ordner manuell löschen.
                         Mit ⬇ Datei kann jede Spieler-JSON einzeln exportiert werden.
+                        ♻ setzt den Lernstand zurück, 🗑 entfernt einen Spieler (Dateien im Ordner danach selbst löschen).
                     </p>
                     <table class="info-table" style="font-size:0.9rem">
                         <thead>
@@ -7573,11 +7584,53 @@
 
         function _adminNutzerDownload(i) {
             const u = users[i];
-            const now = new Date();
-            const ts = now.toISOString().slice(0,19).replace('T','_').replace(/:/g,'');
-            const safeName = (u.name || 'unbekannt').replace(/[^a-zA-Z0-9_\-]/g, '_');
-            _adminDownloadJSON(u, `04_operator_${safeName}_${ts}.json`);
+            _downloadText(serializePlayer(u), playerFileName(u));
             Toast.show(`${u.name} heruntergeladen.`, 'success');
+        }
+
+        function _adminNutzerRerender() {
+            const panel = document.getElementById('adminPanel_nutzer');
+            if (panel) _renderNutzer(panel);
+        }
+
+        // Wie der frühere Legacy-Admin: Lernstand + Quiz-/Antwort-Zähler auf 0.
+        // XP, Level, Badges, Fähigkeiten und History bleiben unangetastet.
+        function _adminNutzerReset(i) {
+            const u = users[i];
+            if (!u) return;
+            GameDialog.showConfirm('♻️', 'Statistik zurücksetzen?',
+                `Für <strong>${_ffEsc(u.name)}</strong> werden der Lernstand aller Fragen sowie die Zähler
+                 „Quizze" und „Antworten" auf 0 gesetzt. XP, Level, Badges und Fähigkeiten bleiben.<br><br>
+                 Danach wird die neue Spieler-Datei heruntergeladen — sie in den Quiz-Ordner legen.`,
+                () => {
+                    u.questionStats = {};
+                    u.correctAnswers = 0;
+                    u.totalAnswers = 0;
+                    u.quizzesTaken = 0;
+                    _adminNutzerDownload(i);
+                    _adminNutzerRerender();
+                }, null);
+        }
+
+        // Entfernt den Spieler aus den geladenen Daten. Dateien im Ordner kann der
+        // Browser nicht löschen — ohne manuelles Löschen ist er beim nächsten Laden zurück.
+        function _adminNutzerDelete(i) {
+            const u = users[i];
+            if (!u) return;
+            const lastFile = (loadedPlayerFiles.find(p => p.playerName === u.name) || {}).name;
+            GameDialog.showConfirm('🗑️', 'Spieler entfernen?',
+                `<strong>${_ffEsc(u.name)}</strong> wird aus den geladenen Daten entfernt.<br><br>
+                 Danach im Quiz-Ordner <strong>alle Dateien dieses Spielers</strong> löschen
+                 (${lastFile ? 'zuletzt geladen: ' + _ffEsc(lastFile) : 'Dateien 04_operator_…'}) —
+                 sonst ist er beim nächsten Laden wieder da.`,
+                () => {
+                    users.splice(i, 1);
+                    loadedPlayerFiles = loadedPlayerFiles.filter(p => p.playerName !== u.name);
+                    if (currentUser === u) currentUser = null;
+                    syncToAppState();
+                    _adminNutzerRerender();
+                    Toast.show(`🗑 ${u.name} entfernt. Jetzt die Dateien des Spielers im Quiz-Ordner löschen.`, 'warning');
+                }, null);
         }
 
 
@@ -7988,15 +8041,28 @@
                 ${_saveBtn('_saveLB()', '🏆 Bestenliste speichern')}
             `);
 
+            // ── Glücksrad ─────────────────────────────────────────────────────────────
+            const sp = mg.spinner || {};
+            const secSpinner = _secBlock('🎰 Glücksrad', `
+                ${_row('Aktiviert', '', `<label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+                    <input type="checkbox" id="set_spinEnabled" ${sp.enabled !== false ? 'checked' : ''}> Glücksrad einschalten
+                </label>`)}
+                ${_row('Ab richtigen Antworten', 'insgesamt, vorher kein Rad', `<input type="number" id="set_spinMinCorrect" min="0" max="10000" value="${sp.minCorrect ?? 10}" style="width:80px">`)}
+                ${_row('Alle N Quizze', 'Rad nach jedem N-ten Quiz', `<input type="number" id="set_spinQuizCount" min="1" max="100" value="${sp.quizCount ?? 2}" style="width:80px">`)}
+                ${_row('Höchstgewinn', 'XP (Jackpot-Feld; 2. Feld = 80 %)', `<input type="number" id="set_spinMaxXP" min="0" max="10000" value="${sp.maxXP ?? 50}" style="width:80px">`)}
+                ${_saveBtn('_saveSpinner()', '🎰 Glücksrad speichern')}
+            `);
+
             // ── BossFight ─────────────────────────────────────────────────────────────
             const secBoss = _secBlock('🎮 BossFight', `
                 ${_row('Aktiviert', '', `<label style="display:flex;align-items:center;gap:8px;cursor:pointer">
                     <input type="checkbox" id="set_bossEnabled" ${bf.enabled !== false ? 'checked' : ''}> BossFight einschalten
                 </label>`)}
-                ${_row('Min. Fragen im Pool', 'unter diesem Wert kein BossFight', `<input type="number" id="set_bossThresh" min="1" max="100" value="${bf.threshold || 10}" style="width:80px">`)}
+                ${_row('Alle N Quizze', 'Boss-Angebot nach jedem N-ten Quiz', `<input type="number" id="set_bossThresh" min="1" max="100" value="${bf.threshold || 10}" style="width:80px">`)}
                 ${_row('Boss-HP', '', `<input type="number" id="set_bossHP" min="10" max="500" value="${bf.hp || 100}" style="width:80px">`)}
                 ${_row('Spieler-Leben', 'Fehler bis Niederlage', `<input type="number" id="set_bossLives" min="1" max="10" value="${bf.lives || 3}" style="width:80px">`)}
-                ${_row('Sieg-XP', '', `<input type="number" id="set_bossWinXP" min="0" max="1000" value="${bf.winXP || 100}" style="width:80px">`)}
+                ${_row('Sieg-XP', '', `<input type="number" id="set_bossWinXP" min="0" max="1000" value="${bf.winXP ?? 100}" style="width:80px">`)}
+                ${_row('XP pro richtiger Boss-Antwort', '', `<input type="number" id="set_bossXPCorrect" min="0" max="1000" value="${mg.xpPerCorrect ?? 5}" style="width:80px">`)}
                 ${_saveBtn('_saveBoss()', '🎮 BossFight speichern')}
             `);
 
@@ -8093,6 +8159,7 @@
                     ${secSR}
                     ${secXP}
                     ${secLB}
+                    ${secSpinner}
                     ${secBoss}
                     ${secAvatare}
                     ${secSicherheit}
@@ -8154,15 +8221,37 @@
             saveMasterBackup();
         }
 
+        // Mini-Game an/aus muss auch in der Plugin-Konfiguration stehen: das Quiz prüft
+        // PluginRegistry.isEnabled(...) UND miniGames.<x>.enabled. Forge hat keine
+        // registrierten Plugins → direkt in die geladene pluginConfig schreiben (32-file-io).
+        function _forgeSyncPluginEnabled(pluginName, enabled) {
+            if (!_loadedPluginConfig) _loadedPluginConfig = {};
+            _loadedPluginConfig[pluginName] = Object.assign({}, _loadedPluginConfig[pluginName], { enabled: !!enabled });
+        }
+
+        function _saveSpinner() {
+            if (!quizSettings.miniGames) quizSettings.miniGames = {};
+            quizSettings.miniGames.spinner = Object.assign(quizSettings.miniGames.spinner || {}, {
+                enabled:    document.getElementById('set_spinEnabled').checked,
+                minCorrect: Math.max(0, _numVal('set_spinMinCorrect', 10)),
+                quizCount:  Math.max(1, _numVal('set_spinQuizCount', 2)),
+                maxXP:      Math.max(0, _numVal('set_spinMaxXP', 50)),
+            });
+            _forgeSyncPluginEnabled('WheelPlugin', quizSettings.miniGames.spinner.enabled);
+            saveMasterBackup();
+        }
+
         function _saveBoss() {
             if (!quizSettings.miniGames) quizSettings.miniGames = {};
             quizSettings.miniGames.bossFight = Object.assign(quizSettings.miniGames.bossFight || {}, {
                 enabled:   document.getElementById('set_bossEnabled').checked,
-                threshold: parseInt(document.getElementById('set_bossThresh').value) || 10,
-                hp:        parseInt(document.getElementById('set_bossHP').value) || 100,
-                lives:     parseInt(document.getElementById('set_bossLives').value) || 3,
-                winXP:     parseInt(document.getElementById('set_bossWinXP').value) || 100,
+                threshold: Math.max(1, _numVal('set_bossThresh', 10)),
+                hp:        Math.max(1, _numVal('set_bossHP', 100)),
+                lives:     Math.max(1, _numVal('set_bossLives', 3)),
+                winXP:     Math.max(0, _numVal('set_bossWinXP', 100)),
             });
+            quizSettings.miniGames.xpPerCorrect = Math.max(0, _numVal('set_bossXPCorrect', 5));
+            _forgeSyncPluginEnabled('BossFightPlugin', quizSettings.miniGames.bossFight.enabled);
             saveMasterBackup();
         }
 
@@ -8405,6 +8494,15 @@
         // Neue Migrationen immer in dieser Datei ergänzen (neuen Eintrag in MIGRATION_HISTORY + Funktion).
 
         const MIGRATION_HISTORY = [
+            {
+                date:  '2026-10',
+                title: 'Legacy-Admin entfernt, Super-Admin gestrichen',
+                detail: `Der Komplett-Build <code>z_quiz-system-built.html</code> mit eingebettetem Admin
+                         ist entfernt; es gibt nur noch Quiz (<code>z_LeanQuiz.html</code>), Forge und Herald.
+                         Die Einstellung <code>superAdminPassword</code> wird beim Laden verworfen
+                         (<code>ensureSettingsDefaults</code>) und verschwindet mit dem nächsten Master-Speichern.
+                         Keine Änderung an Spieler- oder Fragen-Dateien nötig.`,
+            },
             {
                 date:  '2026-10',
                 title: 'Spieler-Dateien aufräumen: historyArchive',

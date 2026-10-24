@@ -98,14 +98,6 @@ const PluginRegistry = {
         if (typeof entry.instance.enable === 'function') {
             entry.instance.enable();
         }
-
-        if (typeof PLUGIN_SETTINGS_MAP !== 'undefined') {
-            const settingsKey = PLUGIN_SETTINGS_MAP[name];
-            if (settingsKey && typeof getMG === 'function') {
-                const mg = getMG();
-                if (mg[settingsKey]) mg[settingsKey].enabled = true;
-            }
-        }
         
         EventBus.emit('plugin:enabled', { name });
         console.log(`[PluginRegistry] Plugin "${name}" aktiviert`);
@@ -120,14 +112,6 @@ const PluginRegistry = {
         entry.enabled = false;
         if (typeof entry.instance.disable === 'function') {
             entry.instance.disable();
-        }
-
-        if (typeof PLUGIN_SETTINGS_MAP !== 'undefined') {
-            const settingsKey = PLUGIN_SETTINGS_MAP[name];
-            if (settingsKey && typeof getMG === 'function') {
-                const mg = getMG();
-                if (mg[settingsKey]) mg[settingsKey].enabled = false;
-            }
         }
 
         for (const [depName, depEntry] of Object.entries(this._plugins)) {

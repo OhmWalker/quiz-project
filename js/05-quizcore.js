@@ -52,8 +52,7 @@ const QuizCore = {
     
     UI: {
         showScreen(id)       { if (typeof showScreen === 'function') showScreen(id); },
-        toast(msg, type, dur){ Toast.show(msg, type, dur); },
-        showAdminSection(s)  { if (typeof showAdminSection === 'function') showAdminSection(s); }
+        toast(msg, type, dur){ Toast.show(msg, type, dur); }
     },
     
     

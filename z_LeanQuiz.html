@@ -3129,8 +3129,6 @@
                 currentMediaData: null,
                 currentMediaPath: null,
                 viewingUserId: null,
-                superAdminAuthenticated: false,
-                superAdminTargetSection: null,
                 previousRanks: {},
                 selectedAvatarPresets: {}
             },
@@ -3203,8 +3201,7 @@
     
             UI: {
                 showScreen(id)       { if (typeof showScreen === 'function') showScreen(id); },
-                toast(msg, type, dur){ Toast.show(msg, type, dur); },
-                showAdminSection(s)  { if (typeof showAdminSection === 'function') showAdminSection(s); }
+                toast(msg, type, dur){ Toast.show(msg, type, dur); }
             },
     
     
@@ -3322,14 +3319,6 @@
                 if (typeof entry.instance.enable === 'function') {
                     entry.instance.enable();
                 }
-
-                if (typeof PLUGIN_SETTINGS_MAP !== 'undefined') {
-                    const settingsKey = PLUGIN_SETTINGS_MAP[name];
-                    if (settingsKey && typeof getMG === 'function') {
-                        const mg = getMG();
-                        if (mg[settingsKey]) mg[settingsKey].enabled = true;
-                    }
-                }
         
                 EventBus.emit('plugin:enabled', { name });
                 console.log(`[PluginRegistry] Plugin "${name}" aktiviert`);
@@ -3344,14 +3333,6 @@
                 entry.enabled = false;
                 if (typeof entry.instance.disable === 'function') {
                     entry.instance.disable();
-                }
-
-                if (typeof PLUGIN_SETTINGS_MAP !== 'undefined') {
-                    const settingsKey = PLUGIN_SETTINGS_MAP[name];
-                    if (settingsKey && typeof getMG === 'function') {
-                        const mg = getMG();
-                        if (mg[settingsKey]) mg[settingsKey].enabled = false;
-                    }
                 }
 
                 for (const [depName, depEntry] of Object.entries(this._plugins)) {
@@ -4171,7 +4152,7 @@
                 if (PluginRegistry.isEnabled('WheelPlugin') && mg.spinner.enabled !== false) {
                     const correctTotal = currentUser.correctAnswers || 0;
                     const quizCount = currentUser.quizzesTaken || 0;
-                    if (correctTotal >= (mg.spinner.minCorrect || 10) && quizCount % (mg.spinner.quizCount || 2) === 0) {
+                    if (correctTotal >= (mg.spinner.minCorrect ?? 10) && quizCount % (mg.spinner.quizCount || 2) === 0) {
                         WheelPlugin.open('🎰 Glücksrad!', 'Du hast dir eine Drehung verdient!');
                         return; // Boss-Check folgt nach Rad-Schließen via WheelPlugin.close()
                     }
@@ -5455,7 +5436,7 @@
                     }
 
                     s.hp = Math.max(0, s.hp - dmg);
-                    s.xpEarned += getMG().xpPerCorrect || 5;
+                    s.xpEarned += getMG().xpPerCorrect ?? 5;
                     document.getElementById('bossHpFill').style.width = ((s.hp / s.maxHP) * 100) + '%';
                     document.getElementById('bossHpText').textContent = `${s.hp} / ${s.maxHP}`;
 
@@ -6274,8 +6255,8 @@
         // === 18-plugin-registration.js ===
         // 18-plugin-registration.js
         // PluginRegistry.register() für alle Lean-Plugins.
-        // Lean-kritisch: 20-plugin-usermanagement.js ist aus LeanQuiz ausgeschlossen,
-        // daher stehen die Registrierungen hier (Admin-Plugins folgen in 20-…).
+        // Einzige Stelle der Plugin-Registrierung (der Legacy-Admin mit seinen
+        // Admin-Plugins wurde 2026-10 entfernt).
 
         PluginRegistry.register('ClassicQuizPlugin', ClassicQuizPlugin, {category:'quiz', required:true});
         PluginRegistry.register('AbilityPlugin',     AbilityPlugin,     {category:'feature'});
@@ -6324,7 +6305,6 @@
             questionsPerQuiz: CONFIG.QUIZ.DEFAULT_QUESTIONS_PER_QUIZ,
             podiumPlaces: 3,
             adminPassword: 'admin',
-            superAdminPassword: 'super',
             avatarPreset: 1,
             compactPlayerFiles: false,   // Spieler-Dateien ohne Einrückung speichern (~halbe Größe) — Forge → Sicherung
             spacedRepetition: {
@@ -6395,6 +6375,8 @@
             // Timer-Modus wurde 2026-10 entfernt — Altbestand aus Master-JSONs werfen,
             // damit der Block nicht bei jedem Export mitwandert.
             if (settings && 'timer' in settings) delete settings.timer;
+            // Super-Admin-Ebene gab es nur im Legacy-Admin (2026-10 entfernt)
+            if (settings && 'superAdminPassword' in settings) delete settings.superAdminPassword;
 
             for (const [key, defaultVal] of Object.entries(SETTINGS_DEFAULTS)) {
                 if (typeof defaultVal === 'object' && defaultVal !== null) {
@@ -6481,7 +6463,7 @@
 
         // Legt einen neuen Spieler an und hängt ihn an `users`.
         // Gemeinsam genutzt von Lean, Forge und Legacy-Quiz (liegt in 30-globals, das
-        // alle drei Builds einbinden — anders als das UserManagementPlugin).
+        // alle drei Builds einbinden).
         // Gibt das neue User-Objekt zurück oder null bei Fehler (mit Toast).
         function createUser(name) {
             name = (name || '').trim();
@@ -7184,8 +7166,6 @@
 
             renderUserSelect();
             renderLeaderboard();
-            updateQuestionsList();
-            updateUsersList();
 
             // Ordner-Anzeige
             document.getElementById('modeFolder').textContent = loadedFolderName;
@@ -7450,7 +7430,6 @@
                     questionsPerQuiz: CONFIG.QUIZ.DEFAULT_QUESTIONS_PER_QUIZ,
                     podiumPlaces: 3,
                     adminPassword: 'admin',
-                    superAdminPassword: 'super',
                     xpSystem: { ...SETTINGS_DEFAULTS.xpSystem }
                 },
                 badges: null,
@@ -7569,8 +7548,6 @@
             } else {
                 showScreen('startScreen');
                 renderUserSelect();
-                updateQuestionsList();
-                updateUsersList();
                 EventBus.emit('data:loaded', { questions: questions.length, users: users.length });
             }
         }
@@ -7727,9 +7704,6 @@
             document.getElementById(screenId).classList.add('active');
             window.scrollTo(0, 0);
         }
-
-        // showAdminSection, showSuperAdminLogin, closeSuperAdminModal, checkSuperAdminPassword
-        // → 41-admin-functions.js
 
         // XP System Functions
 
@@ -7944,9 +7918,6 @@
             return p[method](...args);
         }
 
-        // testMiniGame, updateRangeDisplay, updateQuizImageWidth, toggleEncryptPlayerData
-        // → 41-admin-functions.js
-
         function renderLeaderboard() { if (!PluginRegistry.isEnabled('LeaderboardPlugin')) return; LeaderboardPlugin.render(); }
 
         function renderNextGoals(user) {
@@ -8112,7 +8083,6 @@
         function abandonQuiz() { ClassicQuizPlugin.abandonQuiz(); }
 
         function hideBadgeSidebars() { BadgePlugin.hideSidebars(); }
-        function renderBadgeAdmin() { if (!PluginRegistry.isEnabled('BadgePlugin')) return; BadgePlugin.renderBadgeAdmin(); }
 
         function backToStart() {
             currentUser = null;
@@ -8128,24 +8098,7 @@
         // → direkt in 15-imagemap-geometry.js als globale Funktionen definiert
 
 
-        function updateQuestionsList() { if (typeof Fragen2Plugin !== 'undefined') Fragen2Plugin.render(); }
-
-
-        // addUser, updateUsersList, deleteUser, showUserDetail, renderUserDetailContent,
-        // renderSuperAdminEditForm, getQuestionStatsArray, authenticateSuperAdmin, saveUserEdits,
-        // exportUserData, importUserData, confirmResetUserStats,
-        // showAdminLogin, closePasswordModal, checkPassword, logoutAdmin,
-        // updateQuizName, updateSpacedRepetitionSettings, updateQuizSettings, updateXPSettings,
-        // updateLeaderboardSettings, updateLeaderboardPreview,
-        // uploadAvatar, removeAvatar, switchAvatarPreset, selectAvatarCircle,
-        // uploadSelectedAvatar, removeSelectedAvatar, updateAvatarCircles, updateAllAvatarCircles,
-        // changePassword, changeSuperAdminPassword,
-        // cleanupSettings + Cleanup-Funktionen
-        // → 41-admin-functions.js
-
-        function updateUsersList() {} // no-op; 41-admin-functions.js überschreibt mit echter Implementierung
-
-        // updateCleanupStrategy … toggleCleanupUser → 41-admin-functions.js
+        // Verwaltung (Fragen, Nutzer, Einstellungen, Aufräumen) liegt in Forge (js/admin/*).
 
         // Statistics
         // Export/Import Functions
@@ -8298,8 +8251,6 @@
             
                     // Initialize UI
                     renderUserSelect();
-                    updateQuestionsList();
-                    updateUsersList();
             
                     showScreen('startScreen');
                     // Kein Popup mehr - direkt zum Startbildschirm
@@ -8339,8 +8290,6 @@
             document.getElementById('quizTitle').textContent = quizSettings.quizName || 'XY Quiz';
     
             renderUserSelect();
-            updateQuestionsList();
-            updateUsersList();
     
             showScreen('startScreen');
         }
@@ -8404,12 +8353,11 @@
             return quizSettings.miniGames;
         }
 
-        // updateMiniGameSettings, populateMiniGameSettings → 41-admin-functions.js
+        // Mini-Game-Einstellungen bearbeitet Forge (Einstellungen → Glücksrad / BossFight)
 
         // === 50-plugin-ui.js ===
         // 50-plugin-ui.js
         // Plugin visibility, mini-game XP, final init — Lean-kritisch
-        // Admin-UI (renderPluginManager, togglePlugin) → 51-plugin-ui-admin.js
         // ============================================================
 
         const PLUGIN_BUTTON_MAP = {};

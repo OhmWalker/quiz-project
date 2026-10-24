@@ -35,7 +35,6 @@ const SETTINGS_DEFAULTS = {
     questionsPerQuiz: CONFIG.QUIZ.DEFAULT_QUESTIONS_PER_QUIZ,
     podiumPlaces: 3,
     adminPassword: 'admin',
-    superAdminPassword: 'super',
     avatarPreset: 1,
     compactPlayerFiles: false,   // Spieler-Dateien ohne Einrückung speichern (~halbe Größe) — Forge → Sicherung
     spacedRepetition: {
@@ -106,6 +105,8 @@ function ensureSettingsDefaults(settings) {
     // Timer-Modus wurde 2026-10 entfernt — Altbestand aus Master-JSONs werfen,
     // damit der Block nicht bei jedem Export mitwandert.
     if (settings && 'timer' in settings) delete settings.timer;
+    // Super-Admin-Ebene gab es nur im Legacy-Admin (2026-10 entfernt)
+    if (settings && 'superAdminPassword' in settings) delete settings.superAdminPassword;
 
     for (const [key, defaultVal] of Object.entries(SETTINGS_DEFAULTS)) {
         if (typeof defaultVal === 'object' && defaultVal !== null) {
@@ -192,7 +193,7 @@ syncToAppState();
 
 // Legt einen neuen Spieler an und hängt ihn an `users`.
 // Gemeinsam genutzt von Lean, Forge und Legacy-Quiz (liegt in 30-globals, das
-// alle drei Builds einbinden — anders als das UserManagementPlugin).
+// alle drei Builds einbinden).
 // Gibt das neue User-Objekt zurück oder null bei Fehler (mit Toast).
 function createUser(name) {
     name = (name || '').trim();

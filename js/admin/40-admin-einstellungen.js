@@ -119,15 +119,28 @@ AdminShell.registerPanel('einstellungen', 'Einstellungen', '⚙', container => {
         ${_saveBtn('_saveLB()', '🏆 Bestenliste speichern')}
     `);
 
+    // ── Glücksrad ─────────────────────────────────────────────────────────────
+    const sp = mg.spinner || {};
+    const secSpinner = _secBlock('🎰 Glücksrad', `
+        ${_row('Aktiviert', '', `<label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+            <input type="checkbox" id="set_spinEnabled" ${sp.enabled !== false ? 'checked' : ''}> Glücksrad einschalten
+        </label>`)}
+        ${_row('Ab richtigen Antworten', 'insgesamt, vorher kein Rad', `<input type="number" id="set_spinMinCorrect" min="0" max="10000" value="${sp.minCorrect ?? 10}" style="width:80px">`)}
+        ${_row('Alle N Quizze', 'Rad nach jedem N-ten Quiz', `<input type="number" id="set_spinQuizCount" min="1" max="100" value="${sp.quizCount ?? 2}" style="width:80px">`)}
+        ${_row('Höchstgewinn', 'XP (Jackpot-Feld; 2. Feld = 80 %)', `<input type="number" id="set_spinMaxXP" min="0" max="10000" value="${sp.maxXP ?? 50}" style="width:80px">`)}
+        ${_saveBtn('_saveSpinner()', '🎰 Glücksrad speichern')}
+    `);
+
     // ── BossFight ─────────────────────────────────────────────────────────────
     const secBoss = _secBlock('🎮 BossFight', `
         ${_row('Aktiviert', '', `<label style="display:flex;align-items:center;gap:8px;cursor:pointer">
             <input type="checkbox" id="set_bossEnabled" ${bf.enabled !== false ? 'checked' : ''}> BossFight einschalten
         </label>`)}
-        ${_row('Min. Fragen im Pool', 'unter diesem Wert kein BossFight', `<input type="number" id="set_bossThresh" min="1" max="100" value="${bf.threshold || 10}" style="width:80px">`)}
+        ${_row('Alle N Quizze', 'Boss-Angebot nach jedem N-ten Quiz', `<input type="number" id="set_bossThresh" min="1" max="100" value="${bf.threshold || 10}" style="width:80px">`)}
         ${_row('Boss-HP', '', `<input type="number" id="set_bossHP" min="10" max="500" value="${bf.hp || 100}" style="width:80px">`)}
         ${_row('Spieler-Leben', 'Fehler bis Niederlage', `<input type="number" id="set_bossLives" min="1" max="10" value="${bf.lives || 3}" style="width:80px">`)}
-        ${_row('Sieg-XP', '', `<input type="number" id="set_bossWinXP" min="0" max="1000" value="${bf.winXP || 100}" style="width:80px">`)}
+        ${_row('Sieg-XP', '', `<input type="number" id="set_bossWinXP" min="0" max="1000" value="${bf.winXP ?? 100}" style="width:80px">`)}
+        ${_row('XP pro richtiger Boss-Antwort', '', `<input type="number" id="set_bossXPCorrect" min="0" max="1000" value="${mg.xpPerCorrect ?? 5}" style="width:80px">`)}
         ${_saveBtn('_saveBoss()', '🎮 BossFight speichern')}
     `);
 
@@ -224,6 +237,7 @@ AdminShell.registerPanel('einstellungen', 'Einstellungen', '⚙', container => {
             ${secSR}
             ${secXP}
             ${secLB}
+            ${secSpinner}
             ${secBoss}
             ${secAvatare}
             ${secSicherheit}
@@ -285,15 +299,37 @@ function _saveLB() {
     saveMasterBackup();
 }
 
+// Mini-Game an/aus muss auch in der Plugin-Konfiguration stehen: das Quiz prüft
+// PluginRegistry.isEnabled(...) UND miniGames.<x>.enabled. Forge hat keine
+// registrierten Plugins → direkt in die geladene pluginConfig schreiben (32-file-io).
+function _forgeSyncPluginEnabled(pluginName, enabled) {
+    if (!_loadedPluginConfig) _loadedPluginConfig = {};
+    _loadedPluginConfig[pluginName] = Object.assign({}, _loadedPluginConfig[pluginName], { enabled: !!enabled });
+}
+
+function _saveSpinner() {
+    if (!quizSettings.miniGames) quizSettings.miniGames = {};
+    quizSettings.miniGames.spinner = Object.assign(quizSettings.miniGames.spinner || {}, {
+        enabled:    document.getElementById('set_spinEnabled').checked,
+        minCorrect: Math.max(0, _numVal('set_spinMinCorrect', 10)),
+        quizCount:  Math.max(1, _numVal('set_spinQuizCount', 2)),
+        maxXP:      Math.max(0, _numVal('set_spinMaxXP', 50)),
+    });
+    _forgeSyncPluginEnabled('WheelPlugin', quizSettings.miniGames.spinner.enabled);
+    saveMasterBackup();
+}
+
 function _saveBoss() {
     if (!quizSettings.miniGames) quizSettings.miniGames = {};
     quizSettings.miniGames.bossFight = Object.assign(quizSettings.miniGames.bossFight || {}, {
         enabled:   document.getElementById('set_bossEnabled').checked,
-        threshold: parseInt(document.getElementById('set_bossThresh').value) || 10,
-        hp:        parseInt(document.getElementById('set_bossHP').value) || 100,
-        lives:     parseInt(document.getElementById('set_bossLives').value) || 3,
-        winXP:     parseInt(document.getElementById('set_bossWinXP').value) || 100,
+        threshold: Math.max(1, _numVal('set_bossThresh', 10)),
+        hp:        Math.max(1, _numVal('set_bossHP', 100)),
+        lives:     Math.max(1, _numVal('set_bossLives', 3)),
+        winXP:     Math.max(0, _numVal('set_bossWinXP', 100)),
     });
+    quizSettings.miniGames.xpPerCorrect = Math.max(0, _numVal('set_bossXPCorrect', 5));
+    _forgeSyncPluginEnabled('BossFightPlugin', quizSettings.miniGames.bossFight.enabled);
     saveMasterBackup();
 }
 

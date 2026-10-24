@@ -31,8 +31,6 @@ function init() {
     } else {
         showScreen('startScreen');
         renderUserSelect();
-        updateQuestionsList();
-        updateUsersList();
         EventBus.emit('data:loaded', { questions: questions.length, users: users.length });
     }
 }
@@ -189,9 +187,6 @@ function showScreen(screenId) {
     document.getElementById(screenId).classList.add('active');
     window.scrollTo(0, 0);
 }
-
-// showAdminSection, showSuperAdminLogin, closeSuperAdminModal, checkSuperAdminPassword
-// → 41-admin-functions.js
 
 // XP System Functions
 
@@ -406,9 +401,6 @@ function call(plugin, method, ...args) {
     return p[method](...args);
 }
 
-// testMiniGame, updateRangeDisplay, updateQuizImageWidth, toggleEncryptPlayerData
-// → 41-admin-functions.js
-
 function renderLeaderboard() { if (!PluginRegistry.isEnabled('LeaderboardPlugin')) return; LeaderboardPlugin.render(); }
 
 function renderNextGoals(user) {
@@ -574,7 +566,6 @@ function restartQuiz() { ClassicQuizPlugin.restartQuiz(); }
 function abandonQuiz() { ClassicQuizPlugin.abandonQuiz(); }
 
 function hideBadgeSidebars() { BadgePlugin.hideSidebars(); }
-function renderBadgeAdmin() { if (!PluginRegistry.isEnabled('BadgePlugin')) return; BadgePlugin.renderBadgeAdmin(); }
 
 function backToStart() {
     currentUser = null;
@@ -590,24 +581,7 @@ function backToStart() {
 // → direkt in 15-imagemap-geometry.js als globale Funktionen definiert
 
 
-function updateQuestionsList() { if (typeof Fragen2Plugin !== 'undefined') Fragen2Plugin.render(); }
-
-
-// addUser, updateUsersList, deleteUser, showUserDetail, renderUserDetailContent,
-// renderSuperAdminEditForm, getQuestionStatsArray, authenticateSuperAdmin, saveUserEdits,
-// exportUserData, importUserData, confirmResetUserStats,
-// showAdminLogin, closePasswordModal, checkPassword, logoutAdmin,
-// updateQuizName, updateSpacedRepetitionSettings, updateQuizSettings, updateXPSettings,
-// updateLeaderboardSettings, updateLeaderboardPreview,
-// uploadAvatar, removeAvatar, switchAvatarPreset, selectAvatarCircle,
-// uploadSelectedAvatar, removeSelectedAvatar, updateAvatarCircles, updateAllAvatarCircles,
-// changePassword, changeSuperAdminPassword,
-// cleanupSettings + Cleanup-Funktionen
-// → 41-admin-functions.js
-
-function updateUsersList() {} // no-op; 41-admin-functions.js überschreibt mit echter Implementierung
-
-// updateCleanupStrategy … toggleCleanupUser → 41-admin-functions.js
+// Verwaltung (Fragen, Nutzer, Einstellungen, Aufräumen) liegt in Forge (js/admin/*).
 
 // Statistics
 // Export/Import Functions
@@ -760,8 +734,6 @@ function importAllData(event) {
             
             // Initialize UI
             renderUserSelect();
-            updateQuestionsList();
-            updateUsersList();
             
             showScreen('startScreen');
             // Kein Popup mehr - direkt zum Startbildschirm
@@ -801,8 +773,6 @@ function createNewDataFile() {
     document.getElementById('quizTitle').textContent = quizSettings.quizName || 'XY Quiz';
     
     renderUserSelect();
-    updateQuestionsList();
-    updateUsersList();
     
     showScreen('startScreen');
 }
@@ -866,4 +836,4 @@ function getMG() {
     return quizSettings.miniGames;
 }
 
-// updateMiniGameSettings, populateMiniGameSettings → 41-admin-functions.js
+// Mini-Game-Einstellungen bearbeitet Forge (Einstellungen → Glücksrad / BossFight)

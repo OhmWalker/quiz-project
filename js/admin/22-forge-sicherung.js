@@ -128,27 +128,8 @@ function _fsDownloadBlob(blob, fileName) {
 function _fsBackupFiles(now) {
     const files = [{ name: masterFileName(now), text: encodeDataFile(buildMasterData(), false) }];
 
-    // Fragen: eine Datei pro Gruppe, Format wie Forge-Export (_fqBuildExportQ).
-    // Core wird beim Laden am Dateinamen erkannt (/^03_questions_CORE/i) — darum
-    // getrennt nach Core/Nicht-Core und der Präfix passend gesetzt bzw. vermieden.
-    const byGroup = {};
-    questions.forEach(q => {
-        const g = q._fileGroup || 'Manuell';
-        const key = (q.isCore ? '1' : '0') + g;
-        if (!byGroup[key]) byGroup[key] = { group: g, core: !!q.isCore, qs: [] };
-        byGroup[key].qs.push(q);
-    });
-    const ts = _fileTimestamp(now);
-    Object.values(byGroup).forEach(g => {
-        const safe = g.group.replace(/[^a-zA-Z0-9äöüÄÖÜß_-]/g, '_');
-        const name = g.core
-            ? (/^core/i.test(safe) ? safe : `CORE_${safe}`)
-            : (/^core/i.test(safe) ? `G_${safe}` : safe);   // "Corey" darf nicht als Core laden
-        files.push({
-            name: `03_questions_${name}_${ts}.json`,
-            text: encodeDataFile({ theme: g.group, questions: g.qs.map(_fqBuildExportQ) }, false)
-        });
-    });
+    // Fragen: eine Datei pro Gruppe, Benennung wie „↓ Exportieren" (_fqExportFiles)
+    _fqExportFiles(now).forEach(f => files.push({ name: f.name, text: encodeDataFile(f.data, false) }));
 
     // Spieler: aktueller Stand (= neueste Datei pro Spieler beim Laden)
     users.forEach(u => files.push({ name: playerFileName(u, now), text: serializePlayer(u) }));

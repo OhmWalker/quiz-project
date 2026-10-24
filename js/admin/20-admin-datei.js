@@ -163,21 +163,6 @@ async function _adminLoadFolder(event) {
 }
 
 
-function _adminDownloadJSON(data, filename) {
-    let content = JSON.stringify(data, null, 2);
-    if (quizSettings.encryptPlayerData) {
-        try { content = btoa(unescape(encodeURIComponent(content))); } catch(e) {}
-    }
-    const blob = new Blob([content], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = filename;
-    document.body.appendChild(a); a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-}
-
-
 function _adminExportAllPlayers() {
     if (!users.length) { Toast.show('Keine Spieler geladen.', 'warning'); return; }
     const now = new Date();

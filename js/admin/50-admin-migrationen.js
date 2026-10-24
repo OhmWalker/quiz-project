@@ -5,6 +5,15 @@
 const MIGRATION_HISTORY = [
     {
         date:  '2026-10',
+        title: 'Legacy-Admin entfernt, Super-Admin gestrichen',
+        detail: `Der Komplett-Build <code>z_quiz-system-built.html</code> mit eingebettetem Admin
+                 ist entfernt; es gibt nur noch Quiz (<code>z_LeanQuiz.html</code>), Forge und Herald.
+                 Die Einstellung <code>superAdminPassword</code> wird beim Laden verworfen
+                 (<code>ensureSettingsDefaults</code>) und verschwindet mit dem nächsten Master-Speichern.
+                 Keine Änderung an Spieler- oder Fragen-Dateien nötig.`,
+    },
+    {
+        date:  '2026-10',
         title: 'Spieler-Dateien aufräumen: historyArchive',
         detail: `Neues optionales Spieler-Feld <code>historyArchive</code>: Forge → Sicherung → Aufräumen
                  fasst History-Einträge älter als N Tage zu Summen zusammen (Tage, Wochen, Verbesserungen,

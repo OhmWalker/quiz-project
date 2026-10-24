@@ -280,7 +280,7 @@ const BossFightPlugin = {
             }
 
             s.hp = Math.max(0, s.hp - dmg);
-            s.xpEarned += getMG().xpPerCorrect || 5;
+            s.xpEarned += getMG().xpPerCorrect ?? 5;
             document.getElementById('bossHpFill').style.width = ((s.hp / s.maxHP) * 100) + '%';
             document.getElementById('bossHpText').textContent = `${s.hp} / ${s.maxHP}`;
 

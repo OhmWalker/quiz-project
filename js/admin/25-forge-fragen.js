@@ -6,6 +6,7 @@ let _fqFormType    = QUESTION_TYPES.MULTIPLE_CHOICE;
 let _fqOpenGroups  = new Set();
 let _fqEditIdx     = -1;   // -1 = neue Frage, >= 0 = Index in questions[]
 let _fqSearchTerm  = '';
+let _fqGroupList   = [];   // Gruppen in Anzeige-Reihenfolge — Handler bekommen Indizes, nie Namen
 
 // Imagemap editor state
 let _fqImMode         = 'circle';
@@ -67,8 +68,9 @@ function _fqRenderList(container) {
     const isSearch = term.length > 0;
 
     const groups = [...new Set(questions.map(q => q._fileGroup || 'Manuell'))].sort();
+    _fqGroupList = groups;
 
-    const tableRows = groups.map(g => {
+    const tableRows = groups.map((g, gi) => {
         const allGroupQs = questions
             .map((q, idx) => ({ q, idx }))
             .filter(({ q }) => (q._fileGroup || 'Manuell') === g);
@@ -83,17 +85,27 @@ function _fqRenderList(container) {
         const arrow  = isOpen ? '▼' : '▶';
         const escapedG = _fqEsc(g);
 
+        const activeCount = allGroupQs.filter(({ q }) => q.active !== false).length;
         const countLabel = isSearch
             ? `<span style="opacity:0.45;font-size:0.8rem;margin-left:8px">${groupQs.length} / ${allGroupQs.length}</span>`
             : `<span style="opacity:0.45;font-size:0.8rem;margin-left:8px">(${allGroupQs.length})</span>`;
+        const activeLabel = `<span style="font-size:0.78rem;margin-left:10px;${activeCount < allGroupQs.length ? 'color:var(--accent-warning,#f39c12)' : 'opacity:0.45'}">aktiv ${activeCount}/${allGroupQs.length}</span>`;
+        const grpBtn = 'padding:2px 8px;margin:0 0 0 6px;font-size:0.72rem;text-transform:none;letter-spacing:0';
 
         const header = `
         <tr style="background:var(--overlay-8);cursor:pointer;user-select:none"
             onclick="_fqToggleGroup('${_fqEscJs(g)}')">
-            <td colspan="5" style="padding:10px 14px;font-weight:600;font-size:0.9rem">
+            <td colspan="6" style="padding:10px 14px;font-weight:600;font-size:0.9rem">
                 <span style="opacity:0.6;margin-right:8px;font-size:0.8rem">${arrow}</span>
                 ${escapedG}
                 ${countLabel}
+                ${activeLabel}
+                <span style="float:right">
+                    <button class="btn btn-small btn-secondary" style="${grpBtn}" title="Alle Fragen der Gruppe aktivieren"
+                        onclick="event.stopPropagation();_fqSetGroupActive(${gi}, true)">✅ alle an</button>
+                    <button class="btn btn-small btn-secondary" style="${grpBtn}" title="Alle Fragen der Gruppe deaktivieren"
+                        onclick="event.stopPropagation();_fqSetGroupActive(${gi}, false)">⛔ alle aus</button>
+                </span>
             </td>
         </tr>`;
 
@@ -103,8 +115,14 @@ function _fqRenderList(container) {
             const expanded = _fqEditIdx === idx;
             const rowBg    = expanded ? 'background:rgba(247,184,1,0.07);' : '';
             const rowArrow = expanded ? '▼' : '▶';
+            const inactive = q.active === false;
             const mainRow  = `
-        <tr style="${rowBg}cursor:pointer;user-select:none" onclick="_fqOpenEdit(${idx})">
+        <tr style="${rowBg}cursor:pointer;user-select:none;${inactive ? 'opacity:0.45;' : ''}" onclick="_fqOpenEdit(${idx})">
+            <td style="width:28px;text-align:center" title="${inactive ? 'inaktiv — wird im Quiz nicht gestellt' : 'aktiv'}"
+                onclick="event.stopPropagation()">
+                <input type="checkbox" ${inactive ? '' : 'checked'} style="width:16px;height:16px;margin:0;cursor:pointer;accent-color:var(--accent)"
+                    onchange="_fqSetActive(${idx}, this.checked)">
+            </td>
             <td style="width:28px;text-align:center;opacity:0.6" title="${q.type}">${typeIcon(q.type)}</td>
             <td style="max-width:360px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">${_fqEsc(q.text)}</td>
             <td class="td-muted td-nowrap" style="font-size:0.82rem">${_fqEsc(q._fileGroup || 'Manuell')}</td>
@@ -112,7 +130,7 @@ function _fqRenderList(container) {
             <td style="width:20px;text-align:center;opacity:0.4;font-size:0.7rem">${rowArrow}</td>
         </tr>`;
             if (!expanded) return mainRow;
-            return mainRow + `<tr><td colspan="5" style="padding:0">${_fqBuildInlineHTML(idx)}</td></tr>`;
+            return mainRow + `<tr><td colspan="6" style="padding:0">${_fqBuildInlineHTML(idx)}</td></tr>`;
         }).join('');
 
         return header + qRows;
@@ -150,6 +168,7 @@ function _fqRenderList(container) {
             <table class="info-table" style="font-size:0.88rem;margin:0">
                 <thead>
                     <tr style="opacity:0.5;font-size:0.78rem;text-transform:uppercase;letter-spacing:1px;background:var(--overlay-5)">
+                        <td style="padding:10px 8px;width:28px" title="aktiv">✓</td>
                         <td style="padding:10px 8px;width:28px"></td>
                         <td style="padding:10px 8px">Frage</td>
                         <td style="padding:10px 8px">Gruppe</td>
@@ -158,10 +177,41 @@ function _fqRenderList(container) {
                     </tr>
                 </thead>
                 <tbody>
-                    ${tableRows || '<tr><td colspan="5" style="text-align:center;padding:30px;opacity:0.4">Keine Treffer</td></tr>'}
+                    ${tableRows || '<tr><td colspan="6" style="text-align:center;padding:30px;opacity:0.4">Keine Treffer</td></tr>'}
                 </tbody>
             </table>
         </div>`;
+}
+
+// ── Aktiv / Inaktiv ───────────────────────────────────────────────────────────
+// Inaktive Fragen stellt das Quiz nicht (auch nicht im Fokus-Quiz). Dauerhaft
+// erst nach „↓ Exportieren" — wie alle Fragen-Änderungen in Forge.
+
+let _fqActiveHintShown = false;
+function _fqActiveHint() {
+    if (_fqActiveHintShown) return;
+    _fqActiveHintShown = true;
+    Toast.show('Aktiv/Inaktiv-Änderungen werden mit „↓ Exportieren" dauerhaft gespeichert.', 'info', 4000);
+}
+
+function _fqSetActive(idx, active) {
+    const q = questions[idx];
+    if (!q) return;
+    q.active = !!active;
+    _fqActiveHint();
+    AdminShell.showPanel('fragen');
+}
+
+function _fqSetGroupActive(gi, active) {
+    const g = _fqGroupList[gi];
+    if (g === undefined) return;
+    let n = 0;
+    questions.forEach(q => {
+        if ((q._fileGroup || 'Manuell') === g && (q.active !== false) !== active) { q.active = active; n++; }
+    });
+    Toast.show(`${active ? '✅' : '⛔'} ${g}: ${n} Frage(n) ${active ? 'aktiviert' : 'deaktiviert'}.`, 'success', 4000);
+    _fqActiveHint();
+    AdminShell.showPanel('fragen');
 }
 
 function _fqToggleGroup(groupName) {
@@ -666,30 +716,36 @@ function _fqSave() {
 
 // ── Export ────────────────────────────────────────────────────────────────────
 
-function _fqStartExport() {
-    if (!questions.length) { Toast.show('Keine Fragen zum Exportieren.', 'warning'); return; }
-
-    // Fragen nach Gruppe gruppieren
+// Fragen → Export-Dateien: eine pro Gruppe, Core getrennt von Nicht-Core.
+// Core erkennt der Lader am Dateinamen (/^03_questions_CORE/i) — darum den
+// Präfix für Core-Gruppen setzen und für Nicht-Core-Gruppen wie „Corey" vermeiden.
+// Gemeinsam genutzt von „↓ Exportieren" und Forge → Sicherung.
+function _fqExportFiles(now) {
     const byGroup = {};
     questions.forEach(q => {
         const g = q._fileGroup || 'Manuell';
-        if (!byGroup[g]) byGroup[g] = [];
-        byGroup[g].push(q);
+        const key = (q.isCore ? '1' : '0') + g;
+        if (!byGroup[key]) byGroup[key] = { group: g, core: !!q.isCore, qs: [] };
+        byGroup[key].qs.push(q);
     });
-
-    const ts = new Date().toISOString().slice(0, 19).replace('T', '_').replace(/:/g, '');
-
-    Object.entries(byGroup).forEach(([group, qs]) => {
-        const safeName = group.replace(/[^a-zA-Z0-9äöüÄÖÜß_-]/g, '_');
-        const data = {
-            theme:     group,
-            questions: qs.map(_fqBuildExportQ)
+    const ts = _fileTimestamp(now);
+    return Object.values(byGroup).map(g => {
+        const safe = g.group.replace(/[^a-zA-Z0-9äöüÄÖÜß_-]/g, '_');
+        const name = g.core
+            ? (/^core/i.test(safe) ? safe : `CORE_${safe}`)
+            : (/^core/i.test(safe) ? `G_${safe}` : safe);
+        return {
+            name: `03_questions_${name}_${ts}.json`,
+            data: { theme: g.group, questions: g.qs.map(_fqBuildExportQ) }
         };
-        const filename = `03_questions_${safeName}_${ts}.json`;
-        _fqDownload(JSON.stringify(data, null, 2), filename);
     });
+}
 
-    Toast.show(`${Object.keys(byGroup).length} Datei(en) exportiert.`, 'success');
+function _fqStartExport() {
+    if (!questions.length) { Toast.show('Keine Fragen zum Exportieren.', 'warning'); return; }
+    const files = _fqExportFiles(new Date());
+    files.forEach(f => _fqDownload(JSON.stringify(f.data, null, 2), f.name));
+    Toast.show(`${files.length} Datei(en) exportiert.`, 'success');
 }
 
 function _fqBuildExportQ(q) {

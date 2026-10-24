@@ -74,6 +74,14 @@ function _renderNutzer(container) {
                     onclick="_adminNutzerDownload(${oi})" style="padding:6px 10px;margin:0">
                     ⬇ Datei
                 </button>
+                <button class="btn btn-small btn-secondary" title="Lernstand und Quiz-Zähler auf 0 setzen"
+                    onclick="_adminNutzerReset(${oi})" style="padding:6px 10px;margin:0">
+                    ♻
+                </button>
+                <button class="btn btn-small btn-danger" title="Spieler entfernen"
+                    onclick="_adminNutzerDelete(${oi})" style="padding:6px 10px;margin:0">
+                    🗑
+                </button>
             </td>
         </tr>`;
     }).join('');
@@ -91,6 +99,7 @@ function _renderNutzer(container) {
                 Nach dem Umbenennen wird die Spieler-Datei heruntergeladen.
                 Die alte Datei im Ordner manuell löschen.
                 Mit ⬇ Datei kann jede Spieler-JSON einzeln exportiert werden.
+                ♻ setzt den Lernstand zurück, 🗑 entfernt einen Spieler (Dateien im Ordner danach selbst löschen).
             </p>
             <table class="info-table" style="font-size:0.9rem">
                 <thead>
@@ -183,9 +192,51 @@ function _adminNutzerNew() {
 
 function _adminNutzerDownload(i) {
     const u = users[i];
-    const now = new Date();
-    const ts = now.toISOString().slice(0,19).replace('T','_').replace(/:/g,'');
-    const safeName = (u.name || 'unbekannt').replace(/[^a-zA-Z0-9_\-]/g, '_');
-    _adminDownloadJSON(u, `04_operator_${safeName}_${ts}.json`);
+    _downloadText(serializePlayer(u), playerFileName(u));
     Toast.show(`${u.name} heruntergeladen.`, 'success');
+}
+
+function _adminNutzerRerender() {
+    const panel = document.getElementById('adminPanel_nutzer');
+    if (panel) _renderNutzer(panel);
+}
+
+// Wie der frühere Legacy-Admin: Lernstand + Quiz-/Antwort-Zähler auf 0.
+// XP, Level, Badges, Fähigkeiten und History bleiben unangetastet.
+function _adminNutzerReset(i) {
+    const u = users[i];
+    if (!u) return;
+    GameDialog.showConfirm('♻️', 'Statistik zurücksetzen?',
+        `Für <strong>${_ffEsc(u.name)}</strong> werden der Lernstand aller Fragen sowie die Zähler
+         „Quizze" und „Antworten" auf 0 gesetzt. XP, Level, Badges und Fähigkeiten bleiben.<br><br>
+         Danach wird die neue Spieler-Datei heruntergeladen — sie in den Quiz-Ordner legen.`,
+        () => {
+            u.questionStats = {};
+            u.correctAnswers = 0;
+            u.totalAnswers = 0;
+            u.quizzesTaken = 0;
+            _adminNutzerDownload(i);
+            _adminNutzerRerender();
+        }, null);
+}
+
+// Entfernt den Spieler aus den geladenen Daten. Dateien im Ordner kann der
+// Browser nicht löschen — ohne manuelles Löschen ist er beim nächsten Laden zurück.
+function _adminNutzerDelete(i) {
+    const u = users[i];
+    if (!u) return;
+    const lastFile = (loadedPlayerFiles.find(p => p.playerName === u.name) || {}).name;
+    GameDialog.showConfirm('🗑️', 'Spieler entfernen?',
+        `<strong>${_ffEsc(u.name)}</strong> wird aus den geladenen Daten entfernt.<br><br>
+         Danach im Quiz-Ordner <strong>alle Dateien dieses Spielers</strong> löschen
+         (${lastFile ? 'zuletzt geladen: ' + _ffEsc(lastFile) : 'Dateien 04_operator_…'}) —
+         sonst ist er beim nächsten Laden wieder da.`,
+        () => {
+            users.splice(i, 1);
+            loadedPlayerFiles = loadedPlayerFiles.filter(p => p.playerName !== u.name);
+            if (currentUser === u) currentUser = null;
+            syncToAppState();
+            _adminNutzerRerender();
+            Toast.show(`🗑 ${u.name} entfernt. Jetzt die Dateien des Spielers im Quiz-Ordner löschen.`, 'warning');
+        }, null);
 }

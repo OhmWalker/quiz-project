@@ -648,7 +648,7 @@ const ClassicQuizPlugin = {
         if (PluginRegistry.isEnabled('WheelPlugin') && mg.spinner.enabled !== false) {
             const correctTotal = currentUser.correctAnswers || 0;
             const quizCount = currentUser.quizzesTaken || 0;
-            if (correctTotal >= (mg.spinner.minCorrect || 10) && quizCount % (mg.spinner.quizCount || 2) === 0) {
+            if (correctTotal >= (mg.spinner.minCorrect ?? 10) && quizCount % (mg.spinner.quizCount || 2) === 0) {
                 WheelPlugin.open('🎰 Glücksrad!', 'Du hast dir eine Drehung verdient!');
                 return; // Boss-Check folgt nach Rad-Schließen via WheelPlugin.close()
             }
