@@ -45,8 +45,17 @@ function _fqMatchesSearch(q, term) {
     return false;
 }
 
+let _fqSearchTimer = null;
+
 function _fqSearch(val) {
+    // Entprellt: ohne Verzögerung würde jeder Tastendruck das ganze Panel
+    // (bei Suche alle Treffergruppen aufgeklappt) neu aufbauen.
     _fqSearchTerm = val;
+    clearTimeout(_fqSearchTimer);
+    _fqSearchTimer = setTimeout(_fqSearchApply, 200);
+}
+
+function _fqSearchApply() {
     AdminShell.showPanel('fragen');
     const inp = document.getElementById('fqSearchInput');
     if (inp) { inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); }
@@ -80,7 +89,7 @@ function _fqRenderList(container) {
 
         const header = `
         <tr style="background:var(--overlay-8);cursor:pointer;user-select:none"
-            onclick="_fqToggleGroup('${escapedG}')">
+            onclick="_fqToggleGroup('${_fqEscJs(g)}')">
             <td colspan="5" style="padding:10px 14px;font-weight:600;font-size:0.9rem">
                 <span style="opacity:0.6;margin-right:8px;font-size:0.8rem">${arrow}</span>
                 ${escapedG}
@@ -993,7 +1002,21 @@ function _fqGetTargets() {
 }
 
 function _fqEsc(s) {
-    return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+    return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+// Für Namen, die in einem einfach-gequoteten JS-String INNERHALB eines
+// HTML-Attributs stehen (z.B. onclick="f('…')"). Reihenfolge ist wichtig:
+// der Browser dekodiert erst die HTML-Entities, danach liest JS den String —
+// darum muss das Apostroph per Backslash (nicht per &#39;) entschärft werden.
+function _fqEscJs(s) {
+    return String(s == null ? '' : s)
+        .replace(/\\/g, '\\\\')
+        .replace(/'/g, "\\'")
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
 }
 
 // ── Import ────────────────────────────────────────────────────────────────────

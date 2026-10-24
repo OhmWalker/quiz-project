@@ -133,7 +133,7 @@ Nach jedem Master-JSON-Load werden die geladenen SR-Werte mit `SR_EXPECTED` verg
 |---|---|---|---|
 | fiftyFifty | `_fifty50Sessions` | 1 | Burst-Sessions (2+ Quizze/h) |
 | skip | `totalQuizzes` | 10 | Alle 10 Quizze = 1 Skip |
-| hint | `uniqueQuestions` | 20 | Alle 20 versch. Fragen = 1 Hinweis |
+| hint | `totalAnswers` | 15 | Alle 15 beantworteten Fragen = 1 Hinweis |
 | doubleXP | `perfectQuizzes` | 1 | Jedes 100%-Quiz = 1 Doppel-XP |
 | shield | `currentStreak` | 7 | Streak von 7 = 1 Schild |
 | secondChance | `currentStreak` | 3 | Streak von 3 = 1 zweite Chance |
@@ -143,6 +143,24 @@ Nach jedem Master-JSON-Load werden die geladenen SR-Werte mit `SR_EXPECTED` verg
 
 - `chargesEarned`-Akkumulationsmodell: Watermark verhindert Doppel-Vergabe
 - Neue Charges nur wenn `floor(stat/earnPer) > chargesEarned[key]`
+
+### Reichweite der Fähigkeiten (`perQuestion` / `passive` in `DEFS`)
+| Reichweite | Fähigkeiten | Verhalten |
+|---|---|---|
+| `perQuestion: true` | fiftyFifty, skip, hint, doubleXP, swap, phoneJoker | Wirkt nur auf die aktuelle Frage. Nach der Antwort gesperrt (`useAbility` bricht ab, Button wird ausgegraut) und beim Frageswechsel zurückgesetzt. |
+| `passive: true` | shield, secondChance | Bleibt scharf, bis der Schadensfall eintritt — ggf. über mehrere Fragen bis zum Quizende. Wird in `startQuiz` zurückgesetzt, **nicht** in `displayQuestion`. |
+| quizweit | teamBonus | `currentUser.teamBonusActive` gilt für den Rest des Quiz, wird in `showResults`/`abandonQuiz` und in `normalizeUser` gelöscht. |
+
+- Jede Ladung wird in `useAbility` **vor** dem Effekt abgezogen; kann der Effekt nicht
+  angewendet werden (falscher Fragetyp, kein Hinweistext, kein Mitspieler, Dialog-Abbruch),
+  gibt `_refund(key)` Ladung **und** `badgeStats.abilitiesUsed`-Zähler zurück.
+  Der Zähler wird deshalb vor `_applyEffect()` erhöht — sonst ließe sich über
+  Dialog-Abbrüche `_phoneJokerUsed` (= earnStat von teamBonus) hochzählen.
+- `scope`-Text je Fähigkeit erscheint im Mouse-over; bei shield/secondChance/teamBonus
+  zusätzlich als Toast mit 4 Sek. Dauer (`SCOPE_HINT_MS`), weil deren Reichweite
+  über die aktuelle Frage hinausgeht.
+- Nicht gebrauchter Schutz wird am Quizende gemeldet (`_reportUnusedProtection`) —
+  ohne Rückerstattung, aber der Spieler erfährt, wo die Ladung geblieben ist.
 
 ## Badge-System
 - `calculateBadgeStats` nutzt `q.questionId` für groupsPlayed
@@ -159,9 +177,13 @@ Nach jedem Master-JSON-Load werden die geladenen SR-Werte mit `SR_EXPECTED` verg
 `id`, `name`, `totalXP`, `level`, `quizzesTaken`, `correctAnswers`, `totalAnswers`,
 `streak`, `history[]`, `badgeStats{}`, `questionStats{}`, `lastQuizDate`,
 `dailyQuizCount`, `abilities{}`, `chargesEarned{}`, `sentPhoneJokers[]`,
-`pendingPhoneJoker[]`, `pendingJokerBonus`, `sidebarPositions{}`
+`pendingPhoneJoker[]`, `pendingJokerBonus`, `pendingTeamBonusQuiz`, `sidebarPositions{}`
 
 - `pendingJokerBonus`: XP-Gutschrift für Phone-Joker-Sender (wird bei nächstem USER_SELECTED via `checkPendingJokers()` ausgezahlt)
+- `pendingTeamBonusQuiz`: Anzahl Quizze mit 3× XP, die ein Mitspieler per Team-Bonus geschenkt hat. Einlösung in `_redeemPendingTeamBonus()` bei QUIZ_STARTED (nicht beim Auswählen des Spielers — sonst verfällt der Bonus ungenutzt). Ersetzt das alte Pauschal-Feld `pendingTeamBonus` (+50 XP).
+- `focusQuiz`: Fokus-Quiz-Stand, siehe Abschnitt „Fokus-Quiz". Struktur:
+  `{ streak, bestStreak, completions, playedToday, lastPlayed, lastDate, periodKey, rewardedPeriod }`
+  — angelegt/koersiert in `normalizeFocusState()` (`js/30-globals.js`), aufgerufen aus `normalizeUser`
 
 ### Phone-Joker: Phasen-Reihenfolge beim Folder-Load (`js/32-file-io.js`)
 Kritisch: Phase 2 (Quittungen aufräumen) muss **vor** Phase 3 (sentPhoneJokers bereinigen + pending neu erzeugen) laufen.
@@ -176,9 +198,10 @@ Kritisch: Phase 2 (Quittungen aufräumen) muss **vor** Phase 3 (sentPhoneJokers 
 - `_q`: Fragetext-Ausschnitt (max. 60 Zeichen, kein HTML) — wird nur beim ersten Anlegen gesetzt, danach nicht mehr aktualisiert
 
 ### History-Einträge
-`{ date, correct, total, xp, score, skipped? }`
+`{ date, correct, total, xp, score, skipped?, groups, focus? }`
 - `skipped`: Anzahl übersprungener Fragen (Skip/Phone-Joker) — nur gesetzt wenn > 0
 - `total` zählt nur beantwortete Fragen (ohne Skips), Score berechnet sich nur daraus
+- `focus`: `true` bei Fokus-Quizzen — nur gesetzt wenn Fokus-Quiz
 
 ## Forge (`forge.html`)
 - Gebaut via `python3 build.py` — Core-JS + `js/admin/*.js`
@@ -193,6 +216,8 @@ Kritisch: Phase 2 (Quittungen aufräumen) muss **vor** Phase 3 (sentPhoneJokers 
 | Datei | `20-admin-datei.js` | Ordner laden (Master-JSON + Spieler-JSONs) |
 | Fragen | `25-forge-fragen.js` | Fragen erstellen/bearbeiten (MC, Text, Bildklick) + Export + **📥 Import**; Klick auf Zeile klappt Inline-Edit auf; ID editierbar mit Duplikat-Prüfung; **Suchfeld** filtert alle Gruppen live |
 | Nutzer | `30-admin-nutzer.js` | Umbenennen, Übersicht, sortierbar; **Bug (gefixt 2026-04):** Sort muss `adminPanel_nutzer` verwenden, nicht `adminContent` — sonst werden alle anderen Panels zerstört |
+| Sicherung | `22-forge-sicherung.js` | **Sicherung** als ein ZIP (Master + Fragen je Gruppe + aktuelle Spieler-Dateien) und **Spieler-Dateien aufräumen** (siehe unten) |
+| Fokus-Quiz | `35-forge-fokus.js` | Einstellungen, Rotationsplan (↑/↓, Woche/Monat), Vorschau der nächsten Zeiträume |
 | Einstellungen | `40-admin-einstellungen.js` | earnPer/earnStat für Fähigkeiten |
 | Badges | `42-admin-badges.js` | Badges aktivieren/deaktivieren, Icon anpassen; speichert in `quizSettings.badges` (Overrides auf `BadgePlugin.DEFAULT_BADGES`) |
 | *(Trennlinie)* | `45-admin-separator.js` | `AdminShell.registerSeparator()` |
@@ -253,6 +278,73 @@ document.getElementById('bossQuestionCard').innerHTML =
 - Fokus-Punkte: Ende von `_checkBossTrigger()` (kein Mini-Game) + `BossFightPlugin.close()` (nach Boss)
 - Rad-XP und Boss-XP werden in `currentUser` geschrieben; der Export liest `currentUser` → Reihenfolge ist korrekt wenn Fokus erst nach Kette kommt
 
+## Fokus-Quiz (`js/13-plugin-focus-quiz.js`, 2026-10)
+Zusatz-Quiz aus **einer** Nicht-Core-Gruppe, freigeschaltet nach dem ersten normalen Quiz des Tages
+(`lastQuizDate === heute && dailyQuizCount >= 1`). Kreis `#focusQuizBtn` mit Fadenkreuz-SVG oben rechts neben
+der Siegertreppe (in `#leaderboardWrap`, index.html + lean-index.html), 168px wie die Podium-Avatare; darunter
+Gruppe + Multiplikator + Serie. Erscheint nur wenn freigeschaltet; Mouse-over erklärt die Regeln.
+Position `left: calc(50% + 425px)` (von der Treppenmitte aus, nicht am Kartenrand — sonst unter der rechten
+Fähigkeiten-Leiste). Unter 1600px Fensterbreite rückt der Kreis mittig über die Treppe.
+
+- **Einstellungen:** `quizSettings.focusQuiz` — `enabled, questionCount (10), successPct (100), xpMultiplier (3),
+  streakTarget (5), completionXP (1000), maxPerDay (0 = unbegrenzt), rotationStart, rotationLoop, rotation[]`
+- **Rotationsplan:** `rotation = [{ group, unit: 'week'|'month', length }]`, Array-Reihenfolge = Rotation, ab
+  `rotationStart` aneinandergereiht (keine Datumspaare gespeichert). Monat = Kalendermonat, Tag > Monatsende
+  wird gekappt. Berechnung in `getFocusPeriods()` / `getActiveFocusPeriod()` (`js/30-globals.js`, weil Forge sie
+  für die Vorschau braucht). Zeitraum-Schlüssel `periodKey = Gruppe@YYYY-MM-DD`.
+- **Ablauf:** `FocusQuizPlugin.start()` → `ClassicQuizPlugin.selectFocusQuestions()` (SR-gewichtet über
+  `_srTools()`, ohne Core-Quoten/Fresh/maxPerGroup, Cooldown nur als Lückenfüller) →
+  `ClassicQuizPlugin.startQuiz({ focus: true, questions })`. Telefon-Joker werden im Fokus-Quiz nicht eingefügt;
+  Tausch-Joker tauscht nur innerhalb der Fokus-Gruppe.
+- **`focusQuizActive`** (`js/40-init-and-functions.js`): flüchtige globale Variable, **nie** auf `currentUser`.
+  Gesetzt in `startQuiz` (jeder normale Start setzt sie zurück), gelöscht nach `QUIZ_COMPLETED`/`QUIZ_ABANDONED`
+  und beim Abbruch ohne Antwort.
+- **XP:** Multiplikator in `_processAnswer` nur auf richtige Antworten, danach greift wie immer
+  `getDailyXPMultiplier()` (Fokus-Quiz = Folge-Quiz des Tages). Vollendungs-Prämie über `applyMiniGameXP`.
+- **Statistik:** zählt voll — `questionStats`, `quizzesTaken`, `badgeStats.totalQuizzes`, Bestenliste,
+  Mini-Game-Trigger. History-Eintrag mit `focus: true`.
+- **Serie (Nutzer-Entscheidung 2026-10-24):** zählt Versuche, nicht Tage. Gehört zu einem Zeitraum —
+  Fokus-Wechsel setzt sie auf 0. Prämie **einmal pro Zeitraum** (`rewardedPeriod`); danach steht die Serie
+  still bis zum Wechsel. Unter `successPct` oder Abbruch nach ≥ 1 Antwort → Serie 0 (Abbruch-Dialog warnt).
+- **Bekannte Eigenschaft:** unbegrenzt spielbar + Serie = Versuche → Prämie durch Wiederholen erreichbar.
+  Drosseln ohne Codeänderung über `maxPerDay`.
+
+## Spieler-JSON aufräumen — Übergabe (Forge → Sicherung, 2026-10)
+Ziel: Spieler-Datei verkleinern, ohne dass Erfolge verloren gehen. Gemessen (Simulation 2 Jahre, 427 Fragen,
+2 Quiz/Tag): ~2 MB eingerückt / ~1 MB kompakt. Davon Lernstand je Frage nur ~55 KB — der Rest ist Verlauf.
+
+| Feld | Gelesen von | Beim Aufräumen |
+|---|---|---|
+| `totalXP`, `level`, `quizzesTaken`, `correctAnswers`, `totalAnswers`, `streak`, `_lastStreakDate`, `lastQuizDate`, `dailyQuizCount` | Quiz, Bestenliste, Level | unverändert |
+| `badgeStats` (alle Zähler inkl. `abilitiesUsed`) | Badges, Fähigkeiten | unverändert |
+| `_badgeTiers` | Badges (Wasserstand erreichter Stufen) | unverändert |
+| `abilities`, `chargesEarned` | Fähigkeiten (Ladungen + Wasserstand) | unverändert |
+| `sentPhoneJokers`, `pendingPhoneJoker`, `pendingJokerBonus`, `pendingTeamBonusQuiz`, `focusQuiz`, `sidebarPositions` | Joker, Team, Fokus, UI | unverändert |
+| `questionStats[id].asked/correct/consecutiveCorrect/lastAsked/_q` | SR-Auswahl, Badges (Entdecker/Meister/Vielspieler), Auswertung | unverändert |
+| `questionStats[id].askLog` | nur Forge-Auswertung (Rückkehr-Diagnose) | letzte N Einträge (Std. 5) |
+| `questionStats[id].monthlyStats` | nur Forge-Auswertung (Monats-Trend) | letzte N Monate (Std. 6) |
+| `history[]` | Bestenliste (letzte `maxAgeDays`), Badges (Tage, Wochen, 1. Tag, Verbesserungen, Comebacks, Marathon), Fähigkeiten (50/50 = Burst-Sessions, Tausch = 3er-Tage), Auswertung | älter als N Tage (Std. 180, mind. `maxAgeDays`) → `historyArchive` |
+
+- **`historyArchive`**: `{ quizzes, uniqueDays, activeWeeks, firstDayQuizzes, improvements, comebacks, marathonDays,
+  burstSessions, activeDays3, lastDay, lastWeekKey, lastDate, lastScore, until, months{YYYY-MM:{quizzes,correct,total,xp}} }`
+- **`computeHistoryStats(history, archive)`** (`js/30-globals.js`) ist die einzige Berechnung dieser Kennzahlen —
+  Badges (`_computeBadgeStats`) und Fähigkeiten (`getStatValues`) nutzen sie. Ohne Archiv identisch zum alten Verhalten.
+  Die `last*`-Felder zählen Paare über die Schnittkante (Verbesserung/Comeback) und verhindern doppelte Kalenderwochen.
+  Zählt immer **chronologisch sortiert** (Badges zählten vorher in Speicher-Reihenfolge — Unterschied nur bei
+  History außer der Reihe, z.B. nach Uhr-Verstellung).
+- **Schnitt-Regel:** nie innerhalb eines Tages, nie mit < 1 h Abstand → Tages- und Burst-Zählungen bleiben exakt.
+  Mehrfaches Aufräumen addiert ins bestehende Archiv.
+- **Warum Archiv statt einfach kürzen:** Fähigkeiten vergeben Ladungen über `floor(stat/earnPer) > chargesEarned`.
+  Sinkt der History-Wert, bekäme der Spieler lange keine neuen Ladungen. Badge-Stufen gingen nicht verloren
+  (`_badgeTiers`), aber der Fortschritt zur nächsten Stufe fiele zurück.
+- Aufräumen arbeitet auf Kopien und lädt ein ZIP mit neuen `04_operator_*`-Dateien; beim Laden gewinnt die neueste
+  Datei pro Spieler. Forge-Auswertung zeigt danach nur die behaltene History (Altes steckt in der Sicherung).
+- **`compactPlayerFiles`** (Master-Einstellung, Std. aus): Spieler-Dateien ohne Einrückung (~halbe Größe),
+  gilt für `serializePlayer()` überall.
+- Serialisierung zentral in `js/32-file-io.js`: `playerFileName`, `serializePlayer`, `encodeDataFile`,
+  `buildMasterData`, `masterFileName`. `buildMasterData` übernimmt die beim Laden gelesene `pluginConfig`
+  (`_loadedPluginConfig`) — Forge hat keine registrierten Plugins und schrieb vorher eine leere Konfiguration.
+
 ## Feedback & Toasts
 - **Toast-Dauer:** 8 Sekunden (`TOAST_DURATION_MS` in `js/01-constants.js`)
 - **Ability-Charge-Toast:** bei jeder neu verdienten Ladung: `[Icon] [Name]: +N Ladung(en) verdient!`
@@ -269,6 +361,7 @@ document.getElementById('bossQuestionCard').innerHTML =
 - **Legacy-Feldnamen** `frage`, `antworten`, `richtig`, `antwort`, `typ` (2026-04): Alle Fragen im kanonischen Format
 - **Watermark-Migrations-Block** in AbilityPlugin (2026-04): `used`-Feld und Migration entfernt
 - **`migrateUserQuestionStats()`** (2026-04): Konvertierung alter Feldnamen entfernt
+- **Timer-Modus** (2026-10): komplett entfernt — `quizSettings.timer`, `SETTINGS_DEFAULTS.timer`, `CONFIG.TIMER`, der Forge-Einstellungsblock „⏱️ Timer-Modus", `clearAutoAdvance()`/`autoAdvanceTimeout` und die undeklarierte Variable `timerModeActive` im Quiz. Im Quiz war seit langem keine Timer-Logik mehr vorhanden; `timerModeActive` warf bei jedem Antwort-Klick einen Fehler. Ein alter `settings.timer`-Block wird in `ensureSettingsDefaults()` beim Laden verworfen. Mit entfernt: die Boss-Timerleiste (`bossTimerBar`/`bossTimerFill` + `.boss-timer-*`-CSS) — sie stand in beiden Quiz-Vorlagen auf `display:none` und wurde von **keiner** Zeile JavaScript angesteuert; kein Boss-Angriff arbeitet mit Zeitdruck. Der Feature-Text nannte „Timer-Verkürzung" als Boss-Angriff, den es nie gab — ebenfalls korrigiert.
 
 ## Workflow-Präferenzen
 - Nach CSS/JS-Änderung immer `python3 build.py` ausführen

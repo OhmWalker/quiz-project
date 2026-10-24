@@ -91,7 +91,9 @@ function sanitizeHTML(str) {
     if (!str) return '';
     const div = document.createElement('div');
     div.textContent = str;
-    return div.innerHTML;
+    // Anführungszeichen mitkodieren — sonst beendet ein " im Text
+    // ein value="…"-Attribut vorzeitig und der Rest wird abgeschnitten.
+    return div.innerHTML.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
 
@@ -382,8 +384,10 @@ function renderUserSelect() {
             }
         }
     }
-    
+
     renderLeaderboard();
+    // Fokus-Quiz-Knopf hängt vom gewählten Spieler und seinem Tagesstand ab
+    if (typeof FocusQuizPlugin !== 'undefined') FocusQuizPlugin.renderButton();
 }
 
 // Generischer Plugin-Dispatcher
@@ -530,12 +534,10 @@ let abilityUsedThisQuestion = {};
 let doubleXPActive = false;
 let shieldActive = false;
 let secondChanceArmed = false;
-
-let autoAdvanceTimeout = null;
-
-function clearAutoAdvance() {
-    if (autoAdvanceTimeout) { clearTimeout(autoAdvanceTimeout); autoAdvanceTimeout = null; }
-}
+// Fokus-Quiz läuft gerade. Bewusst flüchtig und NICHT auf currentUser —
+// so kann es nie in eine Spieler-Datei exportiert werden (Lehre aus teamBonusActive).
+// Gesetzt/gelöscht ausschließlich in ClassicQuizPlugin (startQuiz, showResults, abandonQuiz).
+let focusQuizActive = false;
 
 function useAbility(key) { if (!PluginRegistry.isEnabled('AbilityPlugin')) return; AbilityPlugin.useAbility(key); }
 

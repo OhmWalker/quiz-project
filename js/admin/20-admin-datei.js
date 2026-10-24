@@ -89,6 +89,8 @@ async function _adminLoadFolder(event) {
         masterFiles.sort((a, b) => b.lastModified - a.lastModified);
         const master = masterFiles[0].data;
         quizSettings = ensureSettingsDefaults(Object.assign({}, quizSettings, master.settings || {}));
+        // Plugin-Konfiguration durchreichen — Forge registriert keine Plugins (32-file-io: buildMasterData)
+        _loadedPluginConfig = master.pluginConfig || null;
     }
 
     // Fragen laden
@@ -97,6 +99,8 @@ async function _adminLoadFolder(event) {
     questionFiles.forEach(qf => {
         const fileTheme = qf.data.theme || '';
         const qList = qf.data.questions || [];
+        // Core wird wie im Quiz am Dateinamen erkannt (kein Feld in der JSON)
+        const isCore = /^03_questions_CORE/i.test(qf.name);
         let loaded = 0;
         qList.forEach((q, qi) => {
             try {
@@ -105,6 +109,7 @@ async function _adminLoadFolder(event) {
                 const isDupe = n.questionId && questions.some(eq => eq.questionId === n.questionId);
                 if (isDupe) return;
                 n.sourceFile = qf.name;
+                n.isCore = isCore;
                 questions.push(n);
                 loaded++;
             } catch { /* fehlerhafte Frage überspringen */ }
@@ -176,11 +181,7 @@ function _adminDownloadJSON(data, filename) {
 function _adminExportAllPlayers() {
     if (!users.length) { Toast.show('Keine Spieler geladen.', 'warning'); return; }
     const now = new Date();
-    const ts = now.toISOString().slice(0,19).replace('T','_').replace(/:/g,'');
-    users.forEach(u => {
-        const safeName = (u.name || 'unbekannt').replace(/[^a-zA-Z0-9_\-]/g, '_');
-        _adminDownloadJSON(u, `04_operator_${safeName}_${ts}.json`);
-    });
+    users.forEach(u => _downloadText(serializePlayer(u), playerFileName(u, now)));
     Toast.show(`${users.length} Spieler-Dateien werden heruntergeladen.`, 'success');
 }
 

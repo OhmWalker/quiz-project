@@ -50,6 +50,7 @@ const BadgePlugin = {
     init() {
         this._initSidebarDrag();
         EventBus.on(EventBus.EVENTS.USER_SELECTED, (data) => {
+            this._statsVersion++;
             this.renderSidebars(data.user);
         }, 'BadgePlugin');
         EventBus.on(EventBus.EVENTS.QUIZ_STARTED, () => {
@@ -62,6 +63,7 @@ const BadgePlugin = {
 
     checkBadges(user) {
         if (!user || !PluginRegistry.isEnabled('BadgePlugin')) return;
+        this._statsVersion++;   // Stats haben sich geändert → Cache verwerfen
         const defs = this.getBadgeDefinitions();
         const stats = this.calculateBadgeStats(user);
         if (!user._badgeTiers) user._badgeTiers = {};
@@ -87,7 +89,21 @@ const BadgePlugin = {
         return defs;
     },
 
+    // Gecachter Zugang: die eigentliche Berechnung läuft mehrfach über die
+    // komplette History (ein Date-Parse pro Eintrag) und über alle Fragen.
+    // Der Tooltip rief sie bei JEDEM Mouseover neu auf → sichtbares Ruckeln.
+    _statsVersion: 0,
+    _statsCache: null,
     calculateBadgeStats(user) {
+        if (!user) return {};
+        const c = this._statsCache;
+        if (c && c.user === user && c.version === this._statsVersion) return c.stats;
+        const stats = this._computeBadgeStats(user);
+        this._statsCache = { user: user, version: this._statsVersion, stats: stats };
+        return stats;
+    },
+
+    _computeBadgeStats(user) {
         if (!user) return {};
         const bs = user.badgeStats || {};
         const qs = user.questionStats || {};
@@ -95,46 +111,18 @@ const BadgePlugin = {
         const stats = { ...bs };
         stats.totalXP = user.totalXP || 0;
         stats.level = user.level || 1;
-        // Unique days
-        const days = new Set(hist.map(h => new Date(h.date).toDateString()));
-        stats.uniqueDays = days.size;
-        // First day quizzes
-        if (hist.length > 0) {
-            const firstDay = new Date(hist[0].date).toDateString();
-            stats.firstDayQuizzes = hist.filter(h => new Date(h.date).toDateString() === firstDay).length;
-        }
+        // History-Kennzahlen inkl. archivierter (aufgeräumter) History — 30-globals.js
+        const hs = computeHistoryStats(hist, user.historyArchive);
+        stats.uniqueDays      = hs.uniqueDays;        // Tage mit Quiz
+        stats.firstDayQuizzes = hs.firstDayQuizzes;   // Quizze am 1. Tag
+        stats.activeWeeks     = hs.activeWeeks;
+        stats.improvements    = hs.improvements;      // besser als das Quiz davor
+        stats.comebacks       = hs.comebacks;         // Quiz nach 7+ Tagen Pause
+        stats.marathonDays    = hs.marathonDays;      // Tage mit 10+ Quizzen
         // Unique questions
         stats.uniqueQuestions = Object.keys(qs).length;
         // Mastered questions (3+ correct)
         stats.masteredQuestions = Object.values(qs).filter(s => (s.correct || 0) >= 3).length;
-        // Active weeks
-        const weeks = new Set(hist.map(h => {
-            const d = new Date(h.date);
-            const yr = d.getFullYear();
-            const wk = Math.ceil(((d - new Date(yr, 0, 1)) / 86400000 + new Date(yr, 0, 1).getDay() + 1) / 7);
-            return `${yr}-W${wk}`;
-        }));
-        stats.activeWeeks = weeks.size;
-        // Improvements (better than last quiz)
-        let improvements = 0;
-        for (let i = 1; i < hist.length; i++) {
-            if ((hist[i].score || 0) > (hist[i-1].score || 0)) improvements++;
-        }
-        stats.improvements = improvements;
-        // Comebacks (quiz after 7+ day gap)
-        let comebacks = 0;
-        for (let i = 1; i < hist.length; i++) {
-            const gap = (new Date(hist[i].date) - new Date(hist[i-1].date)) / 86400000;
-            if (gap >= 7) comebacks++;
-        }
-        stats.comebacks = comebacks;
-        // Marathon days (10+ quizzes in a day)
-        const dayCounts = {};
-        hist.forEach(h => {
-            const d = new Date(h.date).toDateString();
-            dayCounts[d] = (dayCounts[d] || 0) + 1;
-        });
-        stats.marathonDays = Object.values(dayCounts).filter(c => c >= 10).length;
         // Groups played
         const groups = new Set();
         (questions || []).forEach(q => {
@@ -187,6 +175,7 @@ const BadgePlugin = {
 
     renderSidebars(user) {
         if (!user || !PluginRegistry.isEnabled('BadgePlugin')) return;
+        this._statsVersion++;   // Render = Zustand kann sich geändert haben
         this.updateSidebarTopVar();
         const defs = this.getBadgeDefinitions();
         const stats = this.calculateBadgeStats(user);

@@ -23,6 +23,7 @@ const Fragen2Plugin = {
     _imZones: [],
     _imPolyFinalized: false,
     _imDragIdx: -1,
+    _imRedrawPending: false,
     _imImageSrc: null,
     _imgDisplayWidth: 300,   // Bildbreite in px für Fragen-Karten (100-600)
     _showImages: true,       // Bilder in Karten/Vorschau anzeigen
@@ -30,7 +31,17 @@ const Fragen2Plugin = {
     init() {},
     enable() {},
     disable() {},
-    
+
+    // Entprellte Suche: ohne Verzögerung würde jeder Tastendruck die ganze
+    // Liste samt Statistik über alle Spieler neu berechnen.
+    _searchTimer: null,
+    _searchInput(val) {
+        this._searchTerm = val;
+        clearTimeout(this._searchTimer);
+        var self = this;
+        this._searchTimer = setTimeout(function() { self._renderList(); }, 200);
+    },
+
     // ── Hauptrender ──
     render() {
         const container = document.getElementById('fragen2Content');
@@ -60,7 +71,7 @@ const Fragen2Plugin = {
         html += '<div style="padding:12px 15px;background:rgba(255,255,255,0.04);border-radius:12px;margin-bottom:15px;">';
         // Zeile 1: Suche + Sortierung
         html += '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px;">';
-        html += '<input class="f2-search" type="text" placeholder="🔍 Suche (Text, Antwort, ID...)" value="' + sanitizeHTML(this._searchTerm) + '" oninput="Fragen2Plugin._searchTerm=this.value;Fragen2Plugin._renderList()" id="f2SearchInput" style="flex:1;min-width:160px;">';
+        html += '<input class="f2-search" type="text" placeholder="🔍 Suche (Text, Antwort, ID...)" value="' + sanitizeHTML(this._searchTerm) + '" oninput="Fragen2Plugin._searchInput(this.value)" id="f2SearchInput" style="flex:1;min-width:160px;">';
         html += '<select class="f2-sort-select" onchange="Fragen2Plugin._sortBy=this.value;Fragen2Plugin._renderList()" style="padding:7px 10px;">';
         html += '<option value="alpha"' + (this._sortBy === 'alpha' ? ' selected' : '') + '>A–Z</option>';
         html += '<option value="group"' + (this._sortBy === 'group' ? ' selected' : '') + '>Gruppe</option>';
@@ -209,7 +220,8 @@ const Fragen2Plugin = {
             html += '<span style="font-size:0.82rem;opacity:0.6;padding:6px 0;">📁</span>';
             html += '<button class="f2-filter-btn' + (this._groupFilter === 'all' ? ' active' : '') + '" onclick="Fragen2Plugin._groupFilter=\'all\';Fragen2Plugin._renderList()">Alle</button>';
             groups.forEach(function(g) {
-                var sg = g.name.replace(/'/g, "\\'");
+                var sg = g.name.replace(/\\/g, '\\\\').replace(/'/g, "\\'")
+                    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
                 html += '<button class="f2-filter-btn' + (self._groupFilter === g.name ? ' active' : '') + '" onclick="Fragen2Plugin._groupFilter=\'' + sg + '\';Fragen2Plugin._renderList()">' + sanitizeHTML(g.name) + ' (' + g.count + ')</button>';
             });
             html += '</div>';
@@ -580,7 +592,19 @@ const Fragen2Plugin = {
         delete q._prevFileGroup;
         // Manuelle ID-Änderung (hat Vorrang, wird nach Gruppencheck angewendet)
         if (idInputVal.trim() && idInputVal.trim() !== q.questionId) {
-            q.questionId = idInputVal.trim();
+            var wantedId = idInputVal.trim();
+            // Duplikat-Check: ID darf nicht bei einer ANDEREN Frage vergeben sein
+            var dupe = questions.some(function(other) {
+                return other !== q && other.questionId === wantedId;
+            });
+            if (dupe) {
+                var nextFree = typeof assignStableId === 'function'
+                    ? assignStableId(q._fileGroup, questions) : '?';
+                Toast.show('ID "' + wantedId + '" ist bereits vergeben — alte ID "' + q.questionId
+                    + '" behalten. Nächste freie: ' + nextFree, 'warning');
+            } else {
+                q.questionId = wantedId;
+            }
         }
 
         this._editingId = null;
@@ -1111,7 +1135,11 @@ const Fragen2Plugin = {
         };
         if (q.type === QUESTION_TYPES.TEXT) exportQ.correctAnswer = typeof getCorrectTextAnswers === 'function' ? getCorrectTextAnswers(q) : q.correctAnswer;
         else if (q.type === QUESTION_TYPES.IMAGEMAP) exportQ.targets = q.targets;
-        else exportQ.answers = q.answers;
+        else {
+            exportQ.answers = q.answers;
+            // ODER-Wertung mitnehmen — wird nur gesetzt wenn 'any' (kein Rauschen in JSONs)
+            if (q.correctMode === 'any') exportQ.correctMode = 'any';
+        }
         return exportQ;
     },
     
@@ -1428,9 +1456,21 @@ const Fragen2Plugin = {
                         var rect = imgEl.getBoundingClientRect();
                         self._imPoints[self._imDragIdx].x = Math.max(0, Math.min(100, ((me.clientX - rect.left) / rect.width) * 100));
                         self._imPoints[self._imDragIdx].y = Math.max(0, Math.min(100, ((me.clientY - rect.top) / rect.height) * 100));
-                        self._imRedraw();
+                        // Neuzeichnen auf max. einen Frame pro Bildschirmaktualisierung
+                        // begrenzen — sonst wird pro Mausbewegung alles neu gebaut.
+                        if (self._imRedrawPending) return;
+                        self._imRedrawPending = true;
+                        requestAnimationFrame(function() {
+                            self._imRedrawPending = false;
+                            self._imRedraw();
+                        });
                     }
-                    function onUp() { self._imDragIdx = -1; document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); }
+                    function onUp() {
+                        self._imDragIdx = -1;
+                        document.removeEventListener('mousemove', onMove);
+                        document.removeEventListener('mouseup', onUp);
+                        self._imRedraw();   // Endposition sicher zeichnen
+                    }
                     document.addEventListener('mousemove', onMove);
                     document.addEventListener('mouseup', onUp);
                 });

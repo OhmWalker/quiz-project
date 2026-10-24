@@ -16,6 +16,7 @@ let _fqImRadius        = 5;
 let _fqImZones         = [];
 let _fqImPolyFinalized = false;
 let _fqImDragIdx       = -1;
+let _fqImRedrawPending = false;
 let _fqImImageSrc      = null;
 let _fqImPathVal       = '';
 
@@ -483,12 +484,19 @@ function _fqImRedraw() {
                     const rect = imgEl.getBoundingClientRect();
                     _fqImPoints[_fqImDragIdx].x = Math.max(0, Math.min(100, ((me.clientX - rect.left) / rect.width) * 100));
                     _fqImPoints[_fqImDragIdx].y = Math.max(0, Math.min(100, ((me.clientY - rect.top) / rect.height) * 100));
-                    _fqImRedraw();
+                    // Max. ein Neuzeichnen pro Bildschirmaktualisierung
+                    if (_fqImRedrawPending) return;
+                    _fqImRedrawPending = true;
+                    requestAnimationFrame(function() {
+                        _fqImRedrawPending = false;
+                        _fqImRedraw();
+                    });
                 }
                 function onUp() {
                     _fqImDragIdx = -1;
                     document.removeEventListener('mousemove', onMove);
                     document.removeEventListener('mouseup', onUp);
+                    _fqImRedraw();   // Endposition sicher zeichnen
                 }
                 document.addEventListener('mousemove', onMove);
                 document.addEventListener('mouseup', onUp);

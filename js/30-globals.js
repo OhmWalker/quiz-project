@@ -37,6 +37,7 @@ const SETTINGS_DEFAULTS = {
     adminPassword: 'admin',
     superAdminPassword: 'super',
     avatarPreset: 1,
+    compactPlayerFiles: false,   // Spieler-Dateien ohne Einrückung speichern (~halbe Größe) — Forge → Sicherung
     spacedRepetition: {
         randomness: 30,         // 0-100: 0=pure SR, 100=komplett zufällig
         streakCooldown: 48,     // Stunden Sperre nach N korrekt in Folge
@@ -45,18 +46,6 @@ const SETTINGS_DEFAULTS = {
         freshThreshold: 1,      // max. asked-Zahl für "selten gestellt"
         maxCoreFirst: 7,        // max. Core-Fragen im 1. Quiz des Tages
         maxCoreSubsequent: 3    // max. Core-Fragen in Folge-Quizzen
-    },
-    timer: {
-        secondsPerQuestion: 3,
-        penalty: 5,
-        xpMultiplier: 1.5,
-        autoAdvanceSec: 5,
-        dynamicTimer: true,
-        speedBonus: true,
-        ghostRace: true,
-        goldPct: 25, goldXP: 50,
-        silverPct: 50, silverXP: 25,
-        bronzePct: 75, bronzeXP: 10
     },
     xpSystem: {
         baseXP: 50,
@@ -77,6 +66,20 @@ const SETTINGS_DEFAULTS = {
     },
     mediaDisplay: {
         quizImageWidth: 80      // Prozent der Container-Breite (30-100)
+    },
+    // Fokus-Quiz: Zusatz-Quiz aus EINER Themengruppe (nicht Core), freigeschaltet
+    // nach dem ersten normalen Quiz des Tages. Gruppe kommt aus dem Rotationsplan.
+    focusQuiz: {
+        enabled:       true,
+        questionCount: 10,      // Fragen pro Fokus-Quiz
+        successPct:    100,     // Erfolgsschwelle in Prozent
+        xpMultiplier:  3,       // x-fache XP für richtige Antworten
+        streakTarget:  5,       // erfolgreiche Fokus-Quizze in Folge für die Prämie
+        completionXP:  1000,    // Vollendungs-Prämie (einmal pro Rotationszeitraum)
+        maxPerDay:     0,       // 0 = unbegrenzt
+        rotationStart: null,    // 'YYYY-MM-DD', Beginn des Plans
+        rotationLoop:  true,    // Plan wiederholt sich, statt auszulaufen
+        rotation:      []       // [{ group, unit: 'week'|'month', length }] — Array-Reihenfolge = Rotation
     },
     miniGames: {
         spinner: { enabled: true, minCorrect: 10, quizCount: 2, maxXP: 50 },
@@ -100,6 +103,10 @@ quizSettings = ensureSettingsDefaults({});
 
 
 function ensureSettingsDefaults(settings) {
+    // Timer-Modus wurde 2026-10 entfernt — Altbestand aus Master-JSONs werfen,
+    // damit der Block nicht bei jedem Export mitwandert.
+    if (settings && 'timer' in settings) delete settings.timer;
+
     for (const [key, defaultVal] of Object.entries(SETTINGS_DEFAULTS)) {
         if (typeof defaultVal === 'object' && defaultVal !== null) {
             if (!settings[key]) {
@@ -226,6 +233,14 @@ function normalizeUser(u) {
     if (!u.questionStats || typeof u.questionStats !== 'object') u.questionStats = {};
     if (!u.badgeStats || typeof u.badgeStats !== 'object') u.badgeStats = {};
 
+    // Quiz-gebundene Flags dürfen nicht aus alten Dateien weiterleben
+    delete u.teamBonusActive;
+
+    normalizeFocusState(u);
+
+    // Archiv aufgeräumter History (Forge → Sicherung): nur Objekt zulassen
+    if (u.historyArchive != null && typeof u.historyArchive !== 'object') delete u.historyArchive;
+
     // History-Feld `xpEarned` (alte Versionen) → `xp` (kanonisch)
     u.history.forEach(function(h) {
         if (!h || typeof h !== 'object') return;
@@ -237,8 +252,200 @@ function normalizeUser(u) {
 }
 
 
+// Fokus-Quiz-Spielerstand auf das kanonische Schema bringen. Zahlen werden
+// koersiert (Strings/null aus Altdateien → Zahl), unbekannte Typen → Default.
+// Wird von normalizeUser (Load) und vom FocusQuizPlugin (neu angelegte
+// Spieler ohne Load) genutzt. Idempotent.
+function normalizeFocusState(u) {
+    if (!u || typeof u !== 'object') return null;
+    const fq  = (u.focusQuiz && typeof u.focusQuiz === 'object') ? u.focusQuiz : {};
+    const str = v => (typeof v === 'string' && v) ? v : null;
+    u.focusQuiz = {
+        streak:         Number(fq.streak)      || 0,   // erfolgreiche Fokus-Quizze in Folge
+        bestStreak:     Number(fq.bestStreak)  || 0,
+        completions:    Number(fq.completions) || 0,   // wie oft die Prämie kassiert wurde
+        playedToday:    Number(fq.playedToday) || 0,   // für maxPerDay
+        lastPlayed:     str(fq.lastPlayed),            // ISO-Zeitstempel
+        lastDate:       str(fq.lastDate),              // toDateString() — Tageswechsel für playedToday
+        periodKey:      str(fq.periodKey),             // Zeitraum, zu dem `streak` gehört
+        rewardedPeriod: str(fq.rewardedPeriod)         // Zeitraum, in dem die Prämie kassiert wurde
+    };
+    return u.focusQuiz;
+}
+
+
+// ── History-Kennzahlen (mit Archiv) ──────────────────────────────────────────
+// Badges und Fähigkeiten zählen Werte aus der KOMPLETTEN Quiz-History.
+// Beim Aufräumen (Forge → Sicherung) wird alte History in `user.historyArchive`
+// zusammengefasst — dieselben Kennzahlen als Summen plus die Grenzwerte des
+// letzten archivierten Eintrags, damit Paare über die Schnittkante (Verbesserung,
+// Comeback, Kalenderwoche) korrekt weitergezählt werden.
+// Schnitt-Regel beim Archivieren: nie innerhalb eines Tages und nie mit < 1 h
+// Abstand schneiden — dann sind Tage und Burst-Sessions sauber getrennt.
+
+// Kalenderwoche wie bisher im BadgePlugin (Formel unverändert übernommen)
+function historyWeekKey(d) {
+    const yr = d.getFullYear();
+    const wk = Math.ceil(((d - new Date(yr, 0, 1)) / 86400000 + new Date(yr, 0, 1).getDay() + 1) / 7);
+    return `${yr}-W${wk}`;
+}
+
+// hist: History-Einträge (beliebige Reihenfolge), arch: historyArchive oder null.
+// Rückgabe hat dieselbe Form wie ein Archiv (ohne `until`/`months`) und kann
+// darum selbst als Archiv für den nächsten Abschnitt dienen.
+function computeHistoryStats(hist, arch) {
+    const a = (arch && typeof arch === 'object') ? arch : null;
+    const n = k => (a && Number(a[k])) || 0;
+    const h = (hist || []).slice().sort((x, y) => new Date(x.date) - new Date(y.date));
+    const day = e => new Date(e.date).toDateString();
+
+    // Tage / Wochen / Marathon- und 3er-Tage
+    const dayCounts = {};
+    h.forEach(e => { const d = day(e); dayCounts[d] = (dayCounts[d] || 0) + 1; });
+    const lastDay = a ? a.lastDay : null;
+    const days = Object.keys(dayCounts).filter(d => d !== lastDay);
+    const weeks = new Set(h.map(e => historyWeekKey(new Date(e.date))));
+    if (a && a.lastWeekKey) weeks.delete(a.lastWeekKey);   // Woche über die Kante nur einmal zählen
+
+    // Verbesserungen + Comebacks (Paare aufeinanderfolgender Quizze, inkl. Kante)
+    let improvements = n('improvements'), comebacks = n('comebacks');
+    let prevScore = a && a.lastScore != null ? a.lastScore : null;
+    let prevDate  = a && a.lastDate ? new Date(a.lastDate) : null;
+    h.forEach(e => {
+        if (prevScore !== null && (e.score || 0) > prevScore) improvements++;
+        const d = new Date(e.date);
+        if (prevDate && (d - prevDate) / 86400000 >= 7) comebacks++;
+        prevScore = e.score || 0;
+        prevDate = d;
+    });
+
+    // Burst-Sessions: 2+ Quizze innerhalb 1 h ab Beginn des ersten Quiz der Gruppe
+    let burst = n('burstSessions'), i = 0;
+    while (i < h.length) {
+        const start = new Date(h[i].date).getTime();
+        let j = i + 1;
+        while (j < h.length && new Date(h[j].date).getTime() - start < 3600000) j++;
+        burst += Math.floor((j - i) / 2);
+        i = (j > i + 1) ? j : i + 1;
+    }
+
+    const last = h[h.length - 1];
+    return {
+        quizzes:         n('quizzes') + h.length,
+        uniqueDays:      n('uniqueDays') + days.length,
+        activeWeeks:     n('activeWeeks') + weeks.size,
+        firstDayQuizzes: a ? n('firstDayQuizzes') : (h.length ? dayCounts[day(h[0])] : 0),
+        improvements,
+        comebacks,
+        marathonDays:    n('marathonDays') + days.filter(d => dayCounts[d] >= 10).length,
+        burstSessions:   burst,
+        activeDays3:     n('activeDays3') + days.filter(d => dayCounts[d] >= 3).length,
+        lastDay:         last ? day(last) : (a ? a.lastDay : null),
+        lastWeekKey:     last ? historyWeekKey(new Date(last.date)) : (a ? a.lastWeekKey : null),
+        lastDate:        last ? last.date : (a ? a.lastDate : null),
+        lastScore:       last ? (last.score || 0) : (a ? a.lastScore : null)
+    };
+}
+
+
+// ── Fokus-Quiz: Rotationsplan ────────────────────────────────────────────────
+// Liegt hier (nicht im Plugin), weil Forge die Berechnung für die Vorschau
+// braucht und 30-globals in allen Builds steckt.
+//
+// Der Plan speichert keine Datumspaare: ab `rotationStart` werden die Einträge
+// in Array-Reihenfolge aneinandergereiht. Umsortieren verschiebt dadurch die
+// Zeiträume automatisch. Alle Datumswerte sind lokale Mitternacht.
+
+// 'YYYY-MM-DD' → lokales Datum (Mitternacht). Ungültig/leer → null.
+function _focusParseDate(iso) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || ''));
+    if (!m) return null;
+    const d = new Date(+m[1], +m[2] - 1, +m[3]);
+    return d.getMonth() === +m[2] - 1 ? d : null;   // 2026-02-31 abweisen
+}
+
+function _focusYMD(d) {
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+
+// Ende (exklusiv) eines Eintrags, der am Datum `start` beginnt.
+// Woche = 7 Tage. Monat = Kalendermonat, nicht 30 Tage — sonst wandert ein
+// Monatsfokus über das Jahr. Tage, die es im Zielmonat nicht gibt (31. → Feb.),
+// werden auf den Monatsletzten gekappt, statt in den Folgemonat überzulaufen.
+function _focusPeriodEnd(start, entry) {
+    const n = Math.floor(Number(entry && entry.length));
+    const len = n >= 1 ? n : 1;
+    if (entry && entry.unit === 'month') {
+        const y = start.getFullYear(), m = start.getMonth() + len;
+        const lastDay = new Date(y, m + 1, 0).getDate();
+        return new Date(y, m, Math.min(start.getDate(), lastDay));
+    }
+    return new Date(start.getFullYear(), start.getMonth(), start.getDate() + 7 * len);
+}
+
+// Zeiträume ab `fromDate` (inkl. des laufenden), höchstens `count` Stück.
+// Liegt `fromDate` vor rotationStart, beginnt die Liste mit dem ersten Eintrag.
+// Rückgabe: [{ index, group, unit, length, start, end, key }]
+function getFocusPeriods(cfg, fromDate, count) {
+    const out = [];
+    if (!cfg || !Array.isArray(cfg.rotation) || cfg.rotation.length === 0) return out;
+    const startDate = _focusParseDate(cfg.rotationStart);
+    if (!startDate) return out;
+    const d = fromDate || new Date();
+    const day = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    const rot = cfg.rotation;
+    let cursor = startDate, i = 0;
+    // Schutz gegen Endlosschleifen: 20 000 Schritte = ~380 Jahre im Wochenrhythmus
+    for (let steps = 0; steps < 20000 && out.length < count; steps++) {
+        const entry = rot[i] || {};
+        const end = _focusPeriodEnd(cursor, entry);
+        if (end > day) {
+            out.push({
+                index: i,
+                group: entry.group || '',
+                unit:  entry.unit === 'month' ? 'month' : 'week',
+                length: Math.max(1, Math.floor(Number(entry.length)) || 1),
+                start: cursor,
+                end:   end,
+                key:   (entry.group || '') + '@' + _focusYMD(cursor)
+            });
+        }
+        cursor = end;
+        i++;
+        if (i >= rot.length) {
+            if (cfg.rotationLoop === false) break;
+            i = 0;
+        }
+    }
+    return out;
+}
+
+// Laufender Zeitraum für `date` (Standard: heute) oder null —
+// null bei leerem Plan, fehlendem Start, Datum vor dem Start oder
+// ausgelaufenem Plan ohne Schleife.
+function getActiveFocusPeriod(cfg, date) {
+    const d = date || new Date();
+    const day = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    const p = getFocusPeriods(cfg, day, 1)[0];
+    return p && p.start <= day && p.group ? p : null;
+}
+
+
+// Zahlenfeld robust lesen: leeres/ungültiges Feld → Default statt NaN.
+// parseInt('') ergibt NaN (nie null/undefined) — darum greift `?? Default`
+// nie, und `|| Default` würde den gültigen Wert 0 verschlucken.
+function _numVal(id, def, isFloat) {
+    const el = document.getElementById(id);
+    if (!el) return def;
+    const v = isFloat ? parseFloat(el.value) : parseInt(el.value, 10);
+    return Number.isFinite(v) ? v : def;
+}
+
+
 function hasStableId(id) {
-    return id && !id.startsWith('Q_') && !/^\d+$/.test(String(id));
+    if (id == null || id === '') return false;
+    const s = String(id);   // Zahlen-IDs aus alten Dateien dürfen hier nicht crashen
+    return !s.startsWith('Q_') && !/^\d+$/.test(s);
 }
 
 function getGroupPrefix(groupName) {

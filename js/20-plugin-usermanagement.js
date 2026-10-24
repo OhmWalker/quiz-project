@@ -23,7 +23,7 @@ const UserManagementPlugin = {
         input.value='';this.updateUsersList();renderUserSelect();Toast.show('Benutzer erstellt!','success');
     },
     deleteUser(id){
-        GameDialog.showConfirm('Benutzer löschen?','',()=>{
+        GameDialog.showConfirm('🗑️','Benutzer löschen?','Der Benutzer wird aus der Liste entfernt.',()=>{
             users=users.filter(u=>u.id!==id);if(currentUser&&currentUser.id===id)currentUser=null;
             this.updateUsersList();renderUserSelect();Toast.show('Benutzer gelöscht','info');
         });
@@ -189,7 +189,7 @@ const UserManagementPlugin = {
     },
     importUserData(){},
     confirmResetUserStats(id){
-        GameDialog.showConfirm('Stats zurücksetzen?','Alle Quiz-Statistiken werden gelöscht.',()=>{
+        GameDialog.showConfirm('♻️','Stats zurücksetzen?','Alle Quiz-Statistiken werden gelöscht.',()=>{
             const user=users.find(u=>u.id===id);if(!user)return;
             user.questionStats={};user.correctAnswers=0;user.totalAnswers=0;user.quizzesTaken=0;
             Toast.show('Stats zurückgesetzt','success');if(adminState.viewingUserId===id)this.renderUserDetailContent(user);

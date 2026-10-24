@@ -3,7 +3,7 @@
 const _ADMIN_ABILITY_DEFS = [
     { key: 'fiftyFifty',   icon: '🎯', name: '50/50',         earnStat: '_fifty50Sessions',   defaultEarnPer: 1  },
     { key: 'skip',         icon: '⏭',  name: 'Überspringen',  earnStat: 'totalQuizzes',       defaultEarnPer: 10 },
-    { key: 'hint',         icon: '💡', name: 'Hinweis',        earnStat: 'uniqueQuestions',    defaultEarnPer: 20 },
+    { key: 'hint',         icon: '💡', name: 'Hinweis',        earnStat: 'totalAnswers',       defaultEarnPer: 15 },
     { key: 'doubleXP',     icon: '✨', name: 'Doppel-XP',      earnStat: 'perfectQuizzes',     defaultEarnPer: 1  },
     { key: 'shield',       icon: '🛡', name: 'Schild',          earnStat: 'currentStreak',      defaultEarnPer: 7  },
     { key: 'secondChance', icon: '🔄', name: '2. Chance',      earnStat: 'currentStreak',      defaultEarnPer: 3  },
@@ -51,7 +51,6 @@ AdminShell.registerPanel('einstellungen', 'Einstellungen', '⚙', container => {
 
     const s  = quizSettings;
     const sr = s.spacedRepetition || {};
-    const t  = s.timer || {};
     const xp = s.xpSystem || {};
     const lb = s.leaderboard || {};
     const mg = s.miniGames || {};
@@ -81,48 +80,6 @@ AdminShell.registerPanel('einstellungen', 'Einstellungen', '⚙', container => {
                 oninput="document.getElementById('set_imgWidthVal').textContent=this.value+'%'">
             <span id="set_imgWidthVal" style="min-width:40px">${imgW}%</span>`)}
         ${_saveBtn('_saveBildanzeige()', '🖼️ Bildanzeige speichern')}
-    `);
-
-    // ── Timer ─────────────────────────────────────────────────────────────────
-    const timerEnabled = t.enabled !== false;
-    const secTimer = _secBlock('⏱️ Timer-Modus', `
-        ${_row('Timer aktiv', '', `<label style="display:flex;align-items:center;gap:8px;cursor:pointer">
-            <input type="checkbox" id="set_timerOn" ${timerEnabled ? 'checked' : ''}
-                onchange="document.getElementById('set_timerFields').style.display=this.checked?'block':'none'">
-            Timer einschalten
-        </label>`)}
-        <div id="set_timerFields" style="display:${timerEnabled ? 'block' : 'none'}">
-            ${_row('Sekunden / Frage', '', `<input type="number" id="set_timerSec" min="2" max="120" step="0.5" value="${t.secondsPerQuestion || 3}" style="width:80px">`)}
-            ${_row('Strafpunkte bei Timeout', '', `<input type="number" id="set_timerPenalty" min="0" max="50" value="${t.penalty || 5}" style="width:80px">`)}
-            ${_row('XP-Multiplikator', '', `<input type="number" id="set_timerXPMult" min="1" max="5" step="0.1" value="${t.xpMultiplier || 1.5}" style="width:80px">`)}
-            ${_row('Auto-Weiter (s)', '0 = aus', `<input type="number" id="set_timerAutoAdv" min="0" max="30" step="1" value="${t.autoAdvanceSec ?? 5}" style="width:80px">`)}
-            <div style="margin:8px 0 4px;opacity:0.6;font-size:0.82rem">Geschwindigkeits-Boni (% verbleibende Zeit → Bonus-XP)</div>
-            ${_row('Gold (≤ %  Zeit → +XP)', '', `
-                <input type="number" id="set_goldPct" min="5" max="50" value="${t.goldPct || 25}" style="width:70px">
-                <span style="opacity:0.5">→</span>
-                <input type="number" id="set_goldXP" min="0" max="200" value="${t.goldXP || 50}" style="width:70px"> XP`)}
-            ${_row('Silber', '', `
-                <input type="number" id="set_silverPct" min="10" max="70" value="${t.silverPct || 50}" style="width:70px">
-                <span style="opacity:0.5">→</span>
-                <input type="number" id="set_silverXP" min="0" max="100" value="${t.silverXP || 25}" style="width:70px"> XP`)}
-            ${_row('Bronze', '', `
-                <input type="number" id="set_bronzePct" min="20" max="90" value="${t.bronzePct || 75}" style="width:70px">
-                <span style="opacity:0.5">→</span>
-                <input type="number" id="set_bronzeXP" min="0" max="50" value="${t.bronzeXP || 10}" style="width:70px"> XP`)}
-            ${_row('', '', `
-                <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
-                    <input type="checkbox" id="set_timerDynamic" ${t.dynamicTimer !== false ? 'checked' : ''}> Dynamischer Timer
-                </label>`)}
-            ${_row('', '', `
-                <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
-                    <input type="checkbox" id="set_timerSpeed" ${t.speedBonus !== false ? 'checked' : ''}> Geschwindigkeits-Bonus
-                </label>`)}
-            ${_row('', '', `
-                <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
-                    <input type="checkbox" id="set_timerGhost" ${t.ghostRace !== false ? 'checked' : ''}> Geist-Rennen
-                </label>`)}
-        </div>
-        ${_saveBtn('_saveTimer()', '⏱️ Timer speichern')}
     `);
 
     // ── Spaced Repetition ─────────────────────────────────────────────────────
@@ -264,7 +221,6 @@ AdminShell.registerPanel('einstellungen', 'Einstellungen', '⚙', container => {
         <div class="card">
             ${secAllgemein}
             ${secBild}
-            ${secTimer}
             ${secSR}
             ${secXP}
             ${secLB}
@@ -292,59 +248,39 @@ function _saveBildanzeige() {
     saveMasterBackup();
 }
 
-function _saveTimer() {
-    const on = document.getElementById('set_timerOn').checked;
-    quizSettings.timer = Object.assign(quizSettings.timer || {}, {
-        enabled:           on,
-        secondsPerQuestion: parseFloat(document.getElementById('set_timerSec').value) || 3,
-        penalty:           parseInt(document.getElementById('set_timerPenalty').value) || 5,
-        xpMultiplier:      parseFloat(document.getElementById('set_timerXPMult').value) || 1.5,
-        autoAdvanceSec:    parseInt(document.getElementById('set_timerAutoAdv').value) ?? 5,
-        goldPct:           parseInt(document.getElementById('set_goldPct').value) || 25,
-        goldXP:            parseInt(document.getElementById('set_goldXP').value) || 50,
-        silverPct:         parseInt(document.getElementById('set_silverPct').value) || 50,
-        silverXP:          parseInt(document.getElementById('set_silverXP').value) || 25,
-        bronzePct:         parseInt(document.getElementById('set_bronzePct').value) || 75,
-        bronzeXP:          parseInt(document.getElementById('set_bronzeXP').value) || 10,
-        dynamicTimer:      document.getElementById('set_timerDynamic').checked,
-        speedBonus:        document.getElementById('set_timerSpeed').checked,
-        ghostRace:         document.getElementById('set_timerGhost').checked,
-    });
-    saveMasterBackup();
-}
 
 function _saveSR() {
     quizSettings.spacedRepetition = Object.assign(quizSettings.spacedRepetition || {}, {
-        randomness:        parseInt(document.getElementById('set_srRand').value) ?? 30,
-        streakThreshold:   parseInt(document.getElementById('set_srStreak').value) || 2,
-        streakCooldown:    parseInt(document.getElementById('set_srCooldown').value) || 48,
-        freshQuota:        parseInt(document.getElementById('set_srFresh').value) ?? 50,
-        freshThreshold:    parseInt(document.getElementById('set_srFreshThresh').value) ?? 1,
-        maxCoreFirst:      parseInt(document.getElementById('set_srCoreFirst').value) ?? 7,
-        maxCoreSubsequent: parseInt(document.getElementById('set_srCoreSubseq').value) ?? 3,
-        maxPerGroup:       parseInt(document.getElementById('set_srMaxGroup').value) ?? 3,
+        randomness:        _numVal('set_srRand', 30),
+        streakThreshold:   _numVal('set_srStreak', 2),
+        streakCooldown:    _numVal('set_srCooldown', 48),
+        freshQuota:        _numVal('set_srFresh', 50),
+        freshThreshold:    _numVal('set_srFreshThresh', 1),
+        maxCoreFirst:      _numVal('set_srCoreFirst', 7),
+        maxCoreSubsequent: _numVal('set_srCoreSubseq', 3),
+        maxPerGroup:       _numVal('set_srMaxGroup', 3),
     });
     saveMasterBackup();
 }
 
 function _saveXP() {
     quizSettings.xpSystem = Object.assign(quizSettings.xpSystem || {}, {
-        baseXP:          parseInt(document.getElementById('set_baseXP').value) || 50,
-        exponent:        parseFloat(document.getElementById('set_xpExp').value) || 1.3,
-        firstDailyBonus: parseInt(document.getElementById('set_xpFirstDay').value) || 200,
-        subsequentBonus: parseInt(document.getElementById('set_xpSubseq').value) || 100,
-        correctAnswerXP: parseInt(document.getElementById('set_xpCorrect').value) || 10,
-        wrongAnswerXP:   parseInt(document.getElementById('set_xpWrong').value) ?? -2,
+        baseXP:          _numVal('set_baseXP', 50),
+        exponent:        _numVal('set_xpExp', 1.3, true),
+        firstDailyBonus: _numVal('set_xpFirstDay', 200),
+        subsequentBonus: _numVal('set_xpSubseq', 100),
+        correctAnswerXP: _numVal('set_xpCorrect', 10),
+        wrongAnswerXP:   _numVal('set_xpWrong', -2),
     });
     saveMasterBackup();
 }
 
 function _saveLB() {
     quizSettings.leaderboard = Object.assign(quizSettings.leaderboard || {}, {
-        engagementTarget: parseInt(document.getElementById('set_lbTarget').value) || 60,
-        decayRate:        parseFloat(document.getElementById('set_lbDecay').value) ?? 0.99,
-        maxAgeDays:       parseInt(document.getElementById('set_lbMaxAge').value) || 90,
-        minQuizzes:       parseInt(document.getElementById('set_lbMin').value) || 0,
+        engagementTarget: _numVal('set_lbTarget', 60),
+        decayRate:        _numVal('set_lbDecay', 0.99, true),
+        maxAgeDays:       _numVal('set_lbMaxAge', 90),
+        minQuizzes:       _numVal('set_lbMin', 0),
     });
     saveMasterBackup();
 }
@@ -421,18 +357,48 @@ function _adminAvatarSetPreset(p) {
     });
 }
 
+// Avatare werden als Text (Data-URL) in der Master-JSON gespeichert.
+// Ohne Verkleinerung landet ein 4-MB-Foto 1:1 in der Datei und macht jeden
+// Lade-/Speichervorgang langsam — darum auf AVATAR_MAX_PX herunterrechnen.
+const AVATAR_MAX_PX = 256;
+
+function _adminAvatarStore(levelKey, dataUrl, origBytes) {
+    if (!quizSettings.avatars) quizSettings.avatars = {};
+    if (!quizSettings.avatars[levelKey]) quizSettings.avatars[levelKey] = { icon: '?', image: null, image2: null };
+    const preset = quizSettings.avatarPreset || 1;
+    const field = preset === 2 ? 'image2' : 'image';
+    quizSettings.avatars[levelKey][field] = dataUrl;
+    _adminAvatarSetPreset(preset);
+    const kb = Math.round(dataUrl.length / 1024);
+    const note = (origBytes && origBytes > dataUrl.length)
+        ? ` (${Math.round(origBytes / 1024)} KB → ${kb} KB)` : ` (${kb} KB)`;
+    Toast.show(`Bild für ${levelKey} (Preset ${preset}) gesetzt.${note}`, 'success');
+}
+
 function _adminAvatarUpload(levelKey, event) {
     const file = event.target.files[0];
     if (!file) return;
     const reader = new FileReader();
     reader.onload = e => {
-        if (!quizSettings.avatars) quizSettings.avatars = {};
-        if (!quizSettings.avatars[levelKey]) quizSettings.avatars[levelKey] = { icon: '?', image: null, image2: null };
-        const preset = quizSettings.avatarPreset || 1;
-        const field = preset === 2 ? 'image2' : 'image';
-        quizSettings.avatars[levelKey][field] = e.target.result;
-        _adminAvatarSetPreset(preset);
-        Toast.show(`Bild für ${levelKey} (Preset ${preset}) gesetzt.`, 'success');
+        const original = e.target.result;
+        const img = new Image();
+        img.onload = () => {
+            const scale = Math.min(1, AVATAR_MAX_PX / Math.max(img.width, img.height));
+            if (scale >= 1) { _adminAvatarStore(levelKey, original); return; }
+            try {
+                const canvas = document.createElement('canvas');
+                canvas.width  = Math.round(img.width  * scale);
+                canvas.height = Math.round(img.height * scale);
+                canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+                const small = canvas.toDataURL('image/png');
+                _adminAvatarStore(levelKey, small.length < original.length ? small : original, original.length);
+            } catch (err) {
+                console.warn('Avatar-Verkleinerung fehlgeschlagen:', err);
+                _adminAvatarStore(levelKey, original);
+            }
+        };
+        img.onerror = () => Toast.show('Bild konnte nicht gelesen werden.', 'error');
+        img.src = original;
     };
     reader.readAsDataURL(file);
 }

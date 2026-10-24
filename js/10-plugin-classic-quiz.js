@@ -30,22 +30,16 @@ const ClassicQuizPlugin = {
         EventBus.emit(EventBus.EVENTS.USER_SELECTED, { user: currentUser });
     },
 
-    selectQuestionsForUser(user, count) {
-        const active = questions.filter(q => q.active !== false);
-        if (active.length === 0) return [];
+    // SR-Bausteine für einen Spieler: Scoring, Cooldown-Prüfung, Top-N-Auswahl.
+    // Gemeinsam genutzt von der normalen Auswahl und vom Fokus-Quiz, damit
+    // beide nach denselben Regeln gewichten.
+    _srTools(user) {
         const sr = quizSettings.spacedRepetition || {};
         const randomness = (sr.randomness !== undefined ? sr.randomness : 30) / 100;
         const cooldownHours = sr.streakCooldown || 48;
         const streakThreshold = sr.streakThreshold || 2;
-        const freshQuota = (sr.freshQuota !== undefined ? sr.freshQuota : 0) / 100;
-        const freshThreshold = sr.freshThreshold !== undefined ? sr.freshThreshold : 1;
         const stats = user.questionStats || {};
         const cooldownMs = cooldownHours * 3600000;
-        const today = new Date().toDateString();
-        const alreadyPlayedToday = user.lastQuizDate === today && (user.dailyQuizCount || 0) > 0;
-        const maxCore = alreadyPlayedToday
-            ? (sr.maxCoreSubsequent !== undefined ? sr.maxCoreSubsequent : count)
-            : (sr.maxCoreFirst !== undefined ? sr.maxCoreFirst : count);
 
         const isInCooldown = q => _statInCooldown(stats[q.questionId], cooldownMs, streakThreshold);
 
@@ -69,6 +63,37 @@ const ClassicQuizPlugin = {
             .map(q => ({ q, score: scoreQuestion(q) }))
             .sort((a, b) => b.score - a.score)
             .slice(0, n).map(s => s.q);
+
+        return { isInCooldown, scoreQuestion, pickTop };
+    },
+
+    // Fokus-Quiz: SR-gewichtete Auswahl aus einem vorgefilterten Pool (eine Gruppe).
+    // Core-Quoten, Fresh-Quota und maxPerGroup greifen hier bewusst nicht.
+    // Cooldown-Fragen nur als Lückenfüller — ohne Warn-Toast, weil der Pool
+    // absichtlich klein ist und der Fallback im Fokus-Quiz der Normalfall wird.
+    selectFocusQuestions(user, pool, count) {
+        const { isInCooldown, pickTop } = this._srTools(user);
+        const available = pool.filter(q => !isInCooldown(q));
+        let picked = pickTop(available, count);
+        if (picked.length < count)
+            picked = picked.concat(pickTop(pool.filter(q => isInCooldown(q)), count - picked.length));
+        return shuffleArray(picked);
+    },
+
+    selectQuestionsForUser(user, count) {
+        const active = questions.filter(q => q.active !== false);
+        if (active.length === 0) return [];
+        const sr = quizSettings.spacedRepetition || {};
+        const freshQuota = (sr.freshQuota !== undefined ? sr.freshQuota : 0) / 100;
+        const freshThreshold = sr.freshThreshold !== undefined ? sr.freshThreshold : 1;
+        const stats = user.questionStats || {};
+        const today = new Date().toDateString();
+        const alreadyPlayedToday = user.lastQuizDate === today && (user.dailyQuizCount || 0) > 0;
+        const maxCore = alreadyPlayedToday
+            ? (sr.maxCoreSubsequent !== undefined ? sr.maxCoreSubsequent : count)
+            : (sr.maxCoreFirst !== undefined ? sr.maxCoreFirst : count);
+
+        const { isInCooldown, scoreQuestion, pickTop } = this._srTools(user);
 
         // Core-Deckel: max N Core-Fragen pro Quiz
         const coreQ    = active.filter(q => q.isCore);
@@ -161,14 +186,25 @@ const ClassicQuizPlugin = {
         return shuffleArray([...corePicked, ...nonCorePicked]);
     },
 
-    startQuiz() {
+    // opts (nur vom FocusQuizPlugin): { focus: true, questions: [...] }
+    // Ohne opts startet ein normales Quiz — das setzt focusQuizActive immer
+    // zurück, damit das Flag nie in ein Folge-Quiz hinüberwandert.
+    startQuiz(opts) {
         if (!currentUser) { Toast.show('Bitte wähle einen Benutzer aus.', 'warning'); return; }
-        const active = questions.filter(q => q.active !== false);
-        if (active.length === 0) { Toast.show('Keine aktiven Fragen vorhanden!', 'warning'); return; }
-        const count = Math.min(quizSettings.questionsPerQuiz || CONFIG.QUIZ.DEFAULT_QUESTIONS_PER_QUIZ, active.length);
-        currentQuizQuestions = this.selectQuestionsForUser(currentUser, count);
-        shuffleArray(currentQuizQuestions);
-        this._insertPendingPhoneJokers();
+        const focus = !!(opts && opts.focus && Array.isArray(opts.questions) && opts.questions.length > 0);
+        focusQuizActive = focus;
+        if (focus) {
+            // Fokus-Quiz: nur Fragen der Fokus-Gruppe. Telefon-Joker bleiben
+            // für das nächste normale Quiz liegen (fremde Gruppe, sonst 5× · Fokus-Faktor).
+            currentQuizQuestions = opts.questions.slice();
+        } else {
+            const active = questions.filter(q => q.active !== false);
+            if (active.length === 0) { Toast.show('Keine aktiven Fragen vorhanden!', 'warning'); return; }
+            const count = Math.min(quizSettings.questionsPerQuiz || CONFIG.QUIZ.DEFAULT_QUESTIONS_PER_QUIZ, active.length);
+            currentQuizQuestions = this.selectQuestionsForUser(currentUser, count);
+            shuffleArray(currentQuizQuestions);
+            this._insertPendingPhoneJokers();
+        }
         currentQuestionIndex = 0;
         userAnswers = [];
         this._quizXP = 0;
@@ -191,9 +227,14 @@ const ClassicQuizPlugin = {
     displayQuestion() {
         this._answered = false;
         this._secondChanceUsed = false;
-        clearAutoAdvance();
         AppState.abilities.usedThisQuestion = {};
         abilityUsedThisQuestion = {};
+        // Doppel-XP gilt laut Beschreibung nur für DIESE Frage
+        doubleXPActive = false;
+        AppState.abilities.doubleXPActive = false;
+        // Hinweis der Vorfrage entfernen (z.B. nach einem Tausch)
+        const oldHint = document.getElementById('hintContainer');
+        if (oldHint) oldHint.remove();
         const q = currentQuizQuestions[currentQuestionIndex];
         if (!q) { this.showResults(); return; }
         const total = currentQuizQuestions.length;
@@ -266,21 +307,14 @@ const ClassicQuizPlugin = {
             setTimeout(() => {
                 document.querySelectorAll('.answer-checkbox-container').forEach(cont => {
                     cont.addEventListener('click', function(e) {
-                        if (e.target.tagName === 'INPUT' || e.target.tagName === 'LABEL') {
-                            if (timerModeActive && (isAnyMode || !multipleCorrect)) {
-                                setTimeout(function(){ submitAnswer(); }, 150);
-                            }
-                            return;
-                        }
+                        // Klick auf Input/Label schaltet der Browser selbst um
+                        if (e.target.tagName === 'INPUT' || e.target.tagName === 'LABEL') return;
                         const input = this.querySelector('.answer-checkbox');
                         if (input && !input.disabled) {
                             if (isAnyMode) {
                                 input.checked = true;
                             } else {
                                 input.checked = !input.checked;
-                            }
-                            if (timerModeActive && (isAnyMode || !multipleCorrect)) {
-                                setTimeout(function(){ submitAnswer(); }, 150);
                             }
                         }
                     });
@@ -313,7 +347,10 @@ const ClassicQuizPlugin = {
     },
 
     submitAnswer() {
-        if (this._answered && !this._secondChanceUsed) return;
+        // Nach der endgültigen Wertung sperren. Der 2.-Chance-Versuch läuft
+        // hier nicht hinein, weil _answered dabei noch false ist
+        // (_processAnswer kehrt vorher zurück) — vgl. Imagemap-Guard oben.
+        if (this._answered) return;
         const q = currentQuizQuestions[currentQuestionIndex];
         if (!q) return;
         if (q.type === QUESTION_TYPES.IMAGEMAP) return; // handled by click
@@ -398,6 +435,8 @@ const ClassicQuizPlugin = {
             if (currentUser && currentUser.teamBonusActive) xpGain *= 3;
             // Double XP ability
             if (doubleXPActive) { xpGain *= 2; doubleXPActive = false; AppState.abilities.doubleXPActive = false; }
+            // Fokus-Quiz: x-fache XP (Standard 3×)
+            if (focusQuizActive) xpGain *= (Number((quizSettings.focusQuiz || {}).xpMultiplier) || 1);
         } else {
             if (shieldActive) { xpGain = 0; shieldActive = false; AppState.abilities.shieldActive = false; }
             else xpGain = baseWrongXP;
@@ -503,7 +542,6 @@ const ClassicQuizPlugin = {
     },
 
     nextQuestion() {
-        clearAutoAdvance();
         const hintEl = document.getElementById('hintContainer');
         if (hintEl) hintEl.remove();
         currentQuestionIndex++;
@@ -526,6 +564,8 @@ const ClassicQuizPlugin = {
         const finalXP = Math.round(this._quizXP * multiplier);
         // Update user stats
         if (currentUser) {
+            // Team-Bonus gilt nur für das laufende Quiz
+            delete currentUser.teamBonusActive;
             currentUser.totalXP = (currentUser.totalXP || 0) + finalXP;
             currentUser.correctAnswers = (currentUser.correctAnswers || 0) + correct;
             currentUser.totalAnswers = (currentUser.totalAnswers || 0) + total;
@@ -556,7 +596,7 @@ const ClassicQuizPlugin = {
                 if (!_histGroups[g]) _histGroups[g] = { asked: 0, correct: 0 };
                 if (!a.skipped) { _histGroups[g].asked++; if (a.correct) _histGroups[g].correct++; }
             });
-            currentUser.history.push({ date: new Date().toISOString(), correct, total, xp: finalXP, score: pct, skipped: skipped || undefined, groups: _histGroups });
+            currentUser.history.push({ date: new Date().toISOString(), correct, total, xp: finalXP, score: pct, skipped: skipped || undefined, groups: _histGroups, focus: focusQuizActive || undefined });
             // Streak
             const today = new Date().toDateString();
             if (!currentUser._lastStreakDate || currentUser._lastStreakDate !== today) {
@@ -593,7 +633,9 @@ const ClassicQuizPlugin = {
         renderUserSelect();
         showScreen('resultsScreen');
         renderNextGoals(currentUser);
-        EventBus.emit(EventBus.EVENTS.QUIZ_COMPLETED, { user: currentUser?.name, correct, total, xp: finalXP, pct });
+        EventBus.emit(EventBus.EVENTS.QUIZ_COMPLETED, { user: currentUser?.name, correct, total, xp: finalXP, pct, focus: focusQuizActive });
+        // Fokus-Flag gilt nur für das gerade beendete Quiz (Auswertung lief im Listener)
+        focusQuizActive = false;
         // Mini-game cascade — Autofokus erst nach Abschluss aller Mini-Games
         setTimeout(() => this._checkMiniGameTriggers(), 1500);
     },
@@ -675,12 +717,18 @@ const ClassicQuizPlugin = {
 
     abandonQuiz() {
         if (!this._answered && currentQuestionIndex === 0 && userAnswers.length === 0) {
+            // Noch nichts beantwortet → kein Versuch, kein Serienverlust
+            focusQuizActive = false;
             showScreen('startScreen');
             renderUserSelect();
             return;
         }
-        GameDialog.showConfirm('Quiz abbrechen?', 'Du erhältst 50% der bisherigen XP.', () => {
+        const focusHint = focusQuizActive
+            ? '<br><small style="color:var(--accent-warning,#f39c12);">🎯 Ein abgebrochenes Fokus-Quiz zählt als Fehlversuch und setzt die Serie zurück.</small>'
+            : '';
+        GameDialog.showConfirm('🚪', 'Quiz abbrechen?', 'Du erhältst 50% der bisherigen XP.' + focusHint, () => {
             const halfXP = Math.round(this._quizXP * 0.5);
+            if (currentUser) delete currentUser.teamBonusActive;
             if (currentUser && halfXP > 0) {
                 const multiplier = getDailyXPMultiplier(currentUser);
                 const finalXP = Math.round(halfXP * multiplier);
@@ -692,7 +740,8 @@ const ClassicQuizPlugin = {
             syncToAppState();
             renderUserSelect();
             showScreen('startScreen');
-            EventBus.emit(EventBus.EVENTS.QUIZ_ABANDONED, { xp: Math.round(this._quizXP * 0.5) });
+            EventBus.emit(EventBus.EVENTS.QUIZ_ABANDONED, { xp: Math.round(this._quizXP * 0.5), focus: focusQuizActive });
+            focusQuizActive = false;
         });
     }
 };

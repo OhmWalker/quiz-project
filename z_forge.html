@@ -2536,16 +2536,6 @@
             text-align: center; font-weight: 700; font-size: 1.1rem;
             margin: 10px 0; min-height: 30px;
         }
-        .boss-timer-bar {
-            width: 100%; height: 6px; background: rgba(255,255,255,0.1);
-            border-radius: 3px; margin: 8px 0; overflow: hidden;
-        }
-        .boss-timer-fill {
-            height: 100%; background: var(--accent); transition: width 0.1s linear;
-            border-radius: 3px;
-        }
-
-
         .plugin-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; margin-top: 20px; }
         .plugin-card { background: rgba(255,255,255,0.05); border: 2px solid rgba(255,255,255,0.12); border-radius: 14px; padding: 18px; transition: all 0.3s; position: relative; }
         .plugin-card:hover { border-color: rgba(255,255,255,0.25); background: rgba(255,255,255,0.07); }
@@ -3041,6 +3031,97 @@
             opacity: 0.5;
             white-space: nowrap;
         }
+
+        /* ── Fokus-Quiz-Kreis (FocusQuizPlugin) ───────────────────────────────────
+           Sitzt oben rechts neben der Siegertreppe, Größe wie die Podium-Avatare (168px).
+           Position von der Mitte aus gerechnet (Treppe mit 3 Plätzen ist max. 790px breit,
+           also 395px je Seite + 30px Abstand) — NICHT am rechten Kartenrand, sonst liegt
+           der Kreis unter der Fähigkeiten-Leiste (≤1700px am Bildschirmrand, 180px breit).
+           Bewusst ohne Endlos-Animation/Blur — Live-Rechner sind schwach. */
+        .leaderboard-wrap {
+            position: relative;
+        }
+        .leaderboard-wrap.has-focus {
+            min-height: 270px;   /* Platz für den Kreis, falls die Treppe leer ist */
+        }
+        .focus-quiz-btn {
+            position: absolute;
+            top: 20px;
+            left: calc(50% + 425px);
+            z-index: 2;
+            width: 180px;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            animation: podiumRise 0.8s ease-out;
+        }
+        .focus-circle {
+            width: 168px;
+            height: 168px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: radial-gradient(circle at 35% 30%, #1abc9c, #16a085 45%, #1f3a7a);
+            border: 5px solid var(--overlay-20);
+            box-shadow: 0 10px 40px var(--shadow-40);
+            box-sizing: border-box;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .focus-circle svg {
+            width: 70%;
+            height: 70%;
+        }
+        .focus-quiz-btn:hover .focus-circle {
+            transform: scale(1.05);
+            box-shadow: 0 15px 50px rgba(26, 188, 156, 0.45);
+        }
+        .focus-caption {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            line-height: 1.3;
+            color: white;
+        }
+        .focus-caption strong {
+            font-size: 1.05rem;
+        }
+        .focus-caption span {
+            font-size: 0.82rem;
+            opacity: 0.8;
+            max-width: 180px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .focus-quiz-btn.is-done .focus-circle {
+            border-color: #FFD700;
+            box-shadow: 0 15px 50px rgba(255, 215, 0, 0.35);
+        }
+        .focus-quiz-btn.is-limit {
+            cursor: default;
+        }
+        .focus-quiz-btn.is-limit .focus-circle {
+            filter: grayscale(1);
+            opacity: 0.5;
+        }
+        .focus-quiz-btn.is-limit:hover .focus-circle {
+            transform: none;
+            box-shadow: 0 10px 40px var(--shadow-40);
+        }
+        /* Unter 1600px passt der Kreis nicht mehr zwischen Treppe und rechte Seitenleiste
+           (Mitte + 425 + 180 ≤ Fensterbreite − 184) → mittig über die Treppe */
+        @media (max-width: 1599px) {
+            .focus-quiz-btn {
+                position: static;
+                margin: 0 auto 10px;
+            }
+            .leaderboard-wrap.has-focus {
+                min-height: 0;
+            }
+        }
     </style>
 </head>
 <body>
@@ -3137,16 +3218,6 @@
 
 
         const CONFIG = {
-            // Timer
-            TIMER: {
-                GHOST_CLEANUP_MONTHS: 3,       // Ghost-Daten nach X Monaten löschen
-                MIN_DYNAMIC_SEC: 5,            // Minimum dynamischer Timer (Sekunden)
-                MAX_DYNAMIC_SEC: 60,           // Maximum dynamischer Timer (Sekunden)
-                DEFAULT_SEC: 30,               // Standard-Timer (Sekunden)
-                COUNTDOWN_INTERVAL_MS: 100,    // Timer-Update-Intervall (ms)
-                WARNING_PCT: 0.3,              // < 30% verbleibend → gelbe Warnung
-                CRITICAL_PCT: 0.15,            // < 15% verbleibend → rote Warnung
-            },
             // XP & Level
             XP: {
                 MAX_LEVEL: 100,
@@ -3175,7 +3246,8 @@
             },
             // Abilities
             ABILITIES: {
-                MAX_PER_QUESTION: 1            // Max Abilities pro Frage (außer passive)
+                MAX_PER_QUESTION: 1,           // Max Abilities pro Frage (außer passive)
+                JOKER_EXPIRY_MONTHS: 3         // Offene Telefon-Joker nach X Monaten verwerfen
             },
             // Datei-System
             FILE: {
@@ -3488,8 +3560,6 @@
                 previousRanks: {},
                 selectedAvatarPresets: {}
             },
-    
-            // Timer-State (flüchtig)
     
             // Ability-State (flüchtig)
             abilities: {
@@ -3856,6 +3926,7 @@
             init() {
                 this._initSidebarDrag();
                 EventBus.on(EventBus.EVENTS.USER_SELECTED, (data) => {
+                    this._statsVersion++;
                     this.renderSidebars(data.user);
                 }, 'BadgePlugin');
                 EventBus.on(EventBus.EVENTS.QUIZ_STARTED, () => {
@@ -3868,6 +3939,7 @@
 
             checkBadges(user) {
                 if (!user || !PluginRegistry.isEnabled('BadgePlugin')) return;
+                this._statsVersion++;   // Stats haben sich geändert → Cache verwerfen
                 const defs = this.getBadgeDefinitions();
                 const stats = this.calculateBadgeStats(user);
                 if (!user._badgeTiers) user._badgeTiers = {};
@@ -3893,7 +3965,21 @@
                 return defs;
             },
 
+            // Gecachter Zugang: die eigentliche Berechnung läuft mehrfach über die
+            // komplette History (ein Date-Parse pro Eintrag) und über alle Fragen.
+            // Der Tooltip rief sie bei JEDEM Mouseover neu auf → sichtbares Ruckeln.
+            _statsVersion: 0,
+            _statsCache: null,
             calculateBadgeStats(user) {
+                if (!user) return {};
+                const c = this._statsCache;
+                if (c && c.user === user && c.version === this._statsVersion) return c.stats;
+                const stats = this._computeBadgeStats(user);
+                this._statsCache = { user: user, version: this._statsVersion, stats: stats };
+                return stats;
+            },
+
+            _computeBadgeStats(user) {
                 if (!user) return {};
                 const bs = user.badgeStats || {};
                 const qs = user.questionStats || {};
@@ -3901,46 +3987,18 @@
                 const stats = { ...bs };
                 stats.totalXP = user.totalXP || 0;
                 stats.level = user.level || 1;
-                // Unique days
-                const days = new Set(hist.map(h => new Date(h.date).toDateString()));
-                stats.uniqueDays = days.size;
-                // First day quizzes
-                if (hist.length > 0) {
-                    const firstDay = new Date(hist[0].date).toDateString();
-                    stats.firstDayQuizzes = hist.filter(h => new Date(h.date).toDateString() === firstDay).length;
-                }
+                // History-Kennzahlen inkl. archivierter (aufgeräumter) History — 30-globals.js
+                const hs = computeHistoryStats(hist, user.historyArchive);
+                stats.uniqueDays      = hs.uniqueDays;        // Tage mit Quiz
+                stats.firstDayQuizzes = hs.firstDayQuizzes;   // Quizze am 1. Tag
+                stats.activeWeeks     = hs.activeWeeks;
+                stats.improvements    = hs.improvements;      // besser als das Quiz davor
+                stats.comebacks       = hs.comebacks;         // Quiz nach 7+ Tagen Pause
+                stats.marathonDays    = hs.marathonDays;      // Tage mit 10+ Quizzen
                 // Unique questions
                 stats.uniqueQuestions = Object.keys(qs).length;
                 // Mastered questions (3+ correct)
                 stats.masteredQuestions = Object.values(qs).filter(s => (s.correct || 0) >= 3).length;
-                // Active weeks
-                const weeks = new Set(hist.map(h => {
-                    const d = new Date(h.date);
-                    const yr = d.getFullYear();
-                    const wk = Math.ceil(((d - new Date(yr, 0, 1)) / 86400000 + new Date(yr, 0, 1).getDay() + 1) / 7);
-                    return `${yr}-W${wk}`;
-                }));
-                stats.activeWeeks = weeks.size;
-                // Improvements (better than last quiz)
-                let improvements = 0;
-                for (let i = 1; i < hist.length; i++) {
-                    if ((hist[i].score || 0) > (hist[i-1].score || 0)) improvements++;
-                }
-                stats.improvements = improvements;
-                // Comebacks (quiz after 7+ day gap)
-                let comebacks = 0;
-                for (let i = 1; i < hist.length; i++) {
-                    const gap = (new Date(hist[i].date) - new Date(hist[i-1].date)) / 86400000;
-                    if (gap >= 7) comebacks++;
-                }
-                stats.comebacks = comebacks;
-                // Marathon days (10+ quizzes in a day)
-                const dayCounts = {};
-                hist.forEach(h => {
-                    const d = new Date(h.date).toDateString();
-                    dayCounts[d] = (dayCounts[d] || 0) + 1;
-                });
-                stats.marathonDays = Object.values(dayCounts).filter(c => c >= 10).length;
                 // Groups played
                 const groups = new Set();
                 (questions || []).forEach(q => {
@@ -3993,6 +4051,7 @@
 
             renderSidebars(user) {
                 if (!user || !PluginRegistry.isEnabled('BadgePlugin')) return;
+                this._statsVersion++;   // Render = Zustand kann sich geändert haben
                 this.updateSidebarTopVar();
                 const defs = this.getBadgeDefinitions();
                 const stats = this.calculateBadgeStats(user);
@@ -4335,6 +4394,7 @@
             adminPassword: 'admin',
             superAdminPassword: 'super',
             avatarPreset: 1,
+            compactPlayerFiles: false,   // Spieler-Dateien ohne Einrückung speichern (~halbe Größe) — Forge → Sicherung
             spacedRepetition: {
                 randomness: 30,         // 0-100: 0=pure SR, 100=komplett zufällig
                 streakCooldown: 48,     // Stunden Sperre nach N korrekt in Folge
@@ -4343,18 +4403,6 @@
                 freshThreshold: 1,      // max. asked-Zahl für "selten gestellt"
                 maxCoreFirst: 7,        // max. Core-Fragen im 1. Quiz des Tages
                 maxCoreSubsequent: 3    // max. Core-Fragen in Folge-Quizzen
-            },
-            timer: {
-                secondsPerQuestion: 3,
-                penalty: 5,
-                xpMultiplier: 1.5,
-                autoAdvanceSec: 5,
-                dynamicTimer: true,
-                speedBonus: true,
-                ghostRace: true,
-                goldPct: 25, goldXP: 50,
-                silverPct: 50, silverXP: 25,
-                bronzePct: 75, bronzeXP: 10
             },
             xpSystem: {
                 baseXP: 50,
@@ -4375,6 +4423,20 @@
             },
             mediaDisplay: {
                 quizImageWidth: 80      // Prozent der Container-Breite (30-100)
+            },
+            // Fokus-Quiz: Zusatz-Quiz aus EINER Themengruppe (nicht Core), freigeschaltet
+            // nach dem ersten normalen Quiz des Tages. Gruppe kommt aus dem Rotationsplan.
+            focusQuiz: {
+                enabled:       true,
+                questionCount: 10,      // Fragen pro Fokus-Quiz
+                successPct:    100,     // Erfolgsschwelle in Prozent
+                xpMultiplier:  3,       // x-fache XP für richtige Antworten
+                streakTarget:  5,       // erfolgreiche Fokus-Quizze in Folge für die Prämie
+                completionXP:  1000,    // Vollendungs-Prämie (einmal pro Rotationszeitraum)
+                maxPerDay:     0,       // 0 = unbegrenzt
+                rotationStart: null,    // 'YYYY-MM-DD', Beginn des Plans
+                rotationLoop:  true,    // Plan wiederholt sich, statt auszulaufen
+                rotation:      []       // [{ group, unit: 'week'|'month', length }] — Array-Reihenfolge = Rotation
             },
             miniGames: {
                 spinner: { enabled: true, minCorrect: 10, quizCount: 2, maxXP: 50 },
@@ -4398,6 +4460,10 @@
 
 
         function ensureSettingsDefaults(settings) {
+            // Timer-Modus wurde 2026-10 entfernt — Altbestand aus Master-JSONs werfen,
+            // damit der Block nicht bei jedem Export mitwandert.
+            if (settings && 'timer' in settings) delete settings.timer;
+
             for (const [key, defaultVal] of Object.entries(SETTINGS_DEFAULTS)) {
                 if (typeof defaultVal === 'object' && defaultVal !== null) {
                     if (!settings[key]) {
@@ -4524,6 +4590,14 @@
             if (!u.questionStats || typeof u.questionStats !== 'object') u.questionStats = {};
             if (!u.badgeStats || typeof u.badgeStats !== 'object') u.badgeStats = {};
 
+            // Quiz-gebundene Flags dürfen nicht aus alten Dateien weiterleben
+            delete u.teamBonusActive;
+
+            normalizeFocusState(u);
+
+            // Archiv aufgeräumter History (Forge → Sicherung): nur Objekt zulassen
+            if (u.historyArchive != null && typeof u.historyArchive !== 'object') delete u.historyArchive;
+
             // History-Feld `xpEarned` (alte Versionen) → `xp` (kanonisch)
             u.history.forEach(function(h) {
                 if (!h || typeof h !== 'object') return;
@@ -4535,8 +4609,200 @@
         }
 
 
+        // Fokus-Quiz-Spielerstand auf das kanonische Schema bringen. Zahlen werden
+        // koersiert (Strings/null aus Altdateien → Zahl), unbekannte Typen → Default.
+        // Wird von normalizeUser (Load) und vom FocusQuizPlugin (neu angelegte
+        // Spieler ohne Load) genutzt. Idempotent.
+        function normalizeFocusState(u) {
+            if (!u || typeof u !== 'object') return null;
+            const fq  = (u.focusQuiz && typeof u.focusQuiz === 'object') ? u.focusQuiz : {};
+            const str = v => (typeof v === 'string' && v) ? v : null;
+            u.focusQuiz = {
+                streak:         Number(fq.streak)      || 0,   // erfolgreiche Fokus-Quizze in Folge
+                bestStreak:     Number(fq.bestStreak)  || 0,
+                completions:    Number(fq.completions) || 0,   // wie oft die Prämie kassiert wurde
+                playedToday:    Number(fq.playedToday) || 0,   // für maxPerDay
+                lastPlayed:     str(fq.lastPlayed),            // ISO-Zeitstempel
+                lastDate:       str(fq.lastDate),              // toDateString() — Tageswechsel für playedToday
+                periodKey:      str(fq.periodKey),             // Zeitraum, zu dem `streak` gehört
+                rewardedPeriod: str(fq.rewardedPeriod)         // Zeitraum, in dem die Prämie kassiert wurde
+            };
+            return u.focusQuiz;
+        }
+
+
+        // ── History-Kennzahlen (mit Archiv) ──────────────────────────────────────────
+        // Badges und Fähigkeiten zählen Werte aus der KOMPLETTEN Quiz-History.
+        // Beim Aufräumen (Forge → Sicherung) wird alte History in `user.historyArchive`
+        // zusammengefasst — dieselben Kennzahlen als Summen plus die Grenzwerte des
+        // letzten archivierten Eintrags, damit Paare über die Schnittkante (Verbesserung,
+        // Comeback, Kalenderwoche) korrekt weitergezählt werden.
+        // Schnitt-Regel beim Archivieren: nie innerhalb eines Tages und nie mit < 1 h
+        // Abstand schneiden — dann sind Tage und Burst-Sessions sauber getrennt.
+
+        // Kalenderwoche wie bisher im BadgePlugin (Formel unverändert übernommen)
+        function historyWeekKey(d) {
+            const yr = d.getFullYear();
+            const wk = Math.ceil(((d - new Date(yr, 0, 1)) / 86400000 + new Date(yr, 0, 1).getDay() + 1) / 7);
+            return `${yr}-W${wk}`;
+        }
+
+        // hist: History-Einträge (beliebige Reihenfolge), arch: historyArchive oder null.
+        // Rückgabe hat dieselbe Form wie ein Archiv (ohne `until`/`months`) und kann
+        // darum selbst als Archiv für den nächsten Abschnitt dienen.
+        function computeHistoryStats(hist, arch) {
+            const a = (arch && typeof arch === 'object') ? arch : null;
+            const n = k => (a && Number(a[k])) || 0;
+            const h = (hist || []).slice().sort((x, y) => new Date(x.date) - new Date(y.date));
+            const day = e => new Date(e.date).toDateString();
+
+            // Tage / Wochen / Marathon- und 3er-Tage
+            const dayCounts = {};
+            h.forEach(e => { const d = day(e); dayCounts[d] = (dayCounts[d] || 0) + 1; });
+            const lastDay = a ? a.lastDay : null;
+            const days = Object.keys(dayCounts).filter(d => d !== lastDay);
+            const weeks = new Set(h.map(e => historyWeekKey(new Date(e.date))));
+            if (a && a.lastWeekKey) weeks.delete(a.lastWeekKey);   // Woche über die Kante nur einmal zählen
+
+            // Verbesserungen + Comebacks (Paare aufeinanderfolgender Quizze, inkl. Kante)
+            let improvements = n('improvements'), comebacks = n('comebacks');
+            let prevScore = a && a.lastScore != null ? a.lastScore : null;
+            let prevDate  = a && a.lastDate ? new Date(a.lastDate) : null;
+            h.forEach(e => {
+                if (prevScore !== null && (e.score || 0) > prevScore) improvements++;
+                const d = new Date(e.date);
+                if (prevDate && (d - prevDate) / 86400000 >= 7) comebacks++;
+                prevScore = e.score || 0;
+                prevDate = d;
+            });
+
+            // Burst-Sessions: 2+ Quizze innerhalb 1 h ab Beginn des ersten Quiz der Gruppe
+            let burst = n('burstSessions'), i = 0;
+            while (i < h.length) {
+                const start = new Date(h[i].date).getTime();
+                let j = i + 1;
+                while (j < h.length && new Date(h[j].date).getTime() - start < 3600000) j++;
+                burst += Math.floor((j - i) / 2);
+                i = (j > i + 1) ? j : i + 1;
+            }
+
+            const last = h[h.length - 1];
+            return {
+                quizzes:         n('quizzes') + h.length,
+                uniqueDays:      n('uniqueDays') + days.length,
+                activeWeeks:     n('activeWeeks') + weeks.size,
+                firstDayQuizzes: a ? n('firstDayQuizzes') : (h.length ? dayCounts[day(h[0])] : 0),
+                improvements,
+                comebacks,
+                marathonDays:    n('marathonDays') + days.filter(d => dayCounts[d] >= 10).length,
+                burstSessions:   burst,
+                activeDays3:     n('activeDays3') + days.filter(d => dayCounts[d] >= 3).length,
+                lastDay:         last ? day(last) : (a ? a.lastDay : null),
+                lastWeekKey:     last ? historyWeekKey(new Date(last.date)) : (a ? a.lastWeekKey : null),
+                lastDate:        last ? last.date : (a ? a.lastDate : null),
+                lastScore:       last ? (last.score || 0) : (a ? a.lastScore : null)
+            };
+        }
+
+
+        // ── Fokus-Quiz: Rotationsplan ────────────────────────────────────────────────
+        // Liegt hier (nicht im Plugin), weil Forge die Berechnung für die Vorschau
+        // braucht und 30-globals in allen Builds steckt.
+        //
+        // Der Plan speichert keine Datumspaare: ab `rotationStart` werden die Einträge
+        // in Array-Reihenfolge aneinandergereiht. Umsortieren verschiebt dadurch die
+        // Zeiträume automatisch. Alle Datumswerte sind lokale Mitternacht.
+
+        // 'YYYY-MM-DD' → lokales Datum (Mitternacht). Ungültig/leer → null.
+        function _focusParseDate(iso) {
+            const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || ''));
+            if (!m) return null;
+            const d = new Date(+m[1], +m[2] - 1, +m[3]);
+            return d.getMonth() === +m[2] - 1 ? d : null;   // 2026-02-31 abweisen
+        }
+
+        function _focusYMD(d) {
+            return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+        }
+
+        // Ende (exklusiv) eines Eintrags, der am Datum `start` beginnt.
+        // Woche = 7 Tage. Monat = Kalendermonat, nicht 30 Tage — sonst wandert ein
+        // Monatsfokus über das Jahr. Tage, die es im Zielmonat nicht gibt (31. → Feb.),
+        // werden auf den Monatsletzten gekappt, statt in den Folgemonat überzulaufen.
+        function _focusPeriodEnd(start, entry) {
+            const n = Math.floor(Number(entry && entry.length));
+            const len = n >= 1 ? n : 1;
+            if (entry && entry.unit === 'month') {
+                const y = start.getFullYear(), m = start.getMonth() + len;
+                const lastDay = new Date(y, m + 1, 0).getDate();
+                return new Date(y, m, Math.min(start.getDate(), lastDay));
+            }
+            return new Date(start.getFullYear(), start.getMonth(), start.getDate() + 7 * len);
+        }
+
+        // Zeiträume ab `fromDate` (inkl. des laufenden), höchstens `count` Stück.
+        // Liegt `fromDate` vor rotationStart, beginnt die Liste mit dem ersten Eintrag.
+        // Rückgabe: [{ index, group, unit, length, start, end, key }]
+        function getFocusPeriods(cfg, fromDate, count) {
+            const out = [];
+            if (!cfg || !Array.isArray(cfg.rotation) || cfg.rotation.length === 0) return out;
+            const startDate = _focusParseDate(cfg.rotationStart);
+            if (!startDate) return out;
+            const d = fromDate || new Date();
+            const day = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+            const rot = cfg.rotation;
+            let cursor = startDate, i = 0;
+            // Schutz gegen Endlosschleifen: 20 000 Schritte = ~380 Jahre im Wochenrhythmus
+            for (let steps = 0; steps < 20000 && out.length < count; steps++) {
+                const entry = rot[i] || {};
+                const end = _focusPeriodEnd(cursor, entry);
+                if (end > day) {
+                    out.push({
+                        index: i,
+                        group: entry.group || '',
+                        unit:  entry.unit === 'month' ? 'month' : 'week',
+                        length: Math.max(1, Math.floor(Number(entry.length)) || 1),
+                        start: cursor,
+                        end:   end,
+                        key:   (entry.group || '') + '@' + _focusYMD(cursor)
+                    });
+                }
+                cursor = end;
+                i++;
+                if (i >= rot.length) {
+                    if (cfg.rotationLoop === false) break;
+                    i = 0;
+                }
+            }
+            return out;
+        }
+
+        // Laufender Zeitraum für `date` (Standard: heute) oder null —
+        // null bei leerem Plan, fehlendem Start, Datum vor dem Start oder
+        // ausgelaufenem Plan ohne Schleife.
+        function getActiveFocusPeriod(cfg, date) {
+            const d = date || new Date();
+            const day = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+            const p = getFocusPeriods(cfg, day, 1)[0];
+            return p && p.start <= day && p.group ? p : null;
+        }
+
+
+        // Zahlenfeld robust lesen: leeres/ungültiges Feld → Default statt NaN.
+        // parseInt('') ergibt NaN (nie null/undefined) — darum greift `?? Default`
+        // nie, und `|| Default` würde den gültigen Wert 0 verschlucken.
+        function _numVal(id, def, isFloat) {
+            const el = document.getElementById(id);
+            if (!el) return def;
+            const v = isFloat ? parseFloat(el.value) : parseInt(el.value, 10);
+            return Number.isFinite(v) ? v : def;
+        }
+
+
         function hasStableId(id) {
-            return id && !id.startsWith('Q_') && !/^\d+$/.test(String(id));
+            if (id == null || id === '') return false;
+            const s = String(id);   // Zahlen-IDs aus alten Dateien dürfen hier nicht crashen
+            return !s.startsWith('Q_') && !/^\d+$/.test(s);
         }
 
         function getGroupPrefix(groupName) {
@@ -4676,10 +4942,13 @@
                                 });
                             } catch (err) {
                                 console.warn('Datei konnte nicht gelesen werden:', file.name, err.message);
-                                resolve(null);
+                                resolve({ name: file.name, _readError: err.message || 'Ungültiges Format' });
                             }
                         };
-                        reader.onerror = () => { console.warn('Lesefehler:', file.name); resolve(null); };
+                        reader.onerror = () => {
+                            console.warn('Lesefehler:', file.name);
+                            resolve({ name: file.name, _readError: 'Datei nicht lesbar' });
+                        };
                         reader.readAsText(file);
                     });
                     readPromises.push(promise);
@@ -4694,8 +4963,10 @@
             let questionFiles = [];
             const skippedFiles = [];
             const unrecognizedJsonFiles = [];
+            const unreadableFiles = [];
             for (const result of results) {
                 if (!result) continue;
+                if (result._readError) { unreadableFiles.push(result.name + ' — ' + result._readError); continue; }
 
                 // 01: Master (Settings + Backups)
                 if (result.name.startsWith('02_quiz-master') || result.name.startsWith('02_QUIZ-MASTER') || result.name === 'quiz-master.json') {
@@ -4728,6 +4999,15 @@
                 warnMsg += '\nBitte umbenennen zu: 03_questions_THEMA_DATUM.json\n';
                 warnMsg += 'Beim nächsten Export wird der Name automatisch korrekt gesetzt.';
                 Toast.show(warnMsg, 'info');
+            }
+
+            // Warnung bei unlesbaren Dateien — sonst fehlt der Spieler lautlos
+            if (unreadableFiles.length > 0) {
+                console.warn('Unlesbare Dateien:', unreadableFiles.join(', '));
+                let errMsg = '⛔ ' + unreadableFiles.length + ' Datei(en) konnten NICHT gelesen werden und fehlen:\n\n';
+                unreadableFiles.forEach(function(f) { errMsg += '• ' + f + '\n'; });
+                errMsg += '\nNicht weiterarbeiten, bevor das geklärt ist — sonst werden diese Daten beim nächsten Export überschrieben!';
+                Toast.show(errMsg, 'error');
             }
             console.log('Ordner-Laden: ' + results.filter(Boolean).length + ' JSON-Dateien, ' + masterFiles.length + ' Master, ' + questionFiles.length + ' Fragen-Dateien, ' + playerFiles.length + ' Spieler, ' + skippedFiles.length + ' übersprungen');
             if (playerFiles.length > 0) console.log('Spieler-Dateien:', playerFiles.map(function(p){ return p.name; }).join(', '));
@@ -4778,6 +5058,9 @@
             }
 
             // Plugin-Konfiguration aus Master laden (abwärtskompatibel)
+            // Geladene Plugin-Konfiguration merken: Forge registriert keine Plugins und
+            // würde sonst beim Speichern eine leere pluginConfig schreiben.
+            _loadedPluginConfig = masterData.pluginConfig || null;
             if (masterData.pluginConfig) {
                 PluginRegistry.loadConfig(masterData.pluginConfig);
             }
@@ -4878,7 +5161,7 @@
             })();
 
             // Cross-Reference: Phone-Joker System (3 Phasen)
-            const jokerExpiryMs = CONFIG.TIMER.GHOST_CLEANUP_MONTHS * 30 * 24 * 60 * 60 * 1000;
+            const jokerExpiryMs = CONFIG.ABILITIES.JOKER_EXPIRY_MONTHS * 30 * 24 * 60 * 60 * 1000;
             const jokerExpiryThreshold = Date.now() - jokerExpiryMs;
 
             // Phase 1: Resolved Joker verarbeiten → Sender-Bonus berechnen
@@ -5043,25 +5326,55 @@
         }
 
 
-        function saveCurrentPlayer() {
-            if (!currentUser) {
-                Toast.show('Bitte zuerst einen Spieler auswählen.', 'warning');
-                return;
-            }
+        // ── Serialisierung (gemeinsam für Speichern, Sicherung und Aufräumen) ────────
 
-            // Format: 04_operator_NAME_YYYY-MM-DD_HHMM-SS.json
-            const now = new Date();
-            const timestamp = now.toISOString().slice(0, 19).replace('T', '_').replace(/:/g, '');
-            const playerName = currentUser.name.toUpperCase().replace(/\s+/g, '-').replace(/[^A-Z0-9-]/g, '');
-            const fileName = `04_operator_${playerName}_${timestamp}.json`;
+        let _loadedPluginConfig = null;
 
-            let dataStr = JSON.stringify(currentUser, null, 2);
+        function _fileTimestamp(now) {
+            return (now || new Date()).toISOString().slice(0, 19).replace('T', '_').replace(/:/g, '');
+        }
+
+        // Format: 04_operator_NAME_YYYY-MM-DD_HHMMSS.json
+        function playerFileName(user, now) {
+            const playerName = String(user.name || '').toUpperCase().replace(/\s+/g, '-').replace(/[^A-Z0-9-]/g, '');
+            return `04_operator_${playerName}_${_fileTimestamp(now)}.json`;
+        }
+
+        // JSON-Text einer Datei: kompakt oder eingerückt, ggf. Base64 (encryptPlayerData)
+        function encodeDataFile(obj, compact) {
+            let dataStr = compact ? JSON.stringify(obj) : JSON.stringify(obj, null, 2);
             if (quizSettings.encryptPlayerData) {
                 try { dataStr = btoa(unescape(encodeURIComponent(dataStr))); } catch(e) { console.error('Encoding error:', e); }
             }
+            return dataStr;
+        }
+
+        // Spieler-Datei: kompakt, wenn in den Einstellungen gewählt (Forge → Sicherung)
+        function serializePlayer(user) {
+            return encodeDataFile(user, !!quizSettings.compactPlayerFiles);
+        }
+
+        function buildMasterData() {
+            // Registrierte Plugins (Quiz) überschreiben die geladene Konfiguration;
+            // im Forge-Build ist die Registry leer → geladene Konfiguration bleibt erhalten.
+            const pluginConfig = Object.assign({}, _loadedPluginConfig || {}, PluginRegistry.getConfig());
+            return {
+                version: CONFIG.FILE.VERSION,
+                lastBackup: new Date().toISOString(),
+                settings: quizSettings,
+                badges: quizSettings.badges || null,
+                pluginConfig: pluginConfig,
+                questionSources: loadedQuestionFiles.map(function(f){ return f.name; })
+            };
+        }
+
+        function masterFileName(now) {
+            return `02_QUIZ-MASTER_${_fileTimestamp(now)}.json`;
+        }
+
+        function _downloadText(dataStr, fileName) {
             const blob = new Blob([dataStr], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
-
             const a = document.createElement('a');
             a.href = url;
             a.download = fileName;
@@ -5069,7 +5382,16 @@
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
+        }
 
+
+        function saveCurrentPlayer() {
+            if (!currentUser) {
+                Toast.show('Bitte zuerst einen Spieler auswählen.', 'warning');
+                return;
+            }
+            const fileName = playerFileName(currentUser);
+            _downloadText(serializePlayer(currentUser), fileName);
             Toast.show(`Spielerdaten gespeichert als:\n${fileName}\n\nBitte speichern Sie die Datei im Quiz-Ordner!`, 'success');
         }
 
@@ -5087,34 +5409,8 @@
 
 
         function saveMasterBackup() {
-            const masterData = {
-                version: CONFIG.FILE.VERSION,
-                lastBackup: new Date().toISOString(),
-                settings: quizSettings,
-                badges: quizSettings.badges || null,
-                pluginConfig: PluginRegistry.getConfig(),
-                questionSources: loadedQuestionFiles.map(function(f){ return f.name; })
-            };
-
-            // Format: 02_quiz-master_YYYY-MM-DD_HHMM-SS.json
-            const now = new Date();
-            const timestamp = now.toISOString().slice(0, 19).replace('T', '_').replace(/:/g, '');
-            const fileName = `02_QUIZ-MASTER_${timestamp}.json`;
-
-            const dataStr = JSON.stringify(masterData, null, 2);
-            if (quizSettings.encryptPlayerData) {
-                try { dataStr = btoa(unescape(encodeURIComponent(dataStr))); } catch(e) { console.error('Encoding error:', e); }
-            }
-            const blob = new Blob([dataStr], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-
-            let a = document.createElement('a');
-            a.href = url;
-            a.download = fileName;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
+            const fileName = masterFileName();
+            _downloadText(encodeDataFile(buildMasterData(), false), fileName);
 
             const encInfo = quizSettings.encryptPlayerData ? ' (Base64-kodiert)' : '';
             Toast.show('Master-Datei gespeichert als:\n' + fileName + encInfo + '\n\nEnthält Settings und Plugin-Konfiguration.\nFragen werden separat in 03_questions-Dateien gespeichert.\n\nBitte speichern Sie die Datei im Quiz-Ordner!', 'success');
@@ -5524,6 +5820,8 @@
                 masterFiles.sort((a, b) => b.lastModified - a.lastModified);
                 const master = masterFiles[0].data;
                 quizSettings = ensureSettingsDefaults(Object.assign({}, quizSettings, master.settings || {}));
+                // Plugin-Konfiguration durchreichen — Forge registriert keine Plugins (32-file-io: buildMasterData)
+                _loadedPluginConfig = master.pluginConfig || null;
             }
 
             // Fragen laden
@@ -5532,6 +5830,8 @@
             questionFiles.forEach(qf => {
                 const fileTheme = qf.data.theme || '';
                 const qList = qf.data.questions || [];
+                // Core wird wie im Quiz am Dateinamen erkannt (kein Feld in der JSON)
+                const isCore = /^03_questions_CORE/i.test(qf.name);
                 let loaded = 0;
                 qList.forEach((q, qi) => {
                     try {
@@ -5540,6 +5840,7 @@
                         const isDupe = n.questionId && questions.some(eq => eq.questionId === n.questionId);
                         if (isDupe) return;
                         n.sourceFile = qf.name;
+                        n.isCore = isCore;
                         questions.push(n);
                         loaded++;
                     } catch { /* fehlerhafte Frage überspringen */ }
@@ -5611,11 +5912,7 @@
         function _adminExportAllPlayers() {
             if (!users.length) { Toast.show('Keine Spieler geladen.', 'warning'); return; }
             const now = new Date();
-            const ts = now.toISOString().slice(0,19).replace('T','_').replace(/:/g,'');
-            users.forEach(u => {
-                const safeName = (u.name || 'unbekannt').replace(/[^a-zA-Z0-9_\-]/g, '_');
-                _adminDownloadJSON(u, `04_operator_${safeName}_${ts}.json`);
-            });
+            users.forEach(u => _downloadText(serializePlayer(u), playerFileName(u, now)));
             Toast.show(`${users.length} Spieler-Dateien werden heruntergeladen.`, 'success');
         }
 
@@ -5625,6 +5922,391 @@
             const dupeList = _adminPlayerDupes.map(d => `${d.name} [${d.count}×]`).join(', ');
             return `${users.length} <span style="color:var(--incorrect);font-size:0.85em;opacity:0.9">`
                  + `· ${_adminPlayerDupes.length} Duplikat${_adminPlayerDupes.length > 1 ? 'e' : ''}: ${dupeList}</span>`;
+        }
+
+
+        // === 22-forge-sicherung.js ===
+        // === Forge: Sicherung & Spieler-Dateien aufräumen ===
+        //
+        // 1. Sicherung: EIN ZIP mit Master-Datei (Einstellungen), allen Fragen (eine Datei
+        //    pro Gruppe) und der aktuellen Datei jedes Spielers — Dateinamen wie beim
+        //    normalen Speichern. Wiederherstellen = ZIP in einen leeren Ordner entpacken.
+        // 2. Aufräumen: verkleinert Spieler-Dateien, ohne Erfolge zu verlieren.
+        //    Was erhalten bleibt und was gekürzt wird, steht in CLAUDE.md
+        //    („Spieler-JSON aufräumen — Übergabe“). Kurzfassung:
+        //      - unangetastet: XP/Level, Zähler, badgeStats, _badgeTiers, Fähigkeiten,
+        //        chargesEarned, Streak, Joker, focusQuiz, Lernstand je Frage
+        //      - history älter als N Tage → Summen in historyArchive (computeHistoryStats)
+        //      - askLog je Frage → letzte N Einträge, monthlyStats → letzte N Monate
+        //    Gearbeitet wird auf Kopien; die geladenen Daten bleiben unverändert.
+
+        let _fsLastBackup = null;   // Zeitpunkt der letzten Sicherung in dieser Sitzung
+        let _fsOpts = null;         // Aufräum-Optionen (Panel-State, überlebt Tab-Wechsel)
+        let _fsPreview = null;      // [{ name, before, after, histBefore, histAfter }]
+
+        AdminShell.registerPanel('sicherung', 'Sicherung', '💾', container => {
+            if (!dataLoaded) {
+                container.innerHTML = `<div class="card"><p class="text-muted" style="text-align:center;padding:30px 0">
+                    Bitte zuerst einen <strong>Ordner laden</strong> (Tab "Datei").</p></div>`;
+                return;
+            }
+            _fsRender(container);
+        });
+
+
+        // ── ZIP (ohne Bibliothek) ─────────────────────────────────────────────────────
+        // Deflate über CompressionStream, wenn der Browser es kann — sonst unkomprimiert
+        // gespeichert. Beides ist ein gültiges ZIP.
+
+        const _FS_CRC_TABLE = (() => {
+            const t = new Uint32Array(256);
+            for (let n = 0; n < 256; n++) {
+                let c = n;
+                for (let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+                t[n] = c >>> 0;
+            }
+            return t;
+        })();
+
+        function _fsCrc32(bytes) {
+            let c = 0xFFFFFFFF;
+            for (let i = 0; i < bytes.length; i++) c = _FS_CRC_TABLE[(c ^ bytes[i]) & 0xFF] ^ (c >>> 8);
+            return (c ^ 0xFFFFFFFF) >>> 0;
+        }
+
+        async function _fsDeflateRaw(bytes) {
+            if (typeof CompressionStream === 'undefined') return null;
+            try {
+                const stream = new Blob([bytes]).stream().pipeThrough(new CompressionStream('deflate-raw'));
+                return new Uint8Array(await new Response(stream).arrayBuffer());
+            } catch (e) { return null; }
+        }
+
+        // files: [{ name, text }] → Blob (application/zip)
+        async function _fsBuildZip(files) {
+            const enc = new TextEncoder();
+            const now = new Date();
+            const dosTime = (now.getHours() << 11) | (now.getMinutes() << 5) | (now.getSeconds() >> 1);
+            const dosDate = ((now.getFullYear() - 1980) << 9) | ((now.getMonth() + 1) << 5) | now.getDate();
+            const parts = [], central = [];
+            let offset = 0;
+
+            for (const f of files) {
+                const name = enc.encode(f.name);
+                const data = enc.encode(f.text);
+                const crc  = _fsCrc32(data);
+                const comp = await _fsDeflateRaw(data);
+                const method = comp && comp.length < data.length ? 8 : 0;
+                const body = method === 8 ? comp : data;
+
+                const lh = new DataView(new ArrayBuffer(30));
+                lh.setUint32(0, 0x04034b50, true);
+                lh.setUint16(4, 20, true);
+                lh.setUint16(6, 0x0800, true);          // Dateinamen in UTF-8
+                lh.setUint16(8, method, true);
+                lh.setUint16(10, dosTime, true);
+                lh.setUint16(12, dosDate, true);
+                lh.setUint32(14, crc, true);
+                lh.setUint32(18, body.length, true);
+                lh.setUint32(22, data.length, true);
+                lh.setUint16(26, name.length, true);
+                lh.setUint16(28, 0, true);
+                parts.push(new Uint8Array(lh.buffer), name, body);
+
+                const ch = new DataView(new ArrayBuffer(46));
+                ch.setUint32(0, 0x02014b50, true);
+                ch.setUint16(4, 20, true);
+                ch.setUint16(6, 20, true);
+                ch.setUint16(8, 0x0800, true);
+                ch.setUint16(10, method, true);
+                ch.setUint16(12, dosTime, true);
+                ch.setUint16(14, dosDate, true);
+                ch.setUint32(16, crc, true);
+                ch.setUint32(20, body.length, true);
+                ch.setUint32(24, data.length, true);
+                ch.setUint16(28, name.length, true);
+                ch.setUint32(42, offset, true);
+                central.push(new Uint8Array(ch.buffer), name);
+
+                offset += 30 + name.length + body.length;
+            }
+
+            const cdSize = central.reduce((s, p) => s + p.length, 0);
+            const end = new DataView(new ArrayBuffer(22));
+            end.setUint32(0, 0x06054b50, true);
+            end.setUint16(8, files.length, true);
+            end.setUint16(10, files.length, true);
+            end.setUint32(12, cdSize, true);
+            end.setUint32(16, offset, true);
+            return new Blob([...parts, ...central, new Uint8Array(end.buffer)], { type: 'application/zip' });
+        }
+
+        function _fsDownloadBlob(blob, fileName) {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = fileName;
+            document.body.appendChild(a); a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+
+        // ── Sicherung ─────────────────────────────────────────────────────────────────
+
+        function _fsBackupFiles(now) {
+            const files = [{ name: masterFileName(now), text: encodeDataFile(buildMasterData(), false) }];
+
+            // Fragen: eine Datei pro Gruppe, Format wie Forge-Export (_fqBuildExportQ).
+            // Core wird beim Laden am Dateinamen erkannt (/^03_questions_CORE/i) — darum
+            // getrennt nach Core/Nicht-Core und der Präfix passend gesetzt bzw. vermieden.
+            const byGroup = {};
+            questions.forEach(q => {
+                const g = q._fileGroup || 'Manuell';
+                const key = (q.isCore ? '1' : '0') + g;
+                if (!byGroup[key]) byGroup[key] = { group: g, core: !!q.isCore, qs: [] };
+                byGroup[key].qs.push(q);
+            });
+            const ts = _fileTimestamp(now);
+            Object.values(byGroup).forEach(g => {
+                const safe = g.group.replace(/[^a-zA-Z0-9äöüÄÖÜß_-]/g, '_');
+                const name = g.core
+                    ? (/^core/i.test(safe) ? safe : `CORE_${safe}`)
+                    : (/^core/i.test(safe) ? `G_${safe}` : safe);   // "Corey" darf nicht als Core laden
+                files.push({
+                    name: `03_questions_${name}_${ts}.json`,
+                    text: encodeDataFile({ theme: g.group, questions: g.qs.map(_fqBuildExportQ) }, false)
+                });
+            });
+
+            // Spieler: aktueller Stand (= neueste Datei pro Spieler beim Laden)
+            users.forEach(u => files.push({ name: playerFileName(u, now), text: serializePlayer(u) }));
+            return files;
+        }
+
+        async function _fsMakeBackup() {
+            const btn = document.getElementById('fs_backupBtn');
+            if (btn) { btn.disabled = true; btn.textContent = '⏳ Sicherung wird erstellt…'; }
+            try {
+                const now = new Date();
+                const files = _fsBackupFiles(now);
+                const blob = await _fsBuildZip(files);
+                const zipName = `Sicherung_${loadedFolderName || 'Quiz'}_${_fileTimestamp(now)}.zip`.replace(/[^\wäöüÄÖÜß.-]/g, '_');
+                _fsDownloadBlob(blob, zipName);
+                _fsLastBackup = now;
+                Toast.show(`💾 Sicherung erstellt: ${files.length} Dateien (${(blob.size / 1024).toFixed(0)} KB)\n${zipName}`, 'success');
+            } catch (e) {
+                GameDialog.showError('Sicherung fehlgeschlagen', String(e && e.stack || e));
+            }
+            _fsRender();
+        }
+
+
+        // ── Aufräumen ─────────────────────────────────────────────────────────────────
+
+        function _fsDefaultOpts() {
+            return { keepDays: _fsMinKeepDays() < 180 ? 180 : _fsMinKeepDays(), keepLog: 5, keepMonths: 6 };
+        }
+
+        // Die Bestenliste wertet die letzten maxAgeDays Tage aus — die müssen bleiben.
+        function _fsMinKeepDays() {
+            const lb = quizSettings.leaderboard || {};
+            return Math.max(90, Number(lb.maxAgeDays) || 90);
+        }
+
+        // History in archivierten und behaltenen Teil schneiden.
+        // Nie innerhalb eines Tages und nie mit < 1 h Abstand schneiden (computeHistoryStats).
+        function _fsSplitHistory(hist, keepDays, now) {
+            const h = (hist || []).slice().sort((a, b) => new Date(a.date) - new Date(b.date));
+            const cutoff = new Date(now.getFullYear(), now.getMonth(), now.getDate() - keepDays);
+            let cut = h.findIndex(e => new Date(e.date) >= cutoff);
+            if (cut === -1) cut = h.length;
+            const t = e => new Date(e.date).getTime();
+            const day = e => new Date(e.date).toDateString();
+            while (cut > 0 && cut < h.length &&
+                   (day(h[cut - 1]) === day(h[cut]) || t(h[cut]) - t(h[cut - 1]) < 3600000)) cut--;
+            return { archived: h.slice(0, cut), kept: h.slice(cut) };
+        }
+
+        // Bereinigte KOPIE eines Spielers. Original bleibt unverändert.
+        function _fsCleanUser(user, opts, now) {
+            const u = JSON.parse(JSON.stringify(user));
+            now = now || new Date();
+
+            // 1. History → Archiv
+            const { archived, kept } = _fsSplitHistory(u.history, opts.keepDays, now);
+            if (archived.length) {
+                const old = u.historyArchive && typeof u.historyArchive === 'object' ? u.historyArchive : null;
+                const arch = computeHistoryStats(archived, old);
+                // Monats-Summen für spätere Auswertungen (klein: ein Eintrag pro Monat)
+                const months = Object.assign({}, old && old.months);
+                archived.forEach(e => {
+                    const mo = String(e.date || '').slice(0, 7) || '?';
+                    const m = months[mo] || (months[mo] = { quizzes: 0, correct: 0, total: 0, xp: 0 });
+                    m.quizzes++;
+                    m.correct += Number(e.correct) || 0;
+                    m.total   += Number(e.total)   || 0;
+                    m.xp      += Number(e.xp)      || 0;
+                });
+                arch.months = months;
+                arch.until = archived[archived.length - 1].date;
+                u.historyArchive = arch;
+            }
+            u.history = kept;
+
+            // 2. Fragen-Verlauf kürzen (nur Forge-Auswertung liest askLog/monthlyStats)
+            const mNow = new Date(now.getFullYear(), now.getMonth() - (opts.keepMonths - 1), 1);
+            const monthCut = mNow.getFullYear() + '-' + String(mNow.getMonth() + 1).padStart(2, '0');
+            Object.values(u.questionStats || {}).forEach(s => {
+                if (!s || typeof s !== 'object') return;
+                if (Array.isArray(s.askLog)) {
+                    if (opts.keepLog > 0) s.askLog = s.askLog.slice(-opts.keepLog);
+                    else delete s.askLog;
+                }
+                if (s.monthlyStats && typeof s.monthlyStats === 'object') {
+                    Object.keys(s.monthlyStats).forEach(mo => { if (mo < monthCut) delete s.monthlyStats[mo]; });
+                    if (!Object.keys(s.monthlyStats).length) delete s.monthlyStats;
+                }
+            });
+            return u;
+        }
+
+        function _fsKB(n) { return (n / 1024).toFixed(0) + ' KB'; }
+
+        function _fsComputePreview() {
+            const opts = _fsOpts;
+            const now = new Date();
+            _fsPreview = users.map(u => {
+                const c = _fsCleanUser(u, opts, now);
+                return {
+                    name: u.name,
+                    before: serializePlayer(u).length,
+                    after: serializePlayer(c).length,
+                    histBefore: (u.history || []).length,
+                    histAfter: c.history.length
+                };
+            });
+        }
+
+        function _fsReadOpts() {
+            const minDays = _fsMinKeepDays();
+            const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+            _fsOpts = {
+                keepDays:   clamp(_numVal('fs_keepDays', _fsOpts.keepDays), minDays, 3650),
+                keepLog:    clamp(_numVal('fs_keepLog', _fsOpts.keepLog), 0, 15),
+                keepMonths: clamp(_numVal('fs_keepMonths', _fsOpts.keepMonths), 1, 120)
+            };
+        }
+
+        function _fsPreviewClick() {
+            _fsReadOpts();
+            _fsComputePreview();
+            _fsRender();
+        }
+
+        function _fsCompactChanged(el) {
+            quizSettings.compactPlayerFiles = !!el.checked;
+            _fsPreview = null;   // Größen ändern sich
+            _fsRender();
+        }
+
+        async function _fsCleanupClick() {
+            _fsReadOpts();
+            const run = async () => {
+                const now = new Date();
+                const files = users.map(u => ({ name: playerFileName(u, now), text: serializePlayer(_fsCleanUser(u, _fsOpts, now)) }));
+                const blob = await _fsBuildZip(files);
+                const zipName = `Spieler-aufgeraeumt_${_fileTimestamp(now)}.zip`;
+                _fsDownloadBlob(blob, zipName);
+                Toast.show(`🧹 ${files.length} aufgeräumte Spieler-Dateien in ${zipName}.\nIn den Quiz-Ordner entpacken — die neueste Datei pro Spieler wird geladen.`, 'success');
+            };
+            if (!_fsLastBackup) {
+                GameDialog.showConfirm('⚠️', 'Noch keine Sicherung',
+                    'In dieser Sitzung wurde noch keine Sicherung erstellt. Gekürzte History und Fragen-Verläufe lassen sich danach nur aus einer Sicherung zurückholen.<br><br>Trotzdem aufräumen?',
+                    () => { run(); }, null);
+                return;
+            }
+            await run();
+        }
+
+
+        // ── Panel ─────────────────────────────────────────────────────────────────────
+
+        function _fsRender(container) {
+            container = container || document.getElementById('adminPanel_sicherung');
+            if (!container) return;
+            if (!_fsOpts) _fsOpts = _fsDefaultOpts();
+            const groups = new Set(questions.map(q => q._fileGroup || 'Manuell'));
+            const minDays = _fsMinKeepDays();
+
+            const backupInfo = _fsLastBackup
+                ? `<span style="color:var(--correct)">✓ Letzte Sicherung in dieser Sitzung: ${_fsLastBackup.toLocaleTimeString()}</span>`
+                : `<span class="text-muted">In dieser Sitzung noch keine Sicherung.</span>`;
+
+            const secBackup = _secBlock('💾 Sicherung', `
+                <p class="text-muted" style="font-size:0.85rem;margin:0 0 12px">
+                    Lädt <strong>eine ZIP-Datei</strong> herunter mit: Master-Datei (alle Einstellungen),
+                    ${questions.length} Fragen in ${groups.size} Datei(en) (eine pro Gruppe) und der aktuellen Datei
+                    jedes der ${users.length} Spieler. Wiederherstellen: ZIP in einen leeren Ordner entpacken und diesen laden.
+                </p>
+                <button class="btn btn-small" id="fs_backupBtn" onclick="_fsMakeBackup()">💾 Sicherung herunterladen (ZIP)</button>
+                <div style="margin-top:10px;font-size:0.85rem">${backupInfo}</div>
+            `);
+
+            let table = '';
+            if (_fsPreview) {
+                const sumB = _fsPreview.reduce((s, p) => s + p.before, 0);
+                const sumA = _fsPreview.reduce((s, p) => s + p.after, 0);
+                table = `
+                    <table style="border-collapse:collapse;margin-top:14px;font-size:0.85rem">
+                        <thead><tr style="text-align:left;opacity:0.6">
+                            <th style="padding:4px 10px">Spieler</th><th style="padding:4px 10px">jetzt</th>
+                            <th style="padding:4px 10px">danach</th><th style="padding:4px 10px">Quizze in History</th>
+                        </tr></thead>
+                        <tbody>${_fsPreview.map(p => `<tr>
+                            <td style="padding:3px 10px">${_ffEsc(p.name)}</td>
+                            <td style="padding:3px 10px">${_fsKB(p.before)}</td>
+                            <td style="padding:3px 10px;color:var(--correct)">${_fsKB(p.after)}</td>
+                            <td style="padding:3px 10px">${p.histBefore} → ${p.histAfter}</td></tr>`).join('')}
+                            <tr style="font-weight:700"><td style="padding:6px 10px">Summe</td>
+                            <td style="padding:6px 10px">${_fsKB(sumB)}</td><td style="padding:6px 10px;color:var(--correct)">${_fsKB(sumA)}</td><td></td></tr>
+                        </tbody>
+                    </table>`;
+            }
+
+            const secCleanup = _secBlock('🧹 Spieler-Dateien aufräumen', `
+                <p class="text-muted" style="font-size:0.85rem;margin:0 0 12px">
+                    Verkleinert die Spieler-Dateien, <strong>ohne Erfolge zu verlieren</strong>: XP, Level, Badges,
+                    Fähigkeiten-Ladungen, Serien und der Lernstand jeder Frage bleiben vollständig.
+                    Alte Quiz-History wird zu Summen zusammengefasst, damit Badges und Fähigkeiten genauso weiterzählen.
+                    Gekürzt werden nur Verlaufsdaten, die allein die Auswertung nutzt.
+                </p>
+                ${_row('Quiz-History behalten', `Tage (mind. ${minDays} — Bestenliste)`,
+                    `<input type="number" id="fs_keepDays" min="${minDays}" max="3650" value="${_fsOpts.keepDays}" style="width:90px">`)}
+                ${_row('Antwort-Verlauf je Frage', 'letzte Einträge (0–15)',
+                    `<input type="number" id="fs_keepLog" min="0" max="15" value="${_fsOpts.keepLog}" style="width:90px">`)}
+                ${_row('Monatsstatistik je Frage', 'letzte Monate',
+                    `<input type="number" id="fs_keepMonths" min="1" max="120" value="${_fsOpts.keepMonths}" style="width:90px">`)}
+                ${_row('Kompakt speichern', 'ohne Einrückung, ca. halb so groß', `
+                    <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+                        <input type="checkbox" id="fs_compact" ${quizSettings.compactPlayerFiles ? 'checked' : ''} onchange="_fsCompactChanged(this)">
+                        gilt für alle Spieler-Dateien (auch normales Speichern im Quiz)
+                    </label>`)}
+                <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px">
+                    <button class="btn btn-small btn-secondary" onclick="_fsPreviewClick()">🔍 Vorschau berechnen</button>
+                    <button class="btn btn-small" onclick="_fsCleanupClick()">🧹 Aufgeräumte Spieler-Dateien herunterladen (ZIP)</button>
+                </div>
+                ${quizSettings.compactPlayerFiles ? `<p style="font-size:0.8rem;color:var(--accent-warning,#f39c12);margin:10px 0 0">
+                    „Kompakt speichern" ist eine Einstellung der Master-Datei — damit das Quiz sie übernimmt,
+                    danach die Master-Datei speichern: <a href="#" onclick="saveMasterBackup();return false">Master-Datei jetzt speichern</a>.</p>` : ''}
+                ${table}
+                <p class="text-muted" style="font-size:0.8rem;margin:12px 0 0">
+                    Ablauf: 1. Sicherung · 2. Aufräumen · 3. ZIP in den Quiz-Ordner entpacken (die neueste Datei pro Spieler
+                    wird geladen; alte Dateien dürfen liegen bleiben oder in die Sicherung wandern) · 4. Ordner neu laden.
+                    Währenddessen nicht im Quiz spielen — sonst entsteht eine neuere, ungekürzte Datei.
+                </p>
+            `);
+
+            container.innerHTML = `<div class="card">${secBackup}${secCleanup}</div>`;
         }
 
 
@@ -5676,8 +6358,17 @@
             return false;
         }
 
+        let _fqSearchTimer = null;
+
         function _fqSearch(val) {
+            // Entprellt: ohne Verzögerung würde jeder Tastendruck das ganze Panel
+            // (bei Suche alle Treffergruppen aufgeklappt) neu aufbauen.
             _fqSearchTerm = val;
+            clearTimeout(_fqSearchTimer);
+            _fqSearchTimer = setTimeout(_fqSearchApply, 200);
+        }
+
+        function _fqSearchApply() {
             AdminShell.showPanel('fragen');
             const inp = document.getElementById('fqSearchInput');
             if (inp) { inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); }
@@ -5711,7 +6402,7 @@
 
                 const header = `
                 <tr style="background:var(--overlay-8);cursor:pointer;user-select:none"
-                    onclick="_fqToggleGroup('${escapedG}')">
+                    onclick="_fqToggleGroup('${_fqEscJs(g)}')">
                     <td colspan="5" style="padding:10px 14px;font-weight:600;font-size:0.9rem">
                         <span style="opacity:0.6;margin-right:8px;font-size:0.8rem">${arrow}</span>
                         ${escapedG}
@@ -6624,7 +7315,21 @@
         }
 
         function _fqEsc(s) {
-            return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+            return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+
+        // Für Namen, die in einem einfach-gequoteten JS-String INNERHALB eines
+        // HTML-Attributs stehen (z.B. onclick="f('…')"). Reihenfolge ist wichtig:
+        // der Browser dekodiert erst die HTML-Entities, danach liest JS den String —
+        // darum muss das Apostroph per Backslash (nicht per &#39;) entschärft werden.
+        function _fqEscJs(s) {
+            return String(s == null ? '' : s)
+                .replace(/\\/g, '\\\\')
+                .replace(/'/g, "\\'")
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
         }
 
         // ── Import ────────────────────────────────────────────────────────────────────
@@ -6876,13 +7581,298 @@
         }
 
 
+        // === 35-forge-fokus.js ===
+        // === Forge: Fokus-Quiz ===
+        // Einstellungen, Rotationsplan und Vorschau für das Fokus-Quiz (FocusQuizPlugin).
+        // Rotations-Berechnung liegt in 30-globals.js (getFocusPeriods / getActiveFocusPeriod),
+        // damit Quiz und Forge garantiert dasselbe rechnen.
+        //
+        // Zustand: Änderungen landen sofort in quizSettings.focusQuiz (nur im Speicher);
+        // erst "Speichern" lädt die Master-JSON herunter. Das Panel-DOM wird bei jedem
+        // Tab-Wechsel neu gebaut — darum kein Zustand im DOM, nur in Modul-Variablen.
+        // Handler bekommen ausschließlich Indizes, nie Gruppennamen (Apostroph-Falle).
+
+        let _ffDirty = false;   // ungespeicherte Änderungen
+
+        AdminShell.registerPanel('fokus', 'Fokus-Quiz', '🎯', container => {
+            if (!dataLoaded) {
+                container.innerHTML = `<div class="card"><p class="text-muted" style="text-align:center;padding:30px 0">
+                    Bitte zuerst einen <strong>Ordner laden</strong> (Tab "Datei").</p></div>`;
+                return;
+            }
+            _ffRender(container);
+        });
+
+        function _ffPanel() { return document.getElementById('adminPanel_fokus'); }
+
+        function _ffCfg() {
+            ensureSettingsDefaults(quizSettings);
+            const c = quizSettings.focusQuiz;
+            if (!Array.isArray(c.rotation)) c.rotation = [];
+            return c;
+        }
+
+        // Escaper inkl. Apostroph (sanitizeHTML gibt es im Forge-Build nicht)
+        function _ffEsc(s) {
+            return String(s == null ? '' : s)
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        }
+
+        function _ffFmt(d) {
+            return String(d.getDate()).padStart(2, '0') + '.' + String(d.getMonth() + 1).padStart(2, '0') + '.' + d.getFullYear();
+        }
+
+        // Letzter Tag eines Zeitraums (end ist exklusiv)
+        function _ffLastDay(p) {
+            return new Date(p.end.getFullYear(), p.end.getMonth(), p.end.getDate() - 1);
+        }
+
+        // Non-Core-Gruppen mit Anzahl aktiver Fragen
+        function _ffGroupCounts() {
+            const counts = {};
+            questions.forEach(q => {
+                if (q.isCore || !q._fileGroup) return;
+                if (!(q._fileGroup in counts)) counts[q._fileGroup] = 0;
+                if (q.active !== false) counts[q._fileGroup]++;
+            });
+            return counts;
+        }
+
+        function _ffRender(container) {
+            container = container || _ffPanel();
+            if (!container) return;
+            const c = _ffCfg();
+            const counts = _ffGroupCounts();
+            const groupNames = Object.keys(counts).sort((a, b) => a.localeCompare(b));
+
+            // ── Einstellungen ─────────────────────────────────────────────────────────
+            const num = (id, val, min, max, w) =>
+                `<input type="number" id="${id}" min="${min}" max="${max}" value="${_ffEsc(val)}" style="width:${w || 90}px" onchange="_ffChanged()">`;
+            const secSettings = _secBlock('🎯 Fokus-Quiz — Einstellungen', `
+                <p class="text-muted" style="font-size:0.85rem;margin:0 0 14px">
+                    Nach dem ersten normalen Quiz des Tages kann jeder Spieler ein Fokus-Quiz mit Fragen
+                    aus <strong>einer</strong> Gruppe spielen (Core ausgeschlossen). Die Gruppe bestimmt der Rotationsplan unten.
+                </p>
+                ${_row('Fokus-Quiz aktiv', '', `
+                    <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+                        <input type="checkbox" id="ff_enabled" ${c.enabled !== false ? 'checked' : ''} onchange="_ffChanged()"> anbieten
+                    </label>`)}
+                ${_row('Fragen pro Fokus-Quiz', '', num('ff_count', c.questionCount, 1, 100))}
+                ${_row('Erfolgsschwelle', '% richtig', num('ff_pct', c.successPct, 1, 100))}
+                ${_row('XP-Multiplikator', '× für richtige Antworten', num('ff_mult', c.xpMultiplier, 1, 20))}
+                ${_row('Serienziel', 'Erfolge in Folge für die Prämie', num('ff_target', c.streakTarget, 1, 50))}
+                ${_row('Vollendungs-Prämie', 'XP, einmal pro Fokus-Zeitraum', num('ff_bonus', c.completionXP, 0, 100000, 110))}
+                ${_row('Max. pro Tag', '0 = unbegrenzt', num('ff_maxDay', c.maxPerDay, 0, 50))}
+            `);
+
+            // ── Rotationsplan ─────────────────────────────────────────────────────────
+            const groupOptions = (sel) => {
+                const names = groupNames.slice();
+                // Gruppe aus dem Plan, die gerade nicht geladen ist, nicht stillschweigend verlieren
+                if (sel && !names.includes(sel)) names.unshift(sel);
+                return names.map(n => {
+                    const label = n in counts ? `${n} (${counts[n]})` : `${n} (nicht geladen)`;
+                    return `<option value="${_ffEsc(n)}" ${n === sel ? 'selected' : ''}>${_ffEsc(label)}</option>`;
+                }).join('');
+            };
+            const btnStyle = 'padding:4px 10px;min-width:0;margin:0';
+            const rows = c.rotation.map((e, i) => `
+                <tr>
+                    <td style="opacity:0.6;padding:4px 8px">${i + 1}.</td>
+                    <td style="padding:4px 8px">
+                        <select id="ff_g_${i}" onchange="_ffChanged()" style="margin:0;min-width:220px">
+                            ${e.group ? '' : '<option value="" selected>— Gruppe wählen —</option>'}${groupOptions(e.group)}
+                        </select>
+                    </td>
+                    <td style="padding:4px 8px">
+                        <input type="number" id="ff_len_${i}" min="1" max="52" value="${Math.max(1, Math.floor(Number(e.length)) || 1)}" style="width:70px;margin:0" onchange="_ffChanged()">
+                    </td>
+                    <td style="padding:4px 8px">
+                        <select id="ff_unit_${i}" onchange="_ffChanged()" style="margin:0">
+                            <option value="week"  ${e.unit !== 'month' ? 'selected' : ''}>Woche(n)</option>
+                            <option value="month" ${e.unit === 'month' ? 'selected' : ''}>Monat(e)</option>
+                        </select>
+                    </td>
+                    <td style="padding:4px 8px;white-space:nowrap">
+                        <button class="btn btn-small btn-secondary" style="${btnStyle}" onclick="_ffMove(${i},-1)" ${i === 0 ? 'disabled' : ''} title="nach oben">↑</button>
+                        <button class="btn btn-small btn-secondary" style="${btnStyle}" onclick="_ffMove(${i},1)" ${i === c.rotation.length - 1 ? 'disabled' : ''} title="nach unten">↓</button>
+                        <button class="btn btn-small btn-danger" style="${btnStyle}" onclick="_ffDel(${i})" title="Eintrag löschen">✕</button>
+                    </td>
+                </tr>`).join('');
+
+            const secRotation = _secBlock('🔁 Rotationsplan', `
+                <p class="text-muted" style="font-size:0.85rem;margin:0 0 14px">
+                    Die Einträge laufen ab dem Startdatum <strong>in dieser Reihenfolge</strong> nacheinander ab.
+                    Umsortieren verschiebt die Zeiträume automatisch. Ein Monat ist ein Kalendermonat.
+                </p>
+                ${_row('Startdatum', '', `<input type="date" id="ff_start" value="${_ffEsc(c.rotationStart || '')}" style="width:170px;margin:0" onchange="_ffChanged()">`)}
+                ${_row('Wiederholen', '', `
+                    <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+                        <input type="checkbox" id="ff_loop" ${c.rotationLoop !== false ? 'checked' : ''} onchange="_ffChanged()">
+                        nach dem letzten Eintrag wieder von vorn
+                    </label>`)}
+                ${c.rotation.length
+                    ? `<table style="border-collapse:collapse;margin-top:8px">
+                           <thead><tr style="text-align:left;font-size:0.8rem;opacity:0.6">
+                               <th></th><th style="padding:4px 8px">Gruppe (aktive Fragen)</th><th style="padding:4px 8px">Dauer</th><th></th><th></th>
+                           </tr></thead>
+                           <tbody>${rows}</tbody>
+                       </table>`
+                    : `<p class="text-muted" style="margin:8px 0">Noch keine Einträge — ohne Plan wird kein Fokus-Quiz angeboten.</p>`}
+                <button class="btn btn-small btn-secondary" style="margin-top:12px" onclick="_ffAdd()" ${groupNames.length ? '' : 'disabled'}>＋ Eintrag hinzufügen</button>
+                ${groupNames.length ? '' : '<span class="text-muted" style="margin-left:10px;font-size:0.85rem">Keine Nicht-Core-Gruppen geladen.</span>'}
+            `);
+
+            // ── Vorschau + Speichern ──────────────────────────────────────────────────
+            const secPreview = _secBlock('🔭 Vorschau', `<div id="ff_preview"></div>`);
+
+            container.innerHTML = `
+                <div class="card">
+                    ${secSettings}
+                    ${secRotation}
+                    ${secPreview}
+                    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+                        ${_saveBtn('_ffSave()', '🎯 Fokus-Quiz speichern')}
+                        <span id="ff_dirty" style="margin-top:12px;font-size:0.85rem;color:var(--accent-warning,#f39c12)"></span>
+                    </div>
+                </div>`;
+            _ffRenderPreview();
+            _ffUpdateDirty();
+        }
+
+        function _ffRenderPreview() {
+            const el = document.getElementById('ff_preview');
+            if (!el) return;
+            const c = _ffCfg();
+            const counts = _ffGroupCounts();
+            const need = Math.max(1, Math.floor(Number(c.questionCount)) || 10);
+            const warnPool = g => {
+                const n = counts[g] || 0;
+                return n < need ? ` <span style="color:var(--incorrect)">⚠ nur ${n} aktive Fragen (benötigt ${need}) — wird nicht angeboten</span>` : '';
+            };
+            const lines = [];
+
+            if (c.enabled === false) lines.push('⏸ Fokus-Quiz ist <strong>deaktiviert</strong> — Spieler sehen keinen Knopf.');
+            if (!c.rotation.length) {
+                lines.push('Kein Rotationsplan — es wird kein Fokus-Quiz angeboten.');
+            } else if (!_focusParseDate(c.rotationStart)) {
+                lines.push('Kein Startdatum gesetzt — es wird kein Fokus-Quiz angeboten.');
+            } else {
+                const today = new Date();
+                const active = getActiveFocusPeriod(c, today);
+                const periods = getFocusPeriods(c, today, 4);
+                const empty = c.rotation.findIndex(e => !e.group);
+                if (empty >= 0) lines.push(`<span style="color:var(--incorrect)">⚠ Eintrag ${empty + 1} hat keine Gruppe — in diesem Zeitraum gibt es kein Fokus-Quiz.</span>`);
+
+                if (active) {
+                    lines.push(`<strong>Aktuell im Fokus: ${_ffEsc(active.group)}</strong> (${_ffFmt(active.start)} – ${_ffFmt(_ffLastDay(active))})${warnPool(active.group)}`);
+                } else if (periods.length && periods[0].start > today) {
+                    lines.push(`Der Plan beginnt erst am <strong>${_ffFmt(periods[0].start)}</strong> — bis dahin kein Fokus-Quiz.`);
+                } else if (!periods.length) {
+                    lines.push('Der Plan ist <strong>ausgelaufen</strong> (Wiederholen ist aus) — es wird kein Fokus-Quiz angeboten.');
+                } else {
+                    lines.push('Im laufenden Zeitraum ist keine Gruppe gesetzt — kein Fokus-Quiz.');
+                }
+
+                const next = periods.filter(p => p !== periods[0] || !active).slice(0, 3);
+                if (next.length) {
+                    lines.push('Danach:<ul style="margin:6px 0 0 18px;padding:0">' + next.map(p =>
+                        `<li>${_ffFmt(p.start)} – ${_ffFmt(_ffLastDay(p))} · ${p.group ? _ffEsc(p.group) : '<em>keine Gruppe</em>'}${p.group ? warnPool(p.group) : ''}</li>`
+                    ).join('') + '</ul>');
+                } else if (active && c.rotationLoop === false) {
+                    lines.push('Danach: Plan endet (Wiederholen ist aus).');
+                }
+
+                const startDay = _focusParseDate(c.rotationStart).getDate();
+                if (startDay > 28 && c.rotation.some(e => e.unit === 'month')) {
+                    lines.push(`<span class="text-muted" style="font-size:0.85rem">ℹ Der Plan beginnt am ${startDay}. eines Monats. In kürzeren Monaten wird auf den Monatsletzten gekürzt, und alle folgenden Zeiträume beginnen dann an diesem früheren Tag. Tipp: Monatspläne am 1. beginnen.</span>`);
+                }
+            }
+            el.innerHTML = lines.map(l => `<div style="margin-bottom:8px">${l}</div>`).join('');
+        }
+
+        function _ffUpdateDirty() {
+            const el = document.getElementById('ff_dirty');
+            if (el) el.textContent = _ffDirty ? '● Ungespeicherte Änderungen — erst „Speichern" schreibt die Master-JSON.' : '';
+        }
+
+        // Formularwerte → quizSettings.focusQuiz (nur Speicher)
+        function _ffCollect() {
+            const c = _ffCfg();
+            if (!document.getElementById('ff_count')) return c;   // Panel nicht gerendert
+            const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+            c.enabled       = document.getElementById('ff_enabled').checked;
+            c.questionCount = clamp(_numVal('ff_count', 10), 1, 100);
+            c.successPct    = clamp(_numVal('ff_pct', 100), 1, 100);
+            c.xpMultiplier  = clamp(_numVal('ff_mult', 3), 1, 20);
+            c.streakTarget  = clamp(_numVal('ff_target', 5), 1, 50);
+            c.completionXP  = clamp(_numVal('ff_bonus', 1000), 0, 100000);
+            c.maxPerDay     = clamp(_numVal('ff_maxDay', 0), 0, 50);
+            c.rotationStart = document.getElementById('ff_start').value || null;
+            c.rotationLoop  = document.getElementById('ff_loop').checked;
+            c.rotation = c.rotation.map((e, i) => {
+                const g = document.getElementById('ff_g_' + i);
+                const u = document.getElementById('ff_unit_' + i);
+                return {
+                    group:  g ? g.value : e.group,
+                    unit:   (u ? u.value : e.unit) === 'month' ? 'month' : 'week',
+                    length: clamp(_numVal('ff_len_' + i, Number(e.length) || 1), 1, 52)
+                };
+            });
+            return c;
+        }
+
+        function _ffChanged() {
+            _ffCollect();
+            _ffDirty = true;
+            _ffRenderPreview();
+            _ffUpdateDirty();
+        }
+
+        function _ffMove(i, dir) {
+            const c = _ffCollect();
+            const j = i + dir;
+            if (j < 0 || j >= c.rotation.length) return;
+            [c.rotation[i], c.rotation[j]] = [c.rotation[j], c.rotation[i]];
+            _ffDirty = true;
+            _ffRender();
+        }
+
+        function _ffDel(i) {
+            const c = _ffCollect();
+            c.rotation.splice(i, 1);
+            _ffDirty = true;
+            _ffRender();
+        }
+
+        function _ffAdd() {
+            const c = _ffCollect();
+            // Vorschlag: erste Gruppe, die noch nicht im Plan steht
+            const names = Object.keys(_ffGroupCounts()).sort((a, b) => a.localeCompare(b));
+            const used = new Set(c.rotation.map(e => e.group));
+            const group = names.find(n => !used.has(n)) || names[0] || '';
+            c.rotation.push({ group, unit: 'week', length: 1 });
+            if (!c.rotationStart) c.rotationStart = _focusYMD(new Date());
+            _ffDirty = true;
+            _ffRender();
+        }
+
+        function _ffSave() {
+            _ffCollect();
+            saveMasterBackup();
+            _ffDirty = false;
+            _ffRender();
+        }
+
+
         // === 40-admin-einstellungen.js ===
         // === Admin: Einstellungen ===
 
         const _ADMIN_ABILITY_DEFS = [
             { key: 'fiftyFifty',   icon: '🎯', name: '50/50',         earnStat: '_fifty50Sessions',   defaultEarnPer: 1  },
             { key: 'skip',         icon: '⏭',  name: 'Überspringen',  earnStat: 'totalQuizzes',       defaultEarnPer: 10 },
-            { key: 'hint',         icon: '💡', name: 'Hinweis',        earnStat: 'uniqueQuestions',    defaultEarnPer: 20 },
+            { key: 'hint',         icon: '💡', name: 'Hinweis',        earnStat: 'totalAnswers',       defaultEarnPer: 15 },
             { key: 'doubleXP',     icon: '✨', name: 'Doppel-XP',      earnStat: 'perfectQuizzes',     defaultEarnPer: 1  },
             { key: 'shield',       icon: '🛡', name: 'Schild',          earnStat: 'currentStreak',      defaultEarnPer: 7  },
             { key: 'secondChance', icon: '🔄', name: '2. Chance',      earnStat: 'currentStreak',      defaultEarnPer: 3  },
@@ -6930,7 +7920,6 @@
 
             const s  = quizSettings;
             const sr = s.spacedRepetition || {};
-            const t  = s.timer || {};
             const xp = s.xpSystem || {};
             const lb = s.leaderboard || {};
             const mg = s.miniGames || {};
@@ -6960,48 +7949,6 @@
                         oninput="document.getElementById('set_imgWidthVal').textContent=this.value+'%'">
                     <span id="set_imgWidthVal" style="min-width:40px">${imgW}%</span>`)}
                 ${_saveBtn('_saveBildanzeige()', '🖼️ Bildanzeige speichern')}
-            `);
-
-            // ── Timer ─────────────────────────────────────────────────────────────────
-            const timerEnabled = t.enabled !== false;
-            const secTimer = _secBlock('⏱️ Timer-Modus', `
-                ${_row('Timer aktiv', '', `<label style="display:flex;align-items:center;gap:8px;cursor:pointer">
-                    <input type="checkbox" id="set_timerOn" ${timerEnabled ? 'checked' : ''}
-                        onchange="document.getElementById('set_timerFields').style.display=this.checked?'block':'none'">
-                    Timer einschalten
-                </label>`)}
-                <div id="set_timerFields" style="display:${timerEnabled ? 'block' : 'none'}">
-                    ${_row('Sekunden / Frage', '', `<input type="number" id="set_timerSec" min="2" max="120" step="0.5" value="${t.secondsPerQuestion || 3}" style="width:80px">`)}
-                    ${_row('Strafpunkte bei Timeout', '', `<input type="number" id="set_timerPenalty" min="0" max="50" value="${t.penalty || 5}" style="width:80px">`)}
-                    ${_row('XP-Multiplikator', '', `<input type="number" id="set_timerXPMult" min="1" max="5" step="0.1" value="${t.xpMultiplier || 1.5}" style="width:80px">`)}
-                    ${_row('Auto-Weiter (s)', '0 = aus', `<input type="number" id="set_timerAutoAdv" min="0" max="30" step="1" value="${t.autoAdvanceSec ?? 5}" style="width:80px">`)}
-                    <div style="margin:8px 0 4px;opacity:0.6;font-size:0.82rem">Geschwindigkeits-Boni (% verbleibende Zeit → Bonus-XP)</div>
-                    ${_row('Gold (≤ %  Zeit → +XP)', '', `
-                        <input type="number" id="set_goldPct" min="5" max="50" value="${t.goldPct || 25}" style="width:70px">
-                        <span style="opacity:0.5">→</span>
-                        <input type="number" id="set_goldXP" min="0" max="200" value="${t.goldXP || 50}" style="width:70px"> XP`)}
-                    ${_row('Silber', '', `
-                        <input type="number" id="set_silverPct" min="10" max="70" value="${t.silverPct || 50}" style="width:70px">
-                        <span style="opacity:0.5">→</span>
-                        <input type="number" id="set_silverXP" min="0" max="100" value="${t.silverXP || 25}" style="width:70px"> XP`)}
-                    ${_row('Bronze', '', `
-                        <input type="number" id="set_bronzePct" min="20" max="90" value="${t.bronzePct || 75}" style="width:70px">
-                        <span style="opacity:0.5">→</span>
-                        <input type="number" id="set_bronzeXP" min="0" max="50" value="${t.bronzeXP || 10}" style="width:70px"> XP`)}
-                    ${_row('', '', `
-                        <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
-                            <input type="checkbox" id="set_timerDynamic" ${t.dynamicTimer !== false ? 'checked' : ''}> Dynamischer Timer
-                        </label>`)}
-                    ${_row('', '', `
-                        <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
-                            <input type="checkbox" id="set_timerSpeed" ${t.speedBonus !== false ? 'checked' : ''}> Geschwindigkeits-Bonus
-                        </label>`)}
-                    ${_row('', '', `
-                        <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
-                            <input type="checkbox" id="set_timerGhost" ${t.ghostRace !== false ? 'checked' : ''}> Geist-Rennen
-                        </label>`)}
-                </div>
-                ${_saveBtn('_saveTimer()', '⏱️ Timer speichern')}
             `);
 
             // ── Spaced Repetition ─────────────────────────────────────────────────────
@@ -7143,7 +8090,6 @@
                 <div class="card">
                     ${secAllgemein}
                     ${secBild}
-                    ${secTimer}
                     ${secSR}
                     ${secXP}
                     ${secLB}
@@ -7171,59 +8117,39 @@
             saveMasterBackup();
         }
 
-        function _saveTimer() {
-            const on = document.getElementById('set_timerOn').checked;
-            quizSettings.timer = Object.assign(quizSettings.timer || {}, {
-                enabled:           on,
-                secondsPerQuestion: parseFloat(document.getElementById('set_timerSec').value) || 3,
-                penalty:           parseInt(document.getElementById('set_timerPenalty').value) || 5,
-                xpMultiplier:      parseFloat(document.getElementById('set_timerXPMult').value) || 1.5,
-                autoAdvanceSec:    parseInt(document.getElementById('set_timerAutoAdv').value) ?? 5,
-                goldPct:           parseInt(document.getElementById('set_goldPct').value) || 25,
-                goldXP:            parseInt(document.getElementById('set_goldXP').value) || 50,
-                silverPct:         parseInt(document.getElementById('set_silverPct').value) || 50,
-                silverXP:          parseInt(document.getElementById('set_silverXP').value) || 25,
-                bronzePct:         parseInt(document.getElementById('set_bronzePct').value) || 75,
-                bronzeXP:          parseInt(document.getElementById('set_bronzeXP').value) || 10,
-                dynamicTimer:      document.getElementById('set_timerDynamic').checked,
-                speedBonus:        document.getElementById('set_timerSpeed').checked,
-                ghostRace:         document.getElementById('set_timerGhost').checked,
-            });
-            saveMasterBackup();
-        }
 
         function _saveSR() {
             quizSettings.spacedRepetition = Object.assign(quizSettings.spacedRepetition || {}, {
-                randomness:        parseInt(document.getElementById('set_srRand').value) ?? 30,
-                streakThreshold:   parseInt(document.getElementById('set_srStreak').value) || 2,
-                streakCooldown:    parseInt(document.getElementById('set_srCooldown').value) || 48,
-                freshQuota:        parseInt(document.getElementById('set_srFresh').value) ?? 50,
-                freshThreshold:    parseInt(document.getElementById('set_srFreshThresh').value) ?? 1,
-                maxCoreFirst:      parseInt(document.getElementById('set_srCoreFirst').value) ?? 7,
-                maxCoreSubsequent: parseInt(document.getElementById('set_srCoreSubseq').value) ?? 3,
-                maxPerGroup:       parseInt(document.getElementById('set_srMaxGroup').value) ?? 3,
+                randomness:        _numVal('set_srRand', 30),
+                streakThreshold:   _numVal('set_srStreak', 2),
+                streakCooldown:    _numVal('set_srCooldown', 48),
+                freshQuota:        _numVal('set_srFresh', 50),
+                freshThreshold:    _numVal('set_srFreshThresh', 1),
+                maxCoreFirst:      _numVal('set_srCoreFirst', 7),
+                maxCoreSubsequent: _numVal('set_srCoreSubseq', 3),
+                maxPerGroup:       _numVal('set_srMaxGroup', 3),
             });
             saveMasterBackup();
         }
 
         function _saveXP() {
             quizSettings.xpSystem = Object.assign(quizSettings.xpSystem || {}, {
-                baseXP:          parseInt(document.getElementById('set_baseXP').value) || 50,
-                exponent:        parseFloat(document.getElementById('set_xpExp').value) || 1.3,
-                firstDailyBonus: parseInt(document.getElementById('set_xpFirstDay').value) || 200,
-                subsequentBonus: parseInt(document.getElementById('set_xpSubseq').value) || 100,
-                correctAnswerXP: parseInt(document.getElementById('set_xpCorrect').value) || 10,
-                wrongAnswerXP:   parseInt(document.getElementById('set_xpWrong').value) ?? -2,
+                baseXP:          _numVal('set_baseXP', 50),
+                exponent:        _numVal('set_xpExp', 1.3, true),
+                firstDailyBonus: _numVal('set_xpFirstDay', 200),
+                subsequentBonus: _numVal('set_xpSubseq', 100),
+                correctAnswerXP: _numVal('set_xpCorrect', 10),
+                wrongAnswerXP:   _numVal('set_xpWrong', -2),
             });
             saveMasterBackup();
         }
 
         function _saveLB() {
             quizSettings.leaderboard = Object.assign(quizSettings.leaderboard || {}, {
-                engagementTarget: parseInt(document.getElementById('set_lbTarget').value) || 60,
-                decayRate:        parseFloat(document.getElementById('set_lbDecay').value) ?? 0.99,
-                maxAgeDays:       parseInt(document.getElementById('set_lbMaxAge').value) || 90,
-                minQuizzes:       parseInt(document.getElementById('set_lbMin').value) || 0,
+                engagementTarget: _numVal('set_lbTarget', 60),
+                decayRate:        _numVal('set_lbDecay', 0.99, true),
+                maxAgeDays:       _numVal('set_lbMaxAge', 90),
+                minQuizzes:       _numVal('set_lbMin', 0),
             });
             saveMasterBackup();
         }
@@ -7300,18 +8226,48 @@
             });
         }
 
+        // Avatare werden als Text (Data-URL) in der Master-JSON gespeichert.
+        // Ohne Verkleinerung landet ein 4-MB-Foto 1:1 in der Datei und macht jeden
+        // Lade-/Speichervorgang langsam — darum auf AVATAR_MAX_PX herunterrechnen.
+        const AVATAR_MAX_PX = 256;
+
+        function _adminAvatarStore(levelKey, dataUrl, origBytes) {
+            if (!quizSettings.avatars) quizSettings.avatars = {};
+            if (!quizSettings.avatars[levelKey]) quizSettings.avatars[levelKey] = { icon: '?', image: null, image2: null };
+            const preset = quizSettings.avatarPreset || 1;
+            const field = preset === 2 ? 'image2' : 'image';
+            quizSettings.avatars[levelKey][field] = dataUrl;
+            _adminAvatarSetPreset(preset);
+            const kb = Math.round(dataUrl.length / 1024);
+            const note = (origBytes && origBytes > dataUrl.length)
+                ? ` (${Math.round(origBytes / 1024)} KB → ${kb} KB)` : ` (${kb} KB)`;
+            Toast.show(`Bild für ${levelKey} (Preset ${preset}) gesetzt.${note}`, 'success');
+        }
+
         function _adminAvatarUpload(levelKey, event) {
             const file = event.target.files[0];
             if (!file) return;
             const reader = new FileReader();
             reader.onload = e => {
-                if (!quizSettings.avatars) quizSettings.avatars = {};
-                if (!quizSettings.avatars[levelKey]) quizSettings.avatars[levelKey] = { icon: '?', image: null, image2: null };
-                const preset = quizSettings.avatarPreset || 1;
-                const field = preset === 2 ? 'image2' : 'image';
-                quizSettings.avatars[levelKey][field] = e.target.result;
-                _adminAvatarSetPreset(preset);
-                Toast.show(`Bild für ${levelKey} (Preset ${preset}) gesetzt.`, 'success');
+                const original = e.target.result;
+                const img = new Image();
+                img.onload = () => {
+                    const scale = Math.min(1, AVATAR_MAX_PX / Math.max(img.width, img.height));
+                    if (scale >= 1) { _adminAvatarStore(levelKey, original); return; }
+                    try {
+                        const canvas = document.createElement('canvas');
+                        canvas.width  = Math.round(img.width  * scale);
+                        canvas.height = Math.round(img.height * scale);
+                        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+                        const small = canvas.toDataURL('image/png');
+                        _adminAvatarStore(levelKey, small.length < original.length ? small : original, original.length);
+                    } catch (err) {
+                        console.warn('Avatar-Verkleinerung fehlgeschlagen:', err);
+                        _adminAvatarStore(levelKey, original);
+                    }
+                };
+                img.onerror = () => Toast.show('Bild konnte nicht gelesen werden.', 'error');
+                img.src = original;
             };
             reader.readAsDataURL(file);
         }
@@ -7449,6 +8405,66 @@
         // Neue Migrationen immer in dieser Datei ergänzen (neuen Eintrag in MIGRATION_HISTORY + Funktion).
 
         const MIGRATION_HISTORY = [
+            {
+                date:  '2026-10',
+                title: 'Spieler-Dateien aufräumen: historyArchive',
+                detail: `Neues optionales Spieler-Feld <code>historyArchive</code>: Forge → Sicherung → Aufräumen
+                         fasst History-Einträge älter als N Tage zu Summen zusammen (Tage, Wochen, Verbesserungen,
+                         Comebacks, Marathon-Tage, Burst-Sessions, 3er-Tage, Monats-Summen). Badges und
+                         Fähigkeiten rechnen über <code>computeHistoryStats(history, historyArchive)</code>
+                         weiter, als wäre die History vollständig. Gekürzt werden außerdem <code>askLog</code>
+                         und <code>monthlyStats</code> je Frage (nur die Auswertung liest sie).
+                         Spieler ohne Archiv verhalten sich exakt wie vorher. Neue Einstellung
+                         <code>compactPlayerFiles</code> (Standard aus). Außerdem: Forge-Master-Speichern
+                         behält jetzt die geladene <code>pluginConfig</code> (vorher leer überschrieben),
+                         und der Forge-Lade-Pfad setzt <code>isCore</code> wie das Quiz.`,
+            },
+            {
+                date:  '2026-10',
+                title: 'Fokus-Quiz: Spieler-Feld focusQuiz + Einstellungsblock',
+                detail: `Neues Spieler-Feld <code>focusQuiz</code> (Serie, Bestwert, Prämien-Zähler,
+                         Tageszähler, Zeitraum-Schlüssel). Es wird beim Laden in <code>normalizeUser</code>
+                         → <code>normalizeFocusState</code> angelegt bzw. auf Zahlentypen gebracht —
+                         Altdateien brauchen keine Umschreibung, das Feld erscheint beim nächsten
+                         Spieler-Export. Neuer Master-Block <code>settings.focusQuiz</code> wird von
+                         <code>ensureSettingsDefaults</code> mit Standardwerten ergänzt.
+                         History-Einträge von Fokus-Quizzen tragen <code>focus: true</code>.
+                         Das Laufzeit-Flag <code>focusQuizActive</code> ist eine flüchtige Variable
+                         und wird nie exportiert.`,
+            },
+            {
+                date:  '2026-10',
+                title: 'Timer-Modus entfernt',
+                detail: `Der Timer-Modus wurde im Quiz seit langem nicht mehr genutzt und war dort
+                         nur noch als Ruine vorhanden: <code>timerModeActive</code> wurde gelesen,
+                         aber nie deklariert (Fehler bei jedem Antwort-Klick), und
+                         <code>clearAutoAdvance()</code> war dauerhaft wirkungslos.
+                         Entfernt wurden der Einstellungsblock in Forge, <code>SETTINGS_DEFAULTS.timer</code>,
+                         <code>CONFIG.TIMER</code> und die Reste im Quiz. Ein vorhandener
+                         <code>settings.timer</code>-Block wird beim Laden aus der Master-JSON entfernt
+                         (<code>ensureSettingsDefaults</code>) und ist nach dem nächsten Speichern weg.
+                         <code>CONFIG.TIMER.GHOST_CLEANUP_MONTHS</code> steuerte in Wahrheit den Verfall
+                         offener Telefon-Joker und heißt jetzt <code>CONFIG.ABILITIES.JOKER_EXPIRY_MONTHS</code>.`,
+            },
+            {
+                date:  '2026-10',
+                title: 'pendingTeamBonus → pendingTeamBonusQuiz',
+                detail: `Der Mitspieler-Anteil des Team-Bonus war ein pauschaler XP-Betrag
+                         (<code>pendingTeamBonus: 50</code>), obwohl die Fähigkeit "3× XP für dich und
+                         einen Mitspieler" verspricht. Neu: <code>pendingTeamBonusQuiz</code> zählt
+                         Quizze mit 3× XP und wird beim Quizstart eingelöst.
+                         Altbestand wird beim Laden ein letztes Mal als XP ausgezahlt und das alte
+                         Feld dann entfernt — beim nächsten Spieler-Export ist es verschwunden.`,
+            },
+            {
+                date:  '2026-10',
+                title: 'teamBonusActive-Feld entfernt',
+                detail: `Das Flag <code>teamBonusActive</code> (3× XP durch Team-Bonus) wurde nie
+                         zurückgesetzt und wanderte dadurch dauerhaft in die Spieler-Dateien — der
+                         Multiplikator galt für alle Folge-Quizze. Das Flag wird jetzt am Quizende
+                         gelöscht und beim Laden aus Altdateien entfernt (<code>normalizeUser</code>).
+                         Beim nächsten Spieler-Export verschwindet es endgültig.`,
+            },
             {
                 date:  '2026-04',
                 title: 'abilities.used-Feld entfernt',

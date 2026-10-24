@@ -43,8 +43,6 @@ const AppState = {
         selectedAvatarPresets: {}
     },
     
-    // Timer-State (flüchtig)
-    
     // Ability-State (flüchtig)
     abilities: {
         usedThisQuestion: {},

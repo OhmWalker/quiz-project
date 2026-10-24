@@ -2429,16 +2429,6 @@
             text-align: center; font-weight: 700; font-size: 1.1rem;
             margin: 10px 0; min-height: 30px;
         }
-        .boss-timer-bar {
-            width: 100%; height: 6px; background: rgba(255,255,255,0.1);
-            border-radius: 3px; margin: 8px 0; overflow: hidden;
-        }
-        .boss-timer-fill {
-            height: 100%; background: var(--accent); transition: width 0.1s linear;
-            border-radius: 3px;
-        }
-
-
         .plugin-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; margin-top: 20px; }
         .plugin-card { background: rgba(255,255,255,0.05); border: 2px solid rgba(255,255,255,0.12); border-radius: 14px; padding: 18px; transition: all 0.3s; position: relative; }
         .plugin-card:hover { border-color: rgba(255,255,255,0.25); background: rgba(255,255,255,0.07); }
@@ -2934,6 +2924,97 @@
             opacity: 0.5;
             white-space: nowrap;
         }
+
+        /* ── Fokus-Quiz-Kreis (FocusQuizPlugin) ───────────────────────────────────
+           Sitzt oben rechts neben der Siegertreppe, Größe wie die Podium-Avatare (168px).
+           Position von der Mitte aus gerechnet (Treppe mit 3 Plätzen ist max. 790px breit,
+           also 395px je Seite + 30px Abstand) — NICHT am rechten Kartenrand, sonst liegt
+           der Kreis unter der Fähigkeiten-Leiste (≤1700px am Bildschirmrand, 180px breit).
+           Bewusst ohne Endlos-Animation/Blur — Live-Rechner sind schwach. */
+        .leaderboard-wrap {
+            position: relative;
+        }
+        .leaderboard-wrap.has-focus {
+            min-height: 270px;   /* Platz für den Kreis, falls die Treppe leer ist */
+        }
+        .focus-quiz-btn {
+            position: absolute;
+            top: 20px;
+            left: calc(50% + 425px);
+            z-index: 2;
+            width: 180px;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            animation: podiumRise 0.8s ease-out;
+        }
+        .focus-circle {
+            width: 168px;
+            height: 168px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: radial-gradient(circle at 35% 30%, #1abc9c, #16a085 45%, #1f3a7a);
+            border: 5px solid var(--overlay-20);
+            box-shadow: 0 10px 40px var(--shadow-40);
+            box-sizing: border-box;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .focus-circle svg {
+            width: 70%;
+            height: 70%;
+        }
+        .focus-quiz-btn:hover .focus-circle {
+            transform: scale(1.05);
+            box-shadow: 0 15px 50px rgba(26, 188, 156, 0.45);
+        }
+        .focus-caption {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            line-height: 1.3;
+            color: white;
+        }
+        .focus-caption strong {
+            font-size: 1.05rem;
+        }
+        .focus-caption span {
+            font-size: 0.82rem;
+            opacity: 0.8;
+            max-width: 180px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .focus-quiz-btn.is-done .focus-circle {
+            border-color: #FFD700;
+            box-shadow: 0 15px 50px rgba(255, 215, 0, 0.35);
+        }
+        .focus-quiz-btn.is-limit {
+            cursor: default;
+        }
+        .focus-quiz-btn.is-limit .focus-circle {
+            filter: grayscale(1);
+            opacity: 0.5;
+        }
+        .focus-quiz-btn.is-limit:hover .focus-circle {
+            transform: none;
+            box-shadow: 0 10px 40px var(--shadow-40);
+        }
+        /* Unter 1600px passt der Kreis nicht mehr zwischen Treppe und rechte Seitenleiste
+           (Mitte + 425 + 180 ≤ Fensterbreite − 184) → mittig über die Treppe */
+        @media (max-width: 1599px) {
+            .focus-quiz-btn {
+                position: static;
+                margin: 0 auto 10px;
+            }
+            .leaderboard-wrap.has-focus {
+                min-height: 0;
+            }
+        }
     </style>
 </head>
 <body>
@@ -3009,16 +3090,6 @@
 
 
         const CONFIG = {
-            // Timer
-            TIMER: {
-                GHOST_CLEANUP_MONTHS: 3,       // Ghost-Daten nach X Monaten löschen
-                MIN_DYNAMIC_SEC: 5,            // Minimum dynamischer Timer (Sekunden)
-                MAX_DYNAMIC_SEC: 60,           // Maximum dynamischer Timer (Sekunden)
-                DEFAULT_SEC: 30,               // Standard-Timer (Sekunden)
-                COUNTDOWN_INTERVAL_MS: 100,    // Timer-Update-Intervall (ms)
-                WARNING_PCT: 0.3,              // < 30% verbleibend → gelbe Warnung
-                CRITICAL_PCT: 0.15,            // < 15% verbleibend → rote Warnung
-            },
             // XP & Level
             XP: {
                 MAX_LEVEL: 100,
@@ -3047,7 +3118,8 @@
             },
             // Abilities
             ABILITIES: {
-                MAX_PER_QUESTION: 1            // Max Abilities pro Frage (außer passive)
+                MAX_PER_QUESTION: 1,           // Max Abilities pro Frage (außer passive)
+                JOKER_EXPIRY_MONTHS: 3         // Offene Telefon-Joker nach X Monaten verwerfen
             },
             // Datei-System
             FILE: {
@@ -3273,6 +3345,7 @@
         let _fqImZones         = [];
         let _fqImPolyFinalized = false;
         let _fqImDragIdx       = -1;
+        let _fqImRedrawPending = false;
         let _fqImImageSrc      = null;
         let _fqImPathVal       = '';
 
@@ -3740,12 +3813,19 @@
                             const rect = imgEl.getBoundingClientRect();
                             _fqImPoints[_fqImDragIdx].x = Math.max(0, Math.min(100, ((me.clientX - rect.left) / rect.width) * 100));
                             _fqImPoints[_fqImDragIdx].y = Math.max(0, Math.min(100, ((me.clientY - rect.top) / rect.height) * 100));
-                            _fqImRedraw();
+                            // Max. ein Neuzeichnen pro Bildschirmaktualisierung
+                            if (_fqImRedrawPending) return;
+                            _fqImRedrawPending = true;
+                            requestAnimationFrame(function() {
+                                _fqImRedrawPending = false;
+                                _fqImRedraw();
+                            });
                         }
                         function onUp() {
                             _fqImDragIdx = -1;
                             document.removeEventListener('mousemove', onMove);
                             document.removeEventListener('mouseup', onUp);
+                            _fqImRedraw();   // Endposition sicher zeichnen
                         }
                         document.addEventListener('mousemove', onMove);
                         document.addEventListener('mouseup', onUp);

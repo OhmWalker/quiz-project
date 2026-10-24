@@ -55,16 +55,6 @@ const MESSAGES = {
 
 
 const CONFIG = {
-    // Timer
-    TIMER: {
-        GHOST_CLEANUP_MONTHS: 3,       // Ghost-Daten nach X Monaten löschen
-        MIN_DYNAMIC_SEC: 5,            // Minimum dynamischer Timer (Sekunden)
-        MAX_DYNAMIC_SEC: 60,           // Maximum dynamischer Timer (Sekunden)
-        DEFAULT_SEC: 30,               // Standard-Timer (Sekunden)
-        COUNTDOWN_INTERVAL_MS: 100,    // Timer-Update-Intervall (ms)
-        WARNING_PCT: 0.3,              // < 30% verbleibend → gelbe Warnung
-        CRITICAL_PCT: 0.15,            // < 15% verbleibend → rote Warnung
-    },
     // XP & Level
     XP: {
         MAX_LEVEL: 100,
@@ -93,7 +83,8 @@ const CONFIG = {
     },
     // Abilities
     ABILITIES: {
-        MAX_PER_QUESTION: 1            // Max Abilities pro Frage (außer passive)
+        MAX_PER_QUESTION: 1,           // Max Abilities pro Frage (außer passive)
+        JOKER_EXPIRY_MONTHS: 3         // Offene Telefon-Joker nach X Monaten verwerfen
     },
     // Datei-System
     FILE: {

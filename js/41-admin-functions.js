@@ -25,9 +25,6 @@ function showAdminSection(section) {
         document.getElementById('quizNameInput').value = quizSettings.quizName || 'XY Quiz';
         document.getElementById('questionsPerQuizInput').value = quizSettings.questionsPerQuiz;
         document.getElementById('podiumPlacesInput').value = quizSettings.podiumPlaces || 3;
-        // Populate Timer settings
-        const ts = quizSettings.timer || {};
-
 
         // Populate XP settings
         document.getElementById('baseXPInput').value = quizSettings.xpSystem.baseXP;
@@ -40,11 +37,11 @@ function showAdminSection(section) {
         // Populate Spaced Repetition settings
         const sr = quizSettings.spacedRepetition || {};
         const srRandEl = document.getElementById('srRandomnessInput');
-        if (srRandEl) { srRandEl.value = sr.randomness !== undefined ? sr.randomness : 40; document.getElementById('srRandomnessValue').textContent = srRandEl.value + '%'; }
+        if (srRandEl) { srRandEl.value = sr.randomness !== undefined ? sr.randomness : 30; document.getElementById('srRandomnessValue').textContent = srRandEl.value + '%'; }
         const srCoolEl = document.getElementById('srCooldownInput');
         if (srCoolEl) srCoolEl.value = sr.streakCooldown !== undefined ? sr.streakCooldown : 48;
         const srStreakEl = document.getElementById('srStreakInput');
-        if (srStreakEl) srStreakEl.value = sr.streakThreshold !== undefined ? sr.streakThreshold : 3;
+        if (srStreakEl) srStreakEl.value = sr.streakThreshold !== undefined ? sr.streakThreshold : 2;
         const mcfEl = document.getElementById('maxCoreFirstInput');
         if (mcfEl) mcfEl.value = sr.maxCoreFirst !== undefined && sr.maxCoreFirst < 999 ? sr.maxCoreFirst : 0;
         const mcsEl = document.getElementById('maxCoreSubsequentInput');
@@ -233,13 +230,14 @@ function updateQuizName() {
 // Settings management
 
 function updateSpacedRepetitionSettings() {
-    const randomness = parseInt(document.getElementById('srRandomnessInput').value) || 40;
-    const cooldown = parseInt(document.getElementById('srCooldownInput').value) || 48;
-    const streak = parseInt(document.getElementById('srStreakInput').value) || 3;
-    const maxCoreFirst = parseInt(document.getElementById('maxCoreFirstInput').value) || 0;
-    const maxCoreSubsequent = parseInt(document.getElementById('maxCoreSubsequentInput').value) || 0;
-    const freshQuota = parseInt(document.getElementById('freshQuotaInput').value) || 0;
-    const freshThreshold = parseInt(document.getElementById('freshThresholdInput').value) || 1;
+    // Defaults identisch zu SETTINGS_DEFAULTS.spacedRepetition (js/30-globals.js)
+    const randomness = _numVal('srRandomnessInput', 30);
+    const cooldown = _numVal('srCooldownInput', 48);
+    const streak = _numVal('srStreakInput', 2);
+    const maxCoreFirst = _numVal('maxCoreFirstInput', 0);
+    const maxCoreSubsequent = _numVal('maxCoreSubsequentInput', 0);
+    const freshQuota = _numVal('freshQuotaInput', 50);
+    const freshThreshold = _numVal('freshThresholdInput', 1);
 
     ensureSettingsDefaults(quizSettings);
     quizSettings.spacedRepetition.randomness = Math.max(0, Math.min(100, randomness));
@@ -306,6 +304,11 @@ function updateXPSettings() {
 
     if (isNaN(correctXP) || correctXP < 1) {
         Toast.show('XP pro richtige Antwort muss mindestens 1 sein.', 'warning');
+        return;
+    }
+
+    if (isNaN(wrongXP)) {
+        Toast.show('XP für falsche Antwort muss eine Zahl sein (z.B. -2).', 'warning');
         return;
     }
 

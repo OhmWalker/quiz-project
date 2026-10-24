@@ -137,7 +137,7 @@
         <p>Neben dem klassischen Quiz gibt es 5 Mini-Games, die als Belohnung oder eigener Spielmodus verfügbar sind. XP aus Mini-Games sind ein netter Bonus, aber nicht die Hauptquelle – das Quiz bleibt zentral.</p>
         <h4>🎰 Glücksrad</h4><p>Wird automatisch nach einem Quiz angeboten, wenn genug Fragen richtig beantwortet wurden. Drehe das Rad für Bonus-XP – oder "Nochmal drehen" für eine zweite Chance. Auslöser und Höchstgewinn sind im Admin einstellbar.</p>
         <h4>⚡ Speed-Tap Reaktionstest</h4><p>Nach einer einstellbaren Anzahl von Quiz am selben Tag erscheint der Reaktionstest. Ein Ziel erscheint an zufälliger Position – so schnell wie möglich antippen! 5 Runden, und je schneller der Durchschnitt, desto mehr Bonus-XP. Unter 300ms = Top-Bonus.</p>
-        <h4>⚔️ Boss-Fight</h4><p>Nach einer Serie starker Quiz-Ergebnisse (>80%) wird ein Boss-Fight freigeschaltet. 5 verschiedene Bosse mit eigenen Angriffen: Timer-Verkürzung, Antworten vernebeln, Antworten mischen. Besiege den Boss durch richtige Antworten – aber Vorsicht, falsche Antworten kosten Leben!</p>
+        <h4>⚔️ Boss-Fight</h4><p>Nach einer Serie starker Quiz-Ergebnisse (>80%) wird ein Boss-Fight freigeschaltet. 5 verschiedene Bosse mit je zwei eigenen Angriffen: Antworten vernebeln, Antworten mischen, Selbstheilung, doppelter Schaden und mehr. Besiege den Boss durch richtige Antworten – aber Vorsicht, falsche Antworten kosten Leben!</p>
 
         <div style="text-align: center; margin-top: 25px;">
             <button class="btn" data-toggle-overlay="featuresOverlay" data-overlay-show="false">Verstanden!</button>
@@ -158,8 +158,11 @@
     <!-- Start Screen -->
     <div id="startScreen" class="screen">
         <div class="card">
-            <!-- Leaderboard Podium -->
-            <div id="leaderboard" class="leaderboard"></div>
+            <!-- Leaderboard Podium + Fokus-Quiz-Kreis (oben rechts, erst nach dem ersten Quiz des Tages) -->
+            <div class="leaderboard-wrap" id="leaderboardWrap">
+                <div class="focus-quiz-btn" id="focusQuizBtn" style="display:none" data-plugin="FocusQuizPlugin" data-action="start"></div>
+                <div id="leaderboard" class="leaderboard"></div>
+            </div>
             
             <h2 class="user-selection-title">Benutzer wählen</h2>
             <div class="user-select" id="userSelect"></div>
@@ -341,9 +344,6 @@
                 <div class="boss-hp-text" id="bossHpText">100 / 100</div>
             </div>
             <div class="boss-player-bar" id="bossPlayerHearts"></div>
-            <div class="boss-timer-bar" id="bossTimerBar" style="display: none;">
-                <div class="boss-timer-fill" id="bossTimerFill" style="width: 100%;"></div>
-            </div>
         </div>
         <div class="boss-effect-text" id="bossEffectText"></div>
         <div class="boss-question-card" id="bossQuestionCard">

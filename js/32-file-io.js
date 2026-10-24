@@ -40,10 +40,13 @@ async function loadFromFolderInput(event) {
                         });
                     } catch (err) {
                         console.warn('Datei konnte nicht gelesen werden:', file.name, err.message);
-                        resolve(null);
+                        resolve({ name: file.name, _readError: err.message || 'Ungültiges Format' });
                     }
                 };
-                reader.onerror = () => { console.warn('Lesefehler:', file.name); resolve(null); };
+                reader.onerror = () => {
+                    console.warn('Lesefehler:', file.name);
+                    resolve({ name: file.name, _readError: 'Datei nicht lesbar' });
+                };
                 reader.readAsText(file);
             });
             readPromises.push(promise);
@@ -58,8 +61,10 @@ async function loadFromFolderInput(event) {
     let questionFiles = [];
     const skippedFiles = [];
     const unrecognizedJsonFiles = [];
+    const unreadableFiles = [];
     for (const result of results) {
         if (!result) continue;
+        if (result._readError) { unreadableFiles.push(result.name + ' — ' + result._readError); continue; }
 
         // 01: Master (Settings + Backups)
         if (result.name.startsWith('02_quiz-master') || result.name.startsWith('02_QUIZ-MASTER') || result.name === 'quiz-master.json') {
@@ -92,6 +97,15 @@ async function loadFromFolderInput(event) {
         warnMsg += '\nBitte umbenennen zu: 03_questions_THEMA_DATUM.json\n';
         warnMsg += 'Beim nächsten Export wird der Name automatisch korrekt gesetzt.';
         Toast.show(warnMsg, 'info');
+    }
+
+    // Warnung bei unlesbaren Dateien — sonst fehlt der Spieler lautlos
+    if (unreadableFiles.length > 0) {
+        console.warn('Unlesbare Dateien:', unreadableFiles.join(', '));
+        let errMsg = '⛔ ' + unreadableFiles.length + ' Datei(en) konnten NICHT gelesen werden und fehlen:\n\n';
+        unreadableFiles.forEach(function(f) { errMsg += '• ' + f + '\n'; });
+        errMsg += '\nNicht weiterarbeiten, bevor das geklärt ist — sonst werden diese Daten beim nächsten Export überschrieben!';
+        Toast.show(errMsg, 'error');
     }
     console.log('Ordner-Laden: ' + results.filter(Boolean).length + ' JSON-Dateien, ' + masterFiles.length + ' Master, ' + questionFiles.length + ' Fragen-Dateien, ' + playerFiles.length + ' Spieler, ' + skippedFiles.length + ' übersprungen');
     if (playerFiles.length > 0) console.log('Spieler-Dateien:', playerFiles.map(function(p){ return p.name; }).join(', '));
@@ -142,6 +156,9 @@ async function loadFromFolderInput(event) {
     }
 
     // Plugin-Konfiguration aus Master laden (abwärtskompatibel)
+    // Geladene Plugin-Konfiguration merken: Forge registriert keine Plugins und
+    // würde sonst beim Speichern eine leere pluginConfig schreiben.
+    _loadedPluginConfig = masterData.pluginConfig || null;
     if (masterData.pluginConfig) {
         PluginRegistry.loadConfig(masterData.pluginConfig);
     }
@@ -242,7 +259,7 @@ async function loadFromFolderInput(event) {
     })();
 
     // Cross-Reference: Phone-Joker System (3 Phasen)
-    const jokerExpiryMs = CONFIG.TIMER.GHOST_CLEANUP_MONTHS * 30 * 24 * 60 * 60 * 1000;
+    const jokerExpiryMs = CONFIG.ABILITIES.JOKER_EXPIRY_MONTHS * 30 * 24 * 60 * 60 * 1000;
     const jokerExpiryThreshold = Date.now() - jokerExpiryMs;
 
     // Phase 1: Resolved Joker verarbeiten → Sender-Bonus berechnen
@@ -407,25 +424,55 @@ function updateFolderStatus(totalFiles, uniquePlayers, qFiles) {
 }
 
 
-function saveCurrentPlayer() {
-    if (!currentUser) {
-        Toast.show('Bitte zuerst einen Spieler auswählen.', 'warning');
-        return;
-    }
+// ── Serialisierung (gemeinsam für Speichern, Sicherung und Aufräumen) ────────
 
-    // Format: 04_operator_NAME_YYYY-MM-DD_HHMM-SS.json
-    const now = new Date();
-    const timestamp = now.toISOString().slice(0, 19).replace('T', '_').replace(/:/g, '');
-    const playerName = currentUser.name.toUpperCase().replace(/\s+/g, '-').replace(/[^A-Z0-9-]/g, '');
-    const fileName = `04_operator_${playerName}_${timestamp}.json`;
+let _loadedPluginConfig = null;
 
-    let dataStr = JSON.stringify(currentUser, null, 2);
+function _fileTimestamp(now) {
+    return (now || new Date()).toISOString().slice(0, 19).replace('T', '_').replace(/:/g, '');
+}
+
+// Format: 04_operator_NAME_YYYY-MM-DD_HHMMSS.json
+function playerFileName(user, now) {
+    const playerName = String(user.name || '').toUpperCase().replace(/\s+/g, '-').replace(/[^A-Z0-9-]/g, '');
+    return `04_operator_${playerName}_${_fileTimestamp(now)}.json`;
+}
+
+// JSON-Text einer Datei: kompakt oder eingerückt, ggf. Base64 (encryptPlayerData)
+function encodeDataFile(obj, compact) {
+    let dataStr = compact ? JSON.stringify(obj) : JSON.stringify(obj, null, 2);
     if (quizSettings.encryptPlayerData) {
         try { dataStr = btoa(unescape(encodeURIComponent(dataStr))); } catch(e) { console.error('Encoding error:', e); }
     }
+    return dataStr;
+}
+
+// Spieler-Datei: kompakt, wenn in den Einstellungen gewählt (Forge → Sicherung)
+function serializePlayer(user) {
+    return encodeDataFile(user, !!quizSettings.compactPlayerFiles);
+}
+
+function buildMasterData() {
+    // Registrierte Plugins (Quiz) überschreiben die geladene Konfiguration;
+    // im Forge-Build ist die Registry leer → geladene Konfiguration bleibt erhalten.
+    const pluginConfig = Object.assign({}, _loadedPluginConfig || {}, PluginRegistry.getConfig());
+    return {
+        version: CONFIG.FILE.VERSION,
+        lastBackup: new Date().toISOString(),
+        settings: quizSettings,
+        badges: quizSettings.badges || null,
+        pluginConfig: pluginConfig,
+        questionSources: loadedQuestionFiles.map(function(f){ return f.name; })
+    };
+}
+
+function masterFileName(now) {
+    return `02_QUIZ-MASTER_${_fileTimestamp(now)}.json`;
+}
+
+function _downloadText(dataStr, fileName) {
     const blob = new Blob([dataStr], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
-
     const a = document.createElement('a');
     a.href = url;
     a.download = fileName;
@@ -433,7 +480,16 @@ function saveCurrentPlayer() {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+}
 
+
+function saveCurrentPlayer() {
+    if (!currentUser) {
+        Toast.show('Bitte zuerst einen Spieler auswählen.', 'warning');
+        return;
+    }
+    const fileName = playerFileName(currentUser);
+    _downloadText(serializePlayer(currentUser), fileName);
     Toast.show(`Spielerdaten gespeichert als:\n${fileName}\n\nBitte speichern Sie die Datei im Quiz-Ordner!`, 'success');
 }
 
@@ -451,34 +507,8 @@ function saveMultiPlayerData() {
 
 
 function saveMasterBackup() {
-    const masterData = {
-        version: CONFIG.FILE.VERSION,
-        lastBackup: new Date().toISOString(),
-        settings: quizSettings,
-        badges: quizSettings.badges || null,
-        pluginConfig: PluginRegistry.getConfig(),
-        questionSources: loadedQuestionFiles.map(function(f){ return f.name; })
-    };
-
-    // Format: 02_quiz-master_YYYY-MM-DD_HHMM-SS.json
-    const now = new Date();
-    const timestamp = now.toISOString().slice(0, 19).replace('T', '_').replace(/:/g, '');
-    const fileName = `02_QUIZ-MASTER_${timestamp}.json`;
-
-    const dataStr = JSON.stringify(masterData, null, 2);
-    if (quizSettings.encryptPlayerData) {
-        try { dataStr = btoa(unescape(encodeURIComponent(dataStr))); } catch(e) { console.error('Encoding error:', e); }
-    }
-    const blob = new Blob([dataStr], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-
-    let a = document.createElement('a');
-    a.href = url;
-    a.download = fileName;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    const fileName = masterFileName();
+    _downloadText(encodeDataFile(buildMasterData(), false), fileName);
 
     const encInfo = quizSettings.encryptPlayerData ? ' (Base64-kodiert)' : '';
     Toast.show('Master-Datei gespeichert als:\n' + fileName + encInfo + '\n\nEnthält Settings und Plugin-Konfiguration.\nFragen werden separat in 03_questions-Dateien gespeichert.\n\nBitte speichern Sie die Datei im Quiz-Ordner!', 'success');
