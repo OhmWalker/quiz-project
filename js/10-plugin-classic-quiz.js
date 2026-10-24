@@ -36,7 +36,7 @@ const ClassicQuizPlugin = {
     _srTools(user) {
         const sr = quizSettings.spacedRepetition || {};
         const randomness = (sr.randomness !== undefined ? sr.randomness : 30) / 100;
-        const cooldownHours = sr.streakCooldown || 48;
+        const cooldownHours = sr.streakCooldown || SETTINGS_DEFAULTS.spacedRepetition.streakCooldown;
         const streakThreshold = sr.streakThreshold || 2;
         const stats = user.questionStats || {};
         const cooldownMs = cooldownHours * 3600000;
@@ -151,7 +151,7 @@ const ClassicQuizPlugin = {
 
         if (cooldownFallbackCount > 0)
             setTimeout(() => Toast.show(
-                `⚠ Pool zu klein: ${cooldownFallbackCount} Frage(n) aus dem 48h-Ruhemodus geholt.\nMehr aktive Fragen hinzufügen empfohlen.`,
+                `⚠ Pool zu klein: ${cooldownFallbackCount} Frage(n) aus dem ${sr.streakCooldown || SETTINGS_DEFAULTS.spacedRepetition.streakCooldown}h-Ruhemodus geholt.\nMehr aktive Fragen hinzufügen empfohlen.`,
                 'warning'
             ), 500);
 
@@ -467,7 +467,7 @@ const ClassicQuizPlugin = {
                 // Cooldown abgelaufen? → consecutiveCorrect zurücksetzen bevor increment
                 // verhindert Endlosschleife: Cooldown → 1x richtig → sofort wieder Cooldown
                 const sr = quizSettings.spacedRepetition || {};
-                const cooldownMs = (sr.streakCooldown || 48) * 3600000;
+                const cooldownMs = (sr.streakCooldown || SETTINGS_DEFAULTS.spacedRepetition.streakCooldown) * 3600000;
                 const streakThreshold = sr.streakThreshold || 2;
                 const prevConsec = qs.consecutiveCorrect || 0;
                 if (prevConsec >= streakThreshold && prevLastAsked &&

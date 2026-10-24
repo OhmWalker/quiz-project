@@ -39,12 +39,12 @@ const SETTINGS_DEFAULTS = {
     compactPlayerFiles: false,   // Spieler-Dateien ohne Einrückung speichern (~halbe Größe) — Forge → Sicherung
     spacedRepetition: {
         randomness: 30,         // 0-100: 0=pure SR, 100=komplett zufällig
-        streakCooldown: 48,     // Stunden Sperre nach N korrekt in Folge
+        streakCooldown: 96,     // Stunden Sperre nach N korrekt in Folge
         streakThreshold: 2,     // Anzahl korrekt in Folge für Sperre
         freshQuota: 50,         // % neue/seltene Fragen pro Quiz (0=deaktiviert)
         freshThreshold: 1,      // max. asked-Zahl für "selten gestellt"
-        maxCoreFirst: 7,        // max. Core-Fragen im 1. Quiz des Tages
-        maxCoreSubsequent: 3    // max. Core-Fragen in Folge-Quizzen
+        maxCoreFirst: 6,        // max. Core-Fragen im 1. Quiz des Tages
+        maxCoreSubsequent: 2    // max. Core-Fragen in Folge-Quizzen
     },
     xpSystem: {
         baseXP: 50,

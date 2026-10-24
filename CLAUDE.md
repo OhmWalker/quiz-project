@@ -83,14 +83,14 @@ Zukünftige Migrationen: immer in `js/admin/50-admin-migrationen.js` als neuen E
 
 | Setting | Wert | Bedeutung |
 |---|---|---|
-| `maxCoreFirst` | **7** | Max. Core-Fragen im 1. Quiz des Tages (7 von 10 Slots) |
-| `maxCoreSubsequent` | **3** | Max. Core-Fragen in Folge-Quizzen (3 von 10 Slots) |
+| `maxCoreFirst` | **6** | Max. Core-Fragen im 1. Quiz des Tages (6 von 10 Slots) |
+| `maxCoreSubsequent` | **2** | Max. Core-Fragen in Folge-Quizzen (2 von 10 Slots) |
 | `maxPerGroup` | **3** | Max. Non-Core-Fragen pro `_fileGroup` pro Quiz; `0` = deaktiviert |
 | `freshQuota` | **50** | 50% der Non-Core-Slots für neue/seltene Fragen reserviert |
 | `freshThreshold` | **1** | Frage gilt als "neu" wenn ≤ 1× gestellt |
 | `randomness` | **30** | 30% Zufallsanteil (0 = reines SR, 100 = komplett zufällig) |
 | `streakThreshold` | **2** | Cooldown nach 2 richtigen in Folge |
-| `streakCooldown` | **48** | Cooldown-Dauer in Stunden |
+| `streakCooldown` | **96** | Cooldown-Dauer in Stunden |
 
 **Hinweis `maxPerGroup`:** Gilt nur für Non-Core-Fragen. Wenn nach dem Cap Slots fehlen, werden Ersatzfragen aus anderen Gruppen mit freiem Budget nachgezogen (SR-gewichtet, ohne Cooldown-Fragen).
 
@@ -110,13 +110,15 @@ Zukünftige Migrationen: immer in `js/admin/50-admin-migrationen.js` als neuen E
 
 ### SR-Fallback-Defaults (`js/30-globals.js`)
 Defaults greifen wenn kein `spacedRepetition`-Block in der Master-JSON:
-`streakThreshold: 2, randomness: 30, freshQuota: 50, maxCoreFirst: 7, maxCoreSubsequent: 3, maxPerGroup: 3`
+`streakThreshold: 2, streakCooldown: 96, randomness: 30, freshQuota: 50, freshThreshold: 1, maxCoreFirst: 6, maxCoreSubsequent: 2`
+(Live-Werte seit 2026-10-24; `maxPerGroup` hat keinen Eintrag in `SETTINGS_DEFAULTS`, der Code nimmt dann 3)
 
 ### SR-Abweichungs-Toast (`js/32-file-io.js`)
-Nach jedem Master-JSON-Load werden die geladenen SR-Werte mit `SR_EXPECTED` verglichen. Bei Abweichung erscheint nach 1,5 Sekunden ein Toast:
+Nach jedem Master-JSON-Load werden die geladenen SR-Werte mit `SR_EXPECTED` verglichen — das ist seit 2026-10 direkt
+`SETTINGS_DEFAULTS.spacedRepetition`, also nur eine Stelle ändern. Bei Abweichung erscheint nach 1,5 Sekunden ein Toast:
 > ⚠ SR-Einstellungen weichen ab: `streakThreshold=3 (erwartet: 2)`
 
-### Simulations-Ergebnisse (100 Runs, 380 Fragen, 80 Core, random=30)
+### Simulations-Ergebnisse (100 Runs, 380 Fragen, 80 Core, random=30 — noch mit den alten Werten 48 h / 7 / 3)
 - **261 von 300 Normal-Fragen** gestellt (87%), SR-Faktor: **7,1×**
 - Cluster-Indikator: **2,08** Ø gleiche Fragen in aufeinanderfolgenden Quizzen
 - `python3 tools/simulate.py` / `python3 tools/simulate.py --szenarien`

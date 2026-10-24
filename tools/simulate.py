@@ -21,12 +21,12 @@ CONFIG = {
     'corePercent': 70,
     'spacedRepetition': {
         'randomness': 30,           # 0-100: 0=reines SR, 100=komplett zufällig
-        'streakCooldown': 48,       # Stunden Sperre nach streakThreshold korrekt
+        'streakCooldown': 96,       # Stunden Sperre nach streakThreshold korrekt
         'streakThreshold': 2,       # Korrekt in Folge bis Cooldown
         'freshQuota': 50,           # % Non-Core-Slots für neue Fragen (0=aus)
         'freshThreshold': 1,        # Frage gilt als "neu" wenn <= X gestellt
-        'maxCoreFirst': 7,          # Max. Core-Fragen im 1. Quiz des Tages
-        'maxCoreSubsequent': 3,     # Max. Core-Fragen in Folge-Quizzen
+        'maxCoreFirst': 6,          # Max. Core-Fragen im 1. Quiz des Tages
+        'maxCoreSubsequent': 2,     # Max. Core-Fragen in Folge-Quizzen
     }
 }
 

@@ -4378,12 +4378,12 @@
             compactPlayerFiles: false,   // Spieler-Dateien ohne Einrückung speichern (~halbe Größe) — Forge → Sicherung
             spacedRepetition: {
                 randomness: 30,         // 0-100: 0=pure SR, 100=komplett zufällig
-                streakCooldown: 48,     // Stunden Sperre nach N korrekt in Folge
+                streakCooldown: 96,     // Stunden Sperre nach N korrekt in Folge
                 streakThreshold: 2,     // Anzahl korrekt in Folge für Sperre
                 freshQuota: 50,         // % neue/seltene Fragen pro Quiz (0=deaktiviert)
                 freshThreshold: 1,      // max. asked-Zahl für "selten gestellt"
-                maxCoreFirst: 7,        // max. Core-Fragen im 1. Quiz des Tages
-                maxCoreSubsequent: 3    // max. Core-Fragen in Folge-Quizzen
+                maxCoreFirst: 6,        // max. Core-Fragen im 1. Quiz des Tages
+                maxCoreSubsequent: 2    // max. Core-Fragen in Folge-Quizzen
             },
             xpSystem: {
                 baseXP: 50,
@@ -5018,7 +5018,8 @@
 
             // SR-Einstellungen prüfen: Warnung wenn Werte von den erwarteten Werten abweichen
             (function() {
-                const SR_EXPECTED = { randomness: 30, streakCooldown: 48, streakThreshold: 2, freshQuota: 50, freshThreshold: 1, maxCoreFirst: 7, maxCoreSubsequent: 3 };
+                // Erwartet = Standardwerte (SETTINGS_DEFAULTS) — eine Quelle, damit beides nicht auseinanderläuft
+                const SR_EXPECTED = SETTINGS_DEFAULTS.spacedRepetition;
                 const sr = quizSettings.spacedRepetition || {};
                 const abweichungen = Object.entries(SR_EXPECTED)
                     .filter(([k, v]) => sr[k] !== undefined && sr[k] !== v)
@@ -8012,11 +8013,11 @@
                         oninput="document.getElementById('set_srRandVal').textContent=this.value+'%'">
                     <span id="set_srRandVal" style="min-width:40px">${srRand}%</span>`)}
                 ${_row('Streak-Schwelle', '× korrekt in Folge → Cooldown', `<input type="number" id="set_srStreak" min="2" max="10" value="${sr.streakThreshold ?? 2}" style="width:80px">`)}
-                ${_row('Cooldown-Dauer', 'Stunden', `<input type="number" id="set_srCooldown" min="1" max="720" value="${sr.streakCooldown ?? 48}" style="width:80px">`)}
+                ${_row('Cooldown-Dauer', 'Stunden', `<input type="number" id="set_srCooldown" min="1" max="720" value="${sr.streakCooldown ?? SETTINGS_DEFAULTS.spacedRepetition.streakCooldown}" style="width:80px">`)}
                 ${_row('Fresh-Quota', '% neue/seltene Fragen (0 = deaktiviert)', `<input type="number" id="set_srFresh" min="0" max="100" value="${sr.freshQuota ?? 50}" style="width:80px">`)}
                 ${_row('Fresh-Schwelle', 'max. asked-Zahl für „selten gestellt"', `<input type="number" id="set_srFreshThresh" min="0" max="10" value="${sr.freshThreshold ?? 1}" style="width:80px">`)}
-                ${_row('Max. Core (1. Quiz/Tag)', '', `<input type="number" id="set_srCoreFirst" min="0" max="100" value="${sr.maxCoreFirst ?? 7}" style="width:80px">`)}
-                ${_row('Max. Core (Folge-Quizze)', '', `<input type="number" id="set_srCoreSubseq" min="0" max="100" value="${sr.maxCoreSubsequent ?? 3}" style="width:80px">`)}
+                ${_row('Max. Core (1. Quiz/Tag)', '', `<input type="number" id="set_srCoreFirst" min="0" max="100" value="${sr.maxCoreFirst ?? SETTINGS_DEFAULTS.spacedRepetition.maxCoreFirst}" style="width:80px">`)}
+                ${_row('Max. Core (Folge-Quizze)', '', `<input type="number" id="set_srCoreSubseq" min="0" max="100" value="${sr.maxCoreSubsequent ?? SETTINGS_DEFAULTS.spacedRepetition.maxCoreSubsequent}" style="width:80px">`)}
                 ${_row('Max. Non-Core / Gruppe', '0 = deaktiviert', `<input type="number" id="set_srMaxGroup" min="0" max="100" value="${sr.maxPerGroup ?? 3}" style="width:80px">`)}
                 ${_saveBtn('_saveSR()', '🔀 SR speichern')}
             `);
@@ -8189,11 +8190,11 @@
             quizSettings.spacedRepetition = Object.assign(quizSettings.spacedRepetition || {}, {
                 randomness:        _numVal('set_srRand', 30),
                 streakThreshold:   _numVal('set_srStreak', 2),
-                streakCooldown:    _numVal('set_srCooldown', 48),
+                streakCooldown:    _numVal('set_srCooldown', SETTINGS_DEFAULTS.spacedRepetition.streakCooldown),
                 freshQuota:        _numVal('set_srFresh', 50),
                 freshThreshold:    _numVal('set_srFreshThresh', 1),
-                maxCoreFirst:      _numVal('set_srCoreFirst', 7),
-                maxCoreSubsequent: _numVal('set_srCoreSubseq', 3),
+                maxCoreFirst:      _numVal('set_srCoreFirst', SETTINGS_DEFAULTS.spacedRepetition.maxCoreFirst),
+                maxCoreSubsequent: _numVal('set_srCoreSubseq', SETTINGS_DEFAULTS.spacedRepetition.maxCoreSubsequent),
                 maxPerGroup:       _numVal('set_srMaxGroup', 3),
             });
             saveMasterBackup();
@@ -8764,7 +8765,7 @@
             const sr = (typeof quizSettings !== 'undefined' ? quizSettings.spacedRepetition : null) || {};
             return {
                 threshold:  sr.streakThreshold || 2,
-                cooldownMs: (sr.streakCooldown  || 48) * 3600000,
+                cooldownMs: (sr.streakCooldown  || SETTINGS_DEFAULTS.spacedRepetition.streakCooldown) * 3600000,
             };
         }
 

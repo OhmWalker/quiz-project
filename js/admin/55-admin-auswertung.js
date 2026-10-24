@@ -123,7 +123,7 @@ function _avSR() {
     const sr = (typeof quizSettings !== 'undefined' ? quizSettings.spacedRepetition : null) || {};
     return {
         threshold:  sr.streakThreshold || 2,
-        cooldownMs: (sr.streakCooldown  || 48) * 3600000,
+        cooldownMs: (sr.streakCooldown  || SETTINGS_DEFAULTS.spacedRepetition.streakCooldown) * 3600000,
     };
 }
 

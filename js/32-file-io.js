@@ -133,7 +133,8 @@ async function loadFromFolderInput(event) {
 
     // SR-Einstellungen prüfen: Warnung wenn Werte von den erwarteten Werten abweichen
     (function() {
-        const SR_EXPECTED = { randomness: 30, streakCooldown: 48, streakThreshold: 2, freshQuota: 50, freshThreshold: 1, maxCoreFirst: 7, maxCoreSubsequent: 3 };
+        // Erwartet = Standardwerte (SETTINGS_DEFAULTS) — eine Quelle, damit beides nicht auseinanderläuft
+        const SR_EXPECTED = SETTINGS_DEFAULTS.spacedRepetition;
         const sr = quizSettings.spacedRepetition || {};
         const abweichungen = Object.entries(SR_EXPECTED)
             .filter(([k, v]) => sr[k] !== undefined && sr[k] !== v)

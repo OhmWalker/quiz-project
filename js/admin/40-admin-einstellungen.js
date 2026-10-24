@@ -90,11 +90,11 @@ AdminShell.registerPanel('einstellungen', 'Einstellungen', '⚙', container => {
                 oninput="document.getElementById('set_srRandVal').textContent=this.value+'%'">
             <span id="set_srRandVal" style="min-width:40px">${srRand}%</span>`)}
         ${_row('Streak-Schwelle', '× korrekt in Folge → Cooldown', `<input type="number" id="set_srStreak" min="2" max="10" value="${sr.streakThreshold ?? 2}" style="width:80px">`)}
-        ${_row('Cooldown-Dauer', 'Stunden', `<input type="number" id="set_srCooldown" min="1" max="720" value="${sr.streakCooldown ?? 48}" style="width:80px">`)}
+        ${_row('Cooldown-Dauer', 'Stunden', `<input type="number" id="set_srCooldown" min="1" max="720" value="${sr.streakCooldown ?? SETTINGS_DEFAULTS.spacedRepetition.streakCooldown}" style="width:80px">`)}
         ${_row('Fresh-Quota', '% neue/seltene Fragen (0 = deaktiviert)', `<input type="number" id="set_srFresh" min="0" max="100" value="${sr.freshQuota ?? 50}" style="width:80px">`)}
         ${_row('Fresh-Schwelle', 'max. asked-Zahl für „selten gestellt"', `<input type="number" id="set_srFreshThresh" min="0" max="10" value="${sr.freshThreshold ?? 1}" style="width:80px">`)}
-        ${_row('Max. Core (1. Quiz/Tag)', '', `<input type="number" id="set_srCoreFirst" min="0" max="100" value="${sr.maxCoreFirst ?? 7}" style="width:80px">`)}
-        ${_row('Max. Core (Folge-Quizze)', '', `<input type="number" id="set_srCoreSubseq" min="0" max="100" value="${sr.maxCoreSubsequent ?? 3}" style="width:80px">`)}
+        ${_row('Max. Core (1. Quiz/Tag)', '', `<input type="number" id="set_srCoreFirst" min="0" max="100" value="${sr.maxCoreFirst ?? SETTINGS_DEFAULTS.spacedRepetition.maxCoreFirst}" style="width:80px">`)}
+        ${_row('Max. Core (Folge-Quizze)', '', `<input type="number" id="set_srCoreSubseq" min="0" max="100" value="${sr.maxCoreSubsequent ?? SETTINGS_DEFAULTS.spacedRepetition.maxCoreSubsequent}" style="width:80px">`)}
         ${_row('Max. Non-Core / Gruppe', '0 = deaktiviert', `<input type="number" id="set_srMaxGroup" min="0" max="100" value="${sr.maxPerGroup ?? 3}" style="width:80px">`)}
         ${_saveBtn('_saveSR()', '🔀 SR speichern')}
     `);
@@ -267,11 +267,11 @@ function _saveSR() {
     quizSettings.spacedRepetition = Object.assign(quizSettings.spacedRepetition || {}, {
         randomness:        _numVal('set_srRand', 30),
         streakThreshold:   _numVal('set_srStreak', 2),
-        streakCooldown:    _numVal('set_srCooldown', 48),
+        streakCooldown:    _numVal('set_srCooldown', SETTINGS_DEFAULTS.spacedRepetition.streakCooldown),
         freshQuota:        _numVal('set_srFresh', 50),
         freshThreshold:    _numVal('set_srFreshThresh', 1),
-        maxCoreFirst:      _numVal('set_srCoreFirst', 7),
-        maxCoreSubsequent: _numVal('set_srCoreSubseq', 3),
+        maxCoreFirst:      _numVal('set_srCoreFirst', SETTINGS_DEFAULTS.spacedRepetition.maxCoreFirst),
+        maxCoreSubsequent: _numVal('set_srCoreSubseq', SETTINGS_DEFAULTS.spacedRepetition.maxCoreSubsequent),
         maxPerGroup:       _numVal('set_srMaxGroup', 3),
     });
     saveMasterBackup();

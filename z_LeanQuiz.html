@@ -3540,7 +3540,7 @@
             _srTools(user) {
                 const sr = quizSettings.spacedRepetition || {};
                 const randomness = (sr.randomness !== undefined ? sr.randomness : 30) / 100;
-                const cooldownHours = sr.streakCooldown || 48;
+                const cooldownHours = sr.streakCooldown || SETTINGS_DEFAULTS.spacedRepetition.streakCooldown;
                 const streakThreshold = sr.streakThreshold || 2;
                 const stats = user.questionStats || {};
                 const cooldownMs = cooldownHours * 3600000;
@@ -3655,7 +3655,7 @@
 
                 if (cooldownFallbackCount > 0)
                     setTimeout(() => Toast.show(
-                        `⚠ Pool zu klein: ${cooldownFallbackCount} Frage(n) aus dem 48h-Ruhemodus geholt.\nMehr aktive Fragen hinzufügen empfohlen.`,
+                        `⚠ Pool zu klein: ${cooldownFallbackCount} Frage(n) aus dem ${sr.streakCooldown || SETTINGS_DEFAULTS.spacedRepetition.streakCooldown}h-Ruhemodus geholt.\nMehr aktive Fragen hinzufügen empfohlen.`,
                         'warning'
                     ), 500);
 
@@ -3971,7 +3971,7 @@
                         // Cooldown abgelaufen? → consecutiveCorrect zurücksetzen bevor increment
                         // verhindert Endlosschleife: Cooldown → 1x richtig → sofort wieder Cooldown
                         const sr = quizSettings.spacedRepetition || {};
-                        const cooldownMs = (sr.streakCooldown || 48) * 3600000;
+                        const cooldownMs = (sr.streakCooldown || SETTINGS_DEFAULTS.spacedRepetition.streakCooldown) * 3600000;
                         const streakThreshold = sr.streakThreshold || 2;
                         const prevConsec = qs.consecutiveCorrect || 0;
                         if (prevConsec >= streakThreshold && prevLastAsked &&
@@ -6309,12 +6309,12 @@
             compactPlayerFiles: false,   // Spieler-Dateien ohne Einrückung speichern (~halbe Größe) — Forge → Sicherung
             spacedRepetition: {
                 randomness: 30,         // 0-100: 0=pure SR, 100=komplett zufällig
-                streakCooldown: 48,     // Stunden Sperre nach N korrekt in Folge
+                streakCooldown: 96,     // Stunden Sperre nach N korrekt in Folge
                 streakThreshold: 2,     // Anzahl korrekt in Folge für Sperre
                 freshQuota: 50,         // % neue/seltene Fragen pro Quiz (0=deaktiviert)
                 freshThreshold: 1,      // max. asked-Zahl für "selten gestellt"
-                maxCoreFirst: 7,        // max. Core-Fragen im 1. Quiz des Tages
-                maxCoreSubsequent: 3    // max. Core-Fragen in Folge-Quizzen
+                maxCoreFirst: 6,        // max. Core-Fragen im 1. Quiz des Tages
+                maxCoreSubsequent: 2    // max. Core-Fragen in Folge-Quizzen
             },
             xpSystem: {
                 baseXP: 50,
@@ -6949,7 +6949,8 @@
 
             // SR-Einstellungen prüfen: Warnung wenn Werte von den erwarteten Werten abweichen
             (function() {
-                const SR_EXPECTED = { randomness: 30, streakCooldown: 48, streakThreshold: 2, freshQuota: 50, freshThreshold: 1, maxCoreFirst: 7, maxCoreSubsequent: 3 };
+                // Erwartet = Standardwerte (SETTINGS_DEFAULTS) — eine Quelle, damit beides nicht auseinanderläuft
+                const SR_EXPECTED = SETTINGS_DEFAULTS.spacedRepetition;
                 const sr = quizSettings.spacedRepetition || {};
                 const abweichungen = Object.entries(SR_EXPECTED)
                     .filter(([k, v]) => sr[k] !== undefined && sr[k] !== v)
