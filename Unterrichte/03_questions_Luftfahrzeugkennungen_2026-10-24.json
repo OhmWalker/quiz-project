@@ -1,0 +1,1447 @@
+{
+  "theme": "Luftfahrzeugkennungen",
+  "questions": [
+    {
+      "text": "Wie lautet das Luftfahrzeug-Länderkennzeichen für Deutschland?",
+      "type": "text",
+      "active": true,
+      "correctAnswer": [
+        "D-",
+        "D"
+      ],
+      "explanation": "Deutschland führt D- , z.B. D-ABCD. Das Kennzeichen steht seit 1919 für Deutschland.",
+      "hint": "Ein einzelner Buchstabe.",
+      "media": null,
+      "_fileGroup": "Luftfahrzeugkennungen"
+    },
+    {
+      "text": "Wie lautet das Luftfahrzeug-Länderkennzeichen für die Niederlande?",
+      "type": "text",
+      "active": true,
+      "correctAnswer": [
+        "PH-",
+        "PH"
+      ],
+      "explanation": "Die Niederlande führen PH- , z.B. PH-BXA bei KLM.",
+      "hint": "Zwei Buchstaben, beginnt mit P.",
+      "media": null,
+      "_fileGroup": "Luftfahrzeugkennungen"
+    },
+    {
+      "text": "Wie lautet das Luftfahrzeug-Länderkennzeichen für Frankreich?",
+      "type": "text",
+      "active": true,
+      "correctAnswer": [
+        "F-",
+        "F"
+      ],
+      "explanation": "Frankreich führt F- , z.B. F-GKXA bei Air France.",
+      "hint": null,
+      "media": null,
+      "_fileGroup": "Luftfahrzeugkennungen"
+    },
+    {
+      "text": "Wie lautet das Luftfahrzeug-Länderkennzeichen für die USA?",
+      "type": "text",
+      "active": true,
+      "correctAnswer": [
+        "N-",
+        "N"
+      ],
+      "explanation": "Die USA führen N- , z.B. N123AB. Daher der Spitzname „N-number“.",
+      "hint": "Ein einzelner Buchstabe.",
+      "media": null,
+      "_fileGroup": "Luftfahrzeugkennungen"
+    },
+    {
+      "text": "Wie lautet das Luftfahrzeug-Länderkennzeichen für Großbritannien?",
+      "type": "text",
+      "active": true,
+      "correctAnswer": [
+        "G-",
+        "G"
+      ],
+      "explanation": "Das Vereinigte Königreich führt G- , z.B. G-EUPT bei British Airways.",
+      "hint": null,
+      "media": null,
+      "_fileGroup": "Luftfahrzeugkennungen"
+    },
+    {
+      "text": "Wie lautet das Luftfahrzeug-Länderkennzeichen für die Schweiz?",
+      "type": "text",
+      "active": true,
+      "correctAnswer": [
+        "HB-",
+        "HB"
+      ],
+      "explanation": "Die Schweiz führt HB- , z.B. HB-JHA. Liechtenstein nutzt dasselbe Kennzeichen.",
+      "hint": null,
+      "media": null,
+      "_fileGroup": "Luftfahrzeugkennungen"
+    },
+    {
+      "text": "Wie lautet das Luftfahrzeug-Länderkennzeichen für Österreich?",
+      "type": "text",
+      "active": true,
+      "correctAnswer": [
+        "OE-",
+        "OE"
+      ],
+      "explanation": "Österreich führt OE- , z.B. OE-LBA bei Austrian Airlines. Nicht mit OO- (Belgien) verwechseln.",
+      "hint": "Beginnt mit O, wie mehrere Nachbarländer.",
+      "media": null,
+      "_fileGroup": "Luftfahrzeugkennungen"
+    },
+    {
+      "text": "Wie lautet das Luftfahrzeug-Länderkennzeichen für Spanien?",
+      "type": "text",
+      "active": true,
+      "correctAnswer": [
+        "EC-",
+        "EC"
+      ],
+      "explanation": "Spanien führt EC- , nicht ES- . ES- ist Estland.",
+      "hint": "Nicht die naheliegenden Landesinitialen.",
+      "media": null,
+      "_fileGroup": "Luftfahrzeugkennungen"
+    },
+    {
+      "text": "Wie lautet das Luftfahrzeug-Länderkennzeichen für Polen?",
+      "type": "text",
+      "active": true,
+      "correctAnswer": [
+        "SP-",
+        "SP"
+      ],
+      "explanation": "Polen führt SP- , z.B. SP-LRA bei LOT.",
+      "hint": null,
+      "media": null,
+      "_fileGroup": "Luftfahrzeugkennungen"
+    },
+    {
+      "text": "Für welches Land steht das Luftfahrzeugkennzeichen D- ?",
+      "type": "text",
+      "active": true,
+      "correctAnswer": [
+        "Deutschland",
+        "BRD",
+        "Bundesrepublik Deutschland"
+      ],
+      "explanation": "D- steht für Deutschland.",
+      "hint": null,
+      "media": null,
+      "_fileGroup": "Luftfahrzeugkennungen"
+    },
+    {
+      "text": "Für welches Land steht das Luftfahrzeugkennzeichen PH- ?",
+      "type": "text",
+      "active": true,
+      "correctAnswer": [
+        "Niederlande",
+        "die Niederlande",
+        "Holland",
+        "NL"
+      ],
+      "explanation": "PH- steht für die Niederlande.",
+      "hint": null,
+      "media": null,
+      "_fileGroup": "Luftfahrzeugkennungen"
+    },
+    {
+      "text": "Für welches Land steht das Luftfahrzeugkennzeichen OO- ?",
+      "type": "text",
+      "active": true,
+      "correctAnswer": [
+        "Belgien",
+        "BE"
+      ],
+      "explanation": "OO- steht für Belgien. Verwechslungsgefahr mit OE- (Österreich).",
+      "hint": null,
+      "media": null,
+      "_fileGroup": "Luftfahrzeugkennungen"
+    },
+    {
+      "text": "Für welches Land steht das Luftfahrzeugkennzeichen N- ?",
+      "type": "text",
+      "active": true,
+      "correctAnswer": [
+        "USA",
+        "Vereinigte Staaten",
+        "Vereinigte Staaten von Amerika",
+        "Amerika",
+        "US"
+      ],
+      "explanation": "N- steht für die USA.",
+      "hint": null,
+      "media": null,
+      "_fileGroup": "Luftfahrzeugkennungen"
+    },
+    {
+      "text": "Für welches Land steht das Luftfahrzeugkennzeichen EI- ?",
+      "type": "text",
+      "active": true,
+      "correctAnswer": [
+        "Irland",
+        "IE",
+        "Republik Irland"
+      ],
+      "explanation": "EI- steht für Irland, z.B. EI-DEO bei Aer Lingus. Nicht mit EC- (Spanien) verwechseln.",
+      "hint": null,
+      "media": null,
+      "_fileGroup": "Luftfahrzeugkennungen"
+    },
+    {
+      "text": "Für welches Land steht das Luftfahrzeugkennzeichen SE- ?",
+      "type": "text",
+      "active": true,
+      "correctAnswer": [
+        "Schweden",
+        "SE"
+      ],
+      "explanation": "SE- steht für Schweden. SP- wäre Polen, SX- Griechenland.",
+      "hint": null,
+      "media": null,
+      "_fileGroup": "Luftfahrzeugkennungen"
+    },
+    {
+      "text": "Für welches Land steht das Luftfahrzeugkennzeichen I- ?",
+      "type": "text",
+      "active": true,
+      "correctAnswer": [
+        "Italien",
+        "IT"
+      ],
+      "explanation": "I- steht für Italien, z.B. I-BIKE bei ITA Airways.",
+      "hint": null,
+      "media": null,
+      "_fileGroup": "Luftfahrzeugkennungen"
+    },
+    {
+      "text": "Für welches Land steht das Luftfahrzeugkennzeichen LX- ?",
+      "type": "text",
+      "active": true,
+      "correctAnswer": [
+        "Luxemburg",
+        "LU"
+      ],
+      "explanation": "LX- steht für Luxemburg, z.B. LX-VCA bei Cargolux.",
+      "hint": null,
+      "media": null,
+      "_fileGroup": "Luftfahrzeugkennungen"
+    },
+    {
+      "text": "Für welches Land steht das Luftfahrzeugkennzeichen OY- ?",
+      "type": "text",
+      "active": true,
+      "correctAnswer": [
+        "Dänemark",
+        "DK"
+      ],
+      "explanation": "OY- steht für Dänemark — und gilt auch für Grönland und die Färöer.",
+      "hint": null,
+      "media": null,
+      "_fileGroup": "Luftfahrzeugkennungen"
+    },
+    {
+      "text": "Für welches Land steht das Luftfahrzeugkennzeichen TF- ?",
+      "type": "text",
+      "active": true,
+      "correctAnswer": [
+        "Island",
+        "IS"
+      ],
+      "explanation": "TF- steht für Island, z.B. TF-FIA bei Icelandair. TC- wäre die Türkei.",
+      "hint": null,
+      "media": null,
+      "_fileGroup": "Luftfahrzeugkennungen"
+    },
+    {
+      "text": "Welches Länderkennzeichen führt Belgien?",
+      "type": "multiple-choice",
+      "active": true,
+      "answers": [
+        {
+          "text": "OO-",
+          "correct": true
+        },
+        {
+          "text": "OE-",
+          "correct": false
+        },
+        {
+          "text": "OY-",
+          "correct": false
+        },
+        {
+          "text": "OH-",
+          "correct": false
+        }
+      ],
+      "explanation": "Belgien führt OO- . Die O-Gruppe ist tückisch: OE- Österreich, OY- Dänemark, OH- Finnland.",
+      "hint": null,
+      "media": null,
+      "_fileGroup": "Luftfahrzeugkennungen"
+    },
+    {
+      "text": "Welches Länderkennzeichen führt Österreich?",
+      "type": "multiple-choice",
+      "active": true,
+      "answers": [
+        {
+          "text": "OE-",
+          "correct": true
+        },
+        {
+          "text": "OO-",
+          "correct": false
+        },
+        {
+          "text": "OK-",
+          "correct": false
+        },
+        {
+          "text": "OM-",
+          "correct": false
+        }
+      ],
+      "explanation": "Österreich führt OE- . OO- ist Belgien, OK- Tschechien, OM- die Slowakei.",
+      "hint": null,
+      "media": null,
+      "_fileGroup": "Luftfahrzeugkennungen"
+    },
+    {
+      "text": "Welches Länderkennzeichen führt Dänemark?",
+      "type": "multiple-choice",
+      "active": true,
+      "answers": [
+        {
+          "text": "OY-",
+          "correct": true
+        },
+        {
+          "text": "OH-",
+          "correct": false
+        },
+        {
+          "text": "OO-",
+          "correct": false
+        },
+        {
+          "text": "OE-",
+          "correct": false
+        }
+      ],
+      "explanation": "Dänemark führt OY- — auch für Grönland und die Färöer.",
+      "hint": null,
+      "media": null,
+      "_fileGroup": "Luftfahrzeugkennungen"
+    },
+    {
+      "text": "Welches Länderkennzeichen führt Finnland?",
+      "type": "multiple-choice",
+      "active": true,
+      "answers": [
+        {
+          "text": "OH-",
+          "correct": true
+        },
+        {
+          "text": "OY-",
+          "correct": false
+        },
+        {
+          "text": "OO-",
+          "correct": false
+        },
+        {
+          "text": "OE-",
+          "correct": false
+        }
+      ],
+      "explanation": "Finnland führt OH- , z.B. OH-LWA bei Finnair.",
+      "hint": null,
+      "media": null,
+      "_fileGroup": "Luftfahrzeugkennungen"
+    },
+    {
+      "text": "Welches Länderkennzeichen führt Tschechien?",
+      "type": "multiple-choice",
+      "active": true,
+      "answers": [
+        {
+          "text": "OK-",
+          "correct": true
+        },
+        {
+          "text": "OM-",
+          "correct": false
+        },
+        {
+          "text": "OE-",
+          "correct": false
+        },
+        {
+          "text": "OO-",
+          "correct": false
+        }
+      ],
+      "explanation": "Tschechien führt OK- , z.B. OK-TSA. Die Slowakei bekam nach der Trennung OM- .",
+      "hint": null,
+      "media": null,
+      "_fileGroup": "Luftfahrzeugkennungen"
+    },
+    {
+      "text": "Welches Länderkennzeichen führt die Slowakei?",
+      "type": "multiple-choice",
+      "active": true,
+      "answers": [
+        {
+          "text": "OM-",
+          "correct": true
+        },
+        {
+          "text": "OK-",
+          "correct": false
+        },
+        {
+          "text": "OE-",
+          "correct": false
+        },
+        {
+          "text": "OY-",
+          "correct": false
+        }
+      ],
+      "explanation": "Die Slowakei führt OM- , Tschechien behielt OK- .",
+      "hint": null,
+      "media": null,
+      "_fileGroup": "Luftfahrzeugkennungen"
+    },
+    {
+      "text": "Welches Länderkennzeichen führt Norwegen?",
+      "type": "multiple-choice",
+      "active": true,
+      "answers": [
+        {
+          "text": "LN-",
+          "correct": true
+        },
+        {
+          "text": "LX-",
+          "correct": false
+        },
+        {
+          "text": "LZ-",
+          "correct": false
+        },
+        {
+          "text": "LY-",
+          "correct": false
+        }
+      ],
+      "explanation": "Norwegen führt LN- , z.B. LN-NGA bei Norwegian.",
+      "hint": null,
+      "media": null,
+      "_fileGroup": "Luftfahrzeugkennungen"
+    },
+    {
+      "text": "Welches Länderkennzeichen führt Luxemburg?",
+      "type": "multiple-choice",
+      "active": true,
+      "answers": [
+        {
+          "text": "LX-",
+          "correct": true
+        },
+        {
+          "text": "LN-",
+          "correct": false
+        },
+        {
+          "text": "LZ-",
+          "correct": false
+        },
+        {
+          "text": "LY-",
+          "correct": false
+        }
+      ],
+      "explanation": "Luxemburg führt LX- .",
+      "hint": null,
+      "media": null,
+      "_fileGroup": "Luftfahrzeugkennungen"
+    },
+    {
+      "text": "Welches Länderkennzeichen führt Bulgarien?",
+      "type": "multiple-choice",
+      "active": true,
+      "answers": [
+        {
+          "text": "LZ-",
+          "correct": true
+        },
+        {
+          "text": "LN-",
+          "correct": false
+        },
+        {
+          "text": "LX-",
+          "correct": false
+        },
+        {
+          "text": "LY-",
+          "correct": false
+        }
+      ],
+      "explanation": "Bulgarien führt LZ- .",
+      "hint": null,
+      "media": null,
+      "_fileGroup": "Luftfahrzeugkennungen"
+    },
+    {
+      "text": "Welches Länderkennzeichen führt Litauen?",
+      "type": "multiple-choice",
+      "active": true,
+      "answers": [
+        {
+          "text": "LY-",
+          "correct": true
+        },
+        {
+          "text": "YL-",
+          "correct": false
+        },
+        {
+          "text": "LZ-",
+          "correct": false
+        },
+        {
+          "text": "LN-",
+          "correct": false
+        }
+      ],
+      "explanation": "Litauen führt LY- — und Lettland YL- . Die beiden sind genau vertauscht.",
+      "hint": "Achtung: Lettland hat dieselben Buchstaben in umgekehrter Reihenfolge.",
+      "media": null,
+      "_fileGroup": "Luftfahrzeugkennungen"
+    },
+    {
+      "text": "Welches Länderkennzeichen führt Lettland?",
+      "type": "multiple-choice",
+      "active": true,
+      "answers": [
+        {
+          "text": "YL-",
+          "correct": true
+        },
+        {
+          "text": "LY-",
+          "correct": false
+        },
+        {
+          "text": "LV-",
+          "correct": false
+        },
+        {
+          "text": "YR-",
+          "correct": false
+        }
+      ],
+      "explanation": "Lettland führt YL- , Litauen LY- .",
+      "hint": "Achtung: Litauen hat dieselben Buchstaben in umgekehrter Reihenfolge.",
+      "media": null,
+      "_fileGroup": "Luftfahrzeugkennungen"
+    },
+    {
+      "text": "Welches Länderkennzeichen führt Rumänien?",
+      "type": "multiple-choice",
+      "active": true,
+      "answers": [
+        {
+          "text": "YR-",
+          "correct": true
+        },
+        {
+          "text": "YL-",
+          "correct": false
+        },
+        {
+          "text": "YU-",
+          "correct": false
+        },
+        {
+          "text": "LY-",
+          "correct": false
+        }
+      ],
+      "explanation": "Rumänien führt YR- , z.B. YR-BGA bei TAROM.",
+      "hint": null,
+      "media": null,
+      "_fileGroup": "Luftfahrzeugkennungen"
+    },
+    {
+      "text": "Welches Länderkennzeichen führt Serbien?",
+      "type": "multiple-choice",
+      "active": true,
+      "answers": [
+        {
+          "text": "YU-",
+          "correct": true
+        },
+        {
+          "text": "YR-",
+          "correct": false
+        },
+        {
+          "text": "YL-",
+          "correct": false
+        },
+        {
+          "text": "Z3-",
+          "correct": false
+        }
+      ],
+      "explanation": "Serbien führt YU- — das Kennzeichen des früheren Jugoslawien blieb erhalten.",
+      "hint": null,
+      "media": null,
+      "_fileGroup": "Luftfahrzeugkennungen"
+    },
+    {
+      "text": "Welches Länderkennzeichen führt Schweden?",
+      "type": "multiple-choice",
+      "active": true,
+      "answers": [
+        {
+          "text": "SE-",
+          "correct": true
+        },
+        {
+          "text": "SP-",
+          "correct": false
+        },
+        {
+          "text": "SX-",
+          "correct": false
+        },
+        {
+          "text": "S5-",
+          "correct": false
+        }
+      ],
+      "explanation": "Schweden führt SE- , z.B. SE-ROA bei SAS.",
+      "hint": null,
+      "media": null,
+      "_fileGroup": "Luftfahrzeugkennungen"
+    },
+    {
+      "text": "Welches Länderkennzeichen führt Polen?",
+      "type": "multiple-choice",
+      "active": true,
+      "answers": [
+        {
+          "text": "SP-",
+          "correct": true
+        },
+        {
+          "text": "SE-",
+          "correct": false
+        },
+        {
+          "text": "SX-",
+          "correct": false
+        },
+        {
+          "text": "S5-",
+          "correct": false
+        }
+      ],
+      "explanation": "Polen führt SP- , z.B. SP-LRA bei LOT. SP steht nicht für Spanien!",
+      "hint": "Nicht von der Ähnlichkeit zu „Spanien“ täuschen lassen.",
+      "media": null,
+      "_fileGroup": "Luftfahrzeugkennungen"
+    },
+    {
+      "text": "Welches Länderkennzeichen führt Griechenland?",
+      "type": "multiple-choice",
+      "active": true,
+      "answers": [
+        {
+          "text": "SX-",
+          "correct": true
+        },
+        {
+          "text": "SE-",
+          "correct": false
+        },
+        {
+          "text": "SP-",
+          "correct": false
+        },
+        {
+          "text": "S5-",
+          "correct": false
+        }
+      ],
+      "explanation": "Griechenland führt SX- , z.B. SX-DGA bei Aegean.",
+      "hint": null,
+      "media": null,
+      "_fileGroup": "Luftfahrzeugkennungen"
+    },
+    {
+      "text": "Welches Länderkennzeichen führt Slowenien?",
+      "type": "multiple-choice",
+      "active": true,
+      "answers": [
+        {
+          "text": "S5-",
+          "correct": true
+        },
+        {
+          "text": "SX-",
+          "correct": false
+        },
+        {
+          "text": "SP-",
+          "correct": false
+        },
+        {
+          "text": "9A-",
+          "correct": false
+        }
+      ],
+      "explanation": "Slowenien führt S5- . Nach dem Zerfall Jugoslawiens wurden Kennzeichen mit Ziffern verteilt.",
+      "hint": null,
+      "media": null,
+      "_fileGroup": "Luftfahrzeugkennungen"
+    },
+    {
+      "text": "Welches Länderkennzeichen führt Kroatien?",
+      "type": "multiple-choice",
+      "active": true,
+      "answers": [
+        {
+          "text": "9A-",
+          "correct": true
+        },
+        {
+          "text": "9H-",
+          "correct": false
+        },
+        {
+          "text": "S5-",
+          "correct": false
+        },
+        {
+          "text": "4O-",
+          "correct": false
+        }
+      ],
+      "explanation": "Kroatien führt 9A- . Malta hat 9H- , Montenegro 4O- .",
+      "hint": null,
+      "media": null,
+      "_fileGroup": "Luftfahrzeugkennungen"
+    },
+    {
+      "text": "Welches Länderkennzeichen führt Malta?",
+      "type": "multiple-choice",
+      "active": true,
+      "answers": [
+        {
+          "text": "9H-",
+          "correct": true
+        },
+        {
+          "text": "9A-",
+          "correct": false
+        },
+        {
+          "text": "5B-",
+          "correct": false
+        },
+        {
+          "text": "3A-",
+          "correct": false
+        }
+      ],
+      "explanation": "Malta führt 9H- — wegen des Luftfahrzeugregisters ein häufiges Kennzeichen bei Leasingflotten.",
+      "hint": null,
+      "media": null,
+      "_fileGroup": "Luftfahrzeugkennungen"
+    },
+    {
+      "text": "Welches Länderkennzeichen führt Zypern?",
+      "type": "multiple-choice",
+      "active": true,
+      "answers": [
+        {
+          "text": "5B-",
+          "correct": true
+        },
+        {
+          "text": "9H-",
+          "correct": false
+        },
+        {
+          "text": "9A-",
+          "correct": false
+        },
+        {
+          "text": "3A-",
+          "correct": false
+        }
+      ],
+      "explanation": "Zypern führt 5B- .",
+      "hint": null,
+      "media": null,
+      "_fileGroup": "Luftfahrzeugkennungen"
+    },
+    {
+      "text": "Welches Länderkennzeichen führt Monaco?",
+      "type": "multiple-choice",
+      "active": true,
+      "answers": [
+        {
+          "text": "3A-",
+          "correct": true
+        },
+        {
+          "text": "9H-",
+          "correct": false
+        },
+        {
+          "text": "5B-",
+          "correct": false
+        },
+        {
+          "text": "T7-",
+          "correct": false
+        }
+      ],
+      "explanation": "Monaco führt 3A- .",
+      "hint": null,
+      "media": null,
+      "_fileGroup": "Luftfahrzeugkennungen"
+    },
+    {
+      "text": "Welches Länderkennzeichen führt Spanien?",
+      "type": "multiple-choice",
+      "active": true,
+      "answers": [
+        {
+          "text": "EC-",
+          "correct": true
+        },
+        {
+          "text": "ES-",
+          "correct": false
+        },
+        {
+          "text": "EI-",
+          "correct": false
+        },
+        {
+          "text": "EW-",
+          "correct": false
+        }
+      ],
+      "explanation": "Spanien führt EC- , z.B. EC-MIG bei Iberia. ES- ist Estland!",
+      "hint": "Nicht ES- — das wäre naheliegend, ist aber ein anderes Land.",
+      "media": null,
+      "_fileGroup": "Luftfahrzeugkennungen"
+    },
+    {
+      "text": "Welches Länderkennzeichen führt Estland?",
+      "type": "multiple-choice",
+      "active": true,
+      "answers": [
+        {
+          "text": "ES-",
+          "correct": true
+        },
+        {
+          "text": "EC-",
+          "correct": false
+        },
+        {
+          "text": "EI-",
+          "correct": false
+        },
+        {
+          "text": "EW-",
+          "correct": false
+        }
+      ],
+      "explanation": "Estland führt ES- . Spanien hat EC- .",
+      "hint": null,
+      "media": null,
+      "_fileGroup": "Luftfahrzeugkennungen"
+    },
+    {
+      "text": "Welches Länderkennzeichen führt Belarus?",
+      "type": "multiple-choice",
+      "active": true,
+      "answers": [
+        {
+          "text": "EW-",
+          "correct": true
+        },
+        {
+          "text": "ES-",
+          "correct": false
+        },
+        {
+          "text": "EC-",
+          "correct": false
+        },
+        {
+          "text": "ER-",
+          "correct": false
+        }
+      ],
+      "explanation": "Belarus führt EW- . Moldau hat ER- .",
+      "hint": null,
+      "media": null,
+      "_fileGroup": "Luftfahrzeugkennungen"
+    },
+    {
+      "text": "Welches Länderkennzeichen führt Moldau?",
+      "type": "multiple-choice",
+      "active": true,
+      "answers": [
+        {
+          "text": "ER-",
+          "correct": true
+        },
+        {
+          "text": "EW-",
+          "correct": false
+        },
+        {
+          "text": "ES-",
+          "correct": false
+        },
+        {
+          "text": "EC-",
+          "correct": false
+        }
+      ],
+      "explanation": "Moldau führt ER- .",
+      "hint": null,
+      "media": null,
+      "_fileGroup": "Luftfahrzeugkennungen"
+    },
+    {
+      "text": "Welches Länderkennzeichen führt Portugal?",
+      "type": "multiple-choice",
+      "active": true,
+      "answers": [
+        {
+          "text": "CS-",
+          "correct": true
+        },
+        {
+          "text": "EC-",
+          "correct": false
+        },
+        {
+          "text": "CT-",
+          "correct": false
+        },
+        {
+          "text": "C3-",
+          "correct": false
+        }
+      ],
+      "explanation": "Portugal führt CS- , z.B. CS-TJA bei TAP.",
+      "hint": null,
+      "media": null,
+      "_fileGroup": "Luftfahrzeugkennungen"
+    },
+    {
+      "text": "Welches Länderkennzeichen führt Ungarn?",
+      "type": "multiple-choice",
+      "active": true,
+      "answers": [
+        {
+          "text": "HA-",
+          "correct": true
+        },
+        {
+          "text": "HB-",
+          "correct": false
+        },
+        {
+          "text": "HV-",
+          "correct": false
+        },
+        {
+          "text": "9H-",
+          "correct": false
+        }
+      ],
+      "explanation": "Ungarn führt HA- . HB- ist die Schweiz.",
+      "hint": null,
+      "media": null,
+      "_fileGroup": "Luftfahrzeugkennungen"
+    },
+    {
+      "text": "Welches Länderkennzeichen führt Island?",
+      "type": "multiple-choice",
+      "active": true,
+      "answers": [
+        {
+          "text": "TF-",
+          "correct": true
+        },
+        {
+          "text": "TC-",
+          "correct": false
+        },
+        {
+          "text": "T7-",
+          "correct": false
+        },
+        {
+          "text": "T9-",
+          "correct": false
+        }
+      ],
+      "explanation": "Island führt TF- , z.B. TF-FIA bei Icelandair.",
+      "hint": null,
+      "media": null,
+      "_fileGroup": "Luftfahrzeugkennungen"
+    },
+    {
+      "text": "Welches Länderkennzeichen führt die Türkei?",
+      "type": "multiple-choice",
+      "active": true,
+      "answers": [
+        {
+          "text": "TC-",
+          "correct": true
+        },
+        {
+          "text": "TF-",
+          "correct": false
+        },
+        {
+          "text": "T7-",
+          "correct": false
+        },
+        {
+          "text": "T9-",
+          "correct": false
+        }
+      ],
+      "explanation": "Die Türkei führt TC- , z.B. TC-JJA bei Turkish Airlines.",
+      "hint": null,
+      "media": null,
+      "_fileGroup": "Luftfahrzeugkennungen"
+    },
+    {
+      "text": "Welches Länderkennzeichen führt Italien?",
+      "type": "multiple-choice",
+      "active": true,
+      "answers": [
+        {
+          "text": "I-",
+          "correct": true
+        },
+        {
+          "text": "IT-",
+          "correct": false
+        },
+        {
+          "text": "IA-",
+          "correct": false
+        },
+        {
+          "text": "LI-",
+          "correct": false
+        }
+      ],
+      "explanation": "Italien führt nur I- — eines der kürzesten Kennzeichen, wie D- und F- .",
+      "hint": null,
+      "media": null,
+      "_fileGroup": "Luftfahrzeugkennungen"
+    },
+    {
+      "text": "Welches Länderkennzeichen führt Russland?",
+      "type": "multiple-choice",
+      "active": true,
+      "answers": [
+        {
+          "text": "RA-",
+          "correct": true
+        },
+        {
+          "text": "UR-",
+          "correct": false
+        },
+        {
+          "text": "EW-",
+          "correct": false
+        },
+        {
+          "text": "ER-",
+          "correct": false
+        }
+      ],
+      "explanation": "Russland führt RA- , z.B. RA-73123 bei Aeroflot.",
+      "hint": null,
+      "media": null,
+      "_fileGroup": "Luftfahrzeugkennungen"
+    },
+    {
+      "text": "Welches Länderkennzeichen führt die Ukraine?",
+      "type": "multiple-choice",
+      "active": true,
+      "answers": [
+        {
+          "text": "UR-",
+          "correct": true
+        },
+        {
+          "text": "RA-",
+          "correct": false
+        },
+        {
+          "text": "EW-",
+          "correct": false
+        },
+        {
+          "text": "ER-",
+          "correct": false
+        }
+      ],
+      "explanation": "Die Ukraine führt UR- , z.B. UR-PSA.",
+      "hint": null,
+      "media": null,
+      "_fileGroup": "Luftfahrzeugkennungen"
+    },
+    {
+      "text": "Welches Länderkennzeichen führt Albanien?",
+      "type": "multiple-choice",
+      "active": true,
+      "answers": [
+        {
+          "text": "ZA-",
+          "correct": true
+        },
+        {
+          "text": "Z3-",
+          "correct": false
+        },
+        {
+          "text": "ZS-",
+          "correct": false
+        },
+        {
+          "text": "4O-",
+          "correct": false
+        }
+      ],
+      "explanation": "Albanien führt ZA- . Nordmazedonien hat Z3- .",
+      "hint": null,
+      "media": null,
+      "_fileGroup": "Luftfahrzeugkennungen"
+    },
+    {
+      "text": "Welches Länderkennzeichen führt Nordmazedonien?",
+      "type": "multiple-choice",
+      "active": true,
+      "answers": [
+        {
+          "text": "Z3-",
+          "correct": true
+        },
+        {
+          "text": "ZA-",
+          "correct": false
+        },
+        {
+          "text": "Z5-",
+          "correct": false
+        },
+        {
+          "text": "T9-",
+          "correct": false
+        }
+      ],
+      "explanation": "Nordmazedonien führt Z3- .",
+      "hint": null,
+      "media": null,
+      "_fileGroup": "Luftfahrzeugkennungen"
+    },
+    {
+      "text": "Welches Länderkennzeichen führt Kanada?",
+      "type": "multiple-choice",
+      "active": true,
+      "answers": [
+        {
+          "text": "C-",
+          "correct": true
+        },
+        {
+          "text": "N-",
+          "correct": false
+        },
+        {
+          "text": "CA-",
+          "correct": false
+        },
+        {
+          "text": "CS-",
+          "correct": false
+        }
+      ],
+      "explanation": "Kanada führt C- , z.B. C-FGDT. Alle kanadischen Kennzeichen beginnen mit C-F oder C-G.",
+      "hint": null,
+      "media": null,
+      "_fileGroup": "Luftfahrzeugkennungen"
+    },
+    {
+      "text": "Welches Länderkennzeichen führt Mexiko?",
+      "type": "multiple-choice",
+      "active": true,
+      "answers": [
+        {
+          "text": "XA-",
+          "correct": true
+        },
+        {
+          "text": "ZA-",
+          "correct": false
+        },
+        {
+          "text": "MX-",
+          "correct": false
+        },
+        {
+          "text": "YV-",
+          "correct": false
+        }
+      ],
+      "explanation": "Mexiko führt XA- für Verkehrsflugzeuge, XB- für Privatmaschinen und XC- für Staatsluftfahrzeuge.",
+      "hint": null,
+      "media": null,
+      "_fileGroup": "Luftfahrzeugkennungen"
+    },
+    {
+      "text": "Für welches Land steht das Kennzeichen HB- ?",
+      "type": "multiple-choice",
+      "active": true,
+      "answers": [
+        {
+          "text": "Schweiz (und Liechtenstein)",
+          "correct": true
+        },
+        {
+          "text": "Ungarn",
+          "correct": false
+        },
+        {
+          "text": "Niederlande",
+          "correct": false
+        },
+        {
+          "text": "Belgien",
+          "correct": false
+        }
+      ],
+      "explanation": "HB- gilt für die Schweiz und zusätzlich für Liechtenstein.",
+      "hint": null,
+      "media": null,
+      "_fileGroup": "Luftfahrzeugkennungen"
+    },
+    {
+      "text": "Für welches Land steht das Kennzeichen SP- ?",
+      "type": "multiple-choice",
+      "active": true,
+      "answers": [
+        {
+          "text": "Polen",
+          "correct": true
+        },
+        {
+          "text": "Spanien",
+          "correct": false
+        },
+        {
+          "text": "Schweden",
+          "correct": false
+        },
+        {
+          "text": "Slowenien",
+          "correct": false
+        }
+      ],
+      "explanation": "SP- ist Polen. Spanien hat EC- , Schweden SE- , Slowenien S5- .",
+      "hint": "Die naheliegende Antwort ist hier die falsche.",
+      "media": null,
+      "_fileGroup": "Luftfahrzeugkennungen"
+    },
+    {
+      "text": "Für welches Land steht das Kennzeichen OE- ?",
+      "type": "multiple-choice",
+      "active": true,
+      "answers": [
+        {
+          "text": "Österreich",
+          "correct": true
+        },
+        {
+          "text": "Belgien",
+          "correct": false
+        },
+        {
+          "text": "Dänemark",
+          "correct": false
+        },
+        {
+          "text": "Finnland",
+          "correct": false
+        }
+      ],
+      "explanation": "OE- ist Österreich. Belgien hat OO- , Dänemark OY- , Finnland OH- .",
+      "hint": null,
+      "media": null,
+      "_fileGroup": "Luftfahrzeugkennungen"
+    },
+    {
+      "text": "Für welches Land steht das Kennzeichen G- ?",
+      "type": "multiple-choice",
+      "active": true,
+      "answers": [
+        {
+          "text": "Großbritannien",
+          "correct": true
+        },
+        {
+          "text": "Griechenland",
+          "correct": false
+        },
+        {
+          "text": "Deutschland",
+          "correct": false
+        },
+        {
+          "text": "Georgien",
+          "correct": false
+        }
+      ],
+      "explanation": "G- ist das Vereinigte Königreich. Griechenland hat SX- .",
+      "hint": null,
+      "media": null,
+      "_fileGroup": "Luftfahrzeugkennungen"
+    },
+    {
+      "text": "Für welches Land steht das Kennzeichen TC- ?",
+      "type": "multiple-choice",
+      "active": true,
+      "answers": [
+        {
+          "text": "Türkei",
+          "correct": true
+        },
+        {
+          "text": "Tschechien",
+          "correct": false
+        },
+        {
+          "text": "Tunesien",
+          "correct": false
+        },
+        {
+          "text": "Island",
+          "correct": false
+        }
+      ],
+      "explanation": "TC- ist die Türkei. Tschechien hat OK- , Island TF- .",
+      "hint": null,
+      "media": null,
+      "_fileGroup": "Luftfahrzeugkennungen"
+    },
+    {
+      "text": "Für welches Land steht das Kennzeichen 9A- ?",
+      "type": "multiple-choice",
+      "active": true,
+      "answers": [
+        {
+          "text": "Kroatien",
+          "correct": true
+        },
+        {
+          "text": "Malta",
+          "correct": false
+        },
+        {
+          "text": "Zypern",
+          "correct": false
+        },
+        {
+          "text": "Montenegro",
+          "correct": false
+        }
+      ],
+      "explanation": "9A- ist Kroatien, 9H- Malta, 5B- Zypern, 4O- Montenegro.",
+      "hint": null,
+      "media": null,
+      "_fileGroup": "Luftfahrzeugkennungen"
+    },
+    {
+      "text": "Für welches Land steht das Kennzeichen YL- ?",
+      "type": "multiple-choice",
+      "active": true,
+      "answers": [
+        {
+          "text": "Lettland",
+          "correct": true
+        },
+        {
+          "text": "Litauen",
+          "correct": false
+        },
+        {
+          "text": "Rumänien",
+          "correct": false
+        },
+        {
+          "text": "Serbien",
+          "correct": false
+        }
+      ],
+      "explanation": "YL- ist Lettland. Litauen hat LY- — exakt die vertauschten Buchstaben.",
+      "hint": null,
+      "media": null,
+      "_fileGroup": "Luftfahrzeugkennungen"
+    },
+    {
+      "text": "Für welches Land steht das Kennzeichen CS- ?",
+      "type": "multiple-choice",
+      "active": true,
+      "answers": [
+        {
+          "text": "Portugal",
+          "correct": true
+        },
+        {
+          "text": "Spanien",
+          "correct": false
+        },
+        {
+          "text": "Tschechien",
+          "correct": false
+        },
+        {
+          "text": "Kanada",
+          "correct": false
+        }
+      ],
+      "explanation": "CS- ist Portugal. Spanien hat EC- , Tschechien OK- , Kanada C- .",
+      "hint": null,
+      "media": null,
+      "_fileGroup": "Luftfahrzeugkennungen"
+    }
+  ]
+}
