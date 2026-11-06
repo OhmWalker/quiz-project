@@ -18,6 +18,7 @@ function _avRender(container) {
         { id: 'nutzer', label: '👤 Nutzer-Detail' },
         { id: 'fragen', label: '📋 Fragen' },
         { id: 'gruppen', label: '🏆 Gruppen' },
+        { id: 'fokus',   label: '🎯 Fokus-Quiz' },
     ];
     const navBtns = views.map(v => `
         <button class="btn btn-small ${_avState.view === v.id ? '' : 'btn-secondary'}"
@@ -45,6 +46,7 @@ function _avRenderView() {
     if (_avState.view === 'nutzer')  _avRenderNutzer(el);
     if (_avState.view === 'fragen')  _avRenderFragen(el);
     if (_avState.view === 'gruppen') _avRenderGruppen(el);
+    if (_avState.view === 'fokus')   _avRenderFokus(el);
 }
 
 // ── Helpers: Daten ────────────────────────────────────────────────────────────
@@ -137,9 +139,111 @@ function _avFmtDate(iso) {
     return iso.slice(0, 10);
 }
 
+// ── Helpers: History und Archiv ───────────────────────────────────────────────
+// Forge normalisiert Spieler beim Laden nicht (_adminLoadFolder übernimmt Rohdaten):
+// history, historyArchive und focusQuiz können fehlen oder Altformen haben.
+
+// Auswertbare History, chronologisch sortiert (Kopie)
+function _avHistory(user) {
+    const hist = user && Array.isArray(user.history) ? user.history : [];
+    return hist
+        .filter(h => h && typeof h.date === 'string' && !isNaN(new Date(h.date).getTime()))
+        .sort((a, b) => new Date(a.date) - new Date(b.date));
+}
+
+function _avEntryXP(h) {
+    return Number(h.xp ?? h.xpEarned) || 0;
+}
+
+function _avArchive(user) {
+    const a = user && user.historyArchive;
+    return a && typeof a === 'object' && (Number(a.quizzes) > 0 || a.until) ? a : null;
+}
+
+// Archivierte Monats-Summen, chronologisch: [{ month, quizzes, correct, total, xp, score }]
+// score ist null, wenn der Monat keine beantworteten Fragen enthält.
+function _avArchiveMonths(user) {
+    const a = _avArchive(user);
+    const months = a && a.months && typeof a.months === 'object' ? a.months : {};
+    return Object.keys(months)
+        .filter(mo => /^\d{4}-\d{2}$/.test(mo) && months[mo] && typeof months[mo] === 'object')
+        .sort()
+        .map(mo => {
+            const m = months[mo];
+            const total = Number(m.total) || 0, correct = Number(m.correct) || 0;
+            return { month: mo, quizzes: Number(m.quizzes) || 0, correct, total,
+                     xp: Number(m.xp) || 0, score: total > 0 ? Math.round(correct / total * 100) : null };
+        });
+}
+
+function _avFmtDayDE(iso) {
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return null;
+    return String(d.getDate()).padStart(2, '0') + '.' + String(d.getMonth() + 1).padStart(2, '0') + '.' + d.getFullYear();
+}
+
+function _avNote(html) {
+    return `<div style="font-size:0.82rem;line-height:1.5;margin-bottom:18px;padding:10px 14px;
+        background:var(--overlay-8);border-left:3px solid var(--accent);border-radius:6px">${html}</div>`;
+}
+
+// Hinweis oben in der Nutzer-Ansicht, wenn die History dieses Spielers gekürzt wurde
+function _avArchiveNote(user) {
+    const a = _avArchive(user);
+    if (!a) return '';
+    const day = a.until ? _avFmtDayDE(a.until) : null;
+    const count = Number(a.quizzes) || 0;
+    return _avNote(`🗄 <strong>History gekürzt${day ? ' bis ' + day : ''}:</strong>
+        ${count} ältere Quizze sind zu Monats-Summen zusammengefasst (Forge → Sicherung → Aufräumen).
+        Lernkurve und XP-Treppe zeigen sie als Vorlauf, der Kalender hat dafür keine Tageswerte.
+        Badges und Fähigkeiten zählen sie weiter mit. Die vollständigen Daten stecken in der Sicherung.`);
+}
+
+function _avAnyArchive() {
+    return users.some(u => _avArchive(u));
+}
+
+// Hinweis für Ansichten mit Verlaufsdaten, die nur beim Aufräumen gekürzt werden
+function _avTrimmedNote(user, text) {
+    const trimmed = user ? _avArchive(user) : _avAnyArchive();
+    return trimmed ? _avNote(`🗄 ${text}`) : '';
+}
+
 // ── Helpers: SVG ─────────────────────────────────────────────────────────────
 
 const AV_COLORS = ['#FF6B35','#F7B801','#2ECC71','#3498DB','#9B59B6','#E74C3C','#1ABC9C','#E67E22','#F39C12','#16A085'];
+const AV_FOCUS_COLOR = '#3498DB';   // Fokus-Quiz: immer zusammen mit der Raute, nie Farbe allein
+
+// Fokus-Quiz als Raute; die Füllung trägt weiter die Wert-Farbe wie bei den Punkten
+function _avFocusMark(x, y, fill, title) {
+    const r = 6;
+    return `<path d="M${x.toFixed(1)},${(y - r).toFixed(1)} L${(x + r).toFixed(1)},${y.toFixed(1)} L${x.toFixed(1)},${(y + r).toFixed(1)} L${(x - r).toFixed(1)},${y.toFixed(1)} Z"
+        fill="${fill}" stroke="${AV_FOCUS_COLOR}" stroke-width="2"><title>${title}</title></path>`;
+}
+
+// Archivierte Monats-Summe als Quadrat
+function _avMonthMark(x, y, title) {
+    return `<rect x="${(x - 4).toFixed(1)}" y="${(y - 4).toFixed(1)}" width="8" height="8" rx="1.5"
+        fill="var(--overlay-20)" stroke="var(--text)" stroke-opacity="0.55" stroke-width="1.5"><title>${title}</title></rect>`;
+}
+
+// Trennlinie zwischen archiviertem Vorlauf und Einzel-Quizzen
+function _avArchiveDivider(x, top, bottom) {
+    return `<line x1="${x.toFixed(1)}" y1="${top}" x2="${x.toFixed(1)}" y2="${bottom}"
+        stroke="var(--text)" stroke-opacity="0.3" stroke-width="1" stroke-dasharray="3 3"/>`;
+}
+
+function _avMarkLegend(items) {
+    const swatches = {
+        quiz:  `<circle cx="7" cy="7" r="3.5" fill="var(--text)" opacity="0.5"/>`,
+        focus: `<path d="M7,1 L13,7 L7,13 L1,7 Z" fill="none" stroke="${AV_FOCUS_COLOR}" stroke-width="2"/>`,
+        month: `<rect x="3" y="3" width="8" height="8" rx="1.5" fill="var(--overlay-20)" stroke="var(--text)" stroke-opacity="0.55" stroke-width="1.5"/>`,
+    };
+    return `<div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;font-size:0.75rem;opacity:0.75">
+        ${items.map(([kind, label]) => `<span style="display:inline-flex;align-items:center;gap:5px">
+            <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">${swatches[kind]}</svg>${label}</span>`).join('')}
+    </div>`;
+}
 
 function _avGrpColor(prefix, prefixes) {
     const i = prefixes.indexOf(prefix);
@@ -179,6 +283,8 @@ function _avVizCard(vizId, title, content) {
 // ── Ansicht: Nutzer-Detail ────────────────────────────────────────────────────
 
 function _avRenderNutzer(el) {
+    // Nach neuem Laden oder Entfernen eines Spielers kann der Index ins Leere zeigen
+    if (!users[_avState.nutzerIdx]) _avState.nutzerIdx = 0;
     const opts = users.map((u, i) =>
         `<option value="${i}" ${i === _avState.nutzerIdx ? 'selected' : ''}>${_esc(u.name)}</option>`
     ).join('');
@@ -204,7 +310,8 @@ function _avRenderNutzerCharts(user) {
     const el = document.getElementById('av-nutzer-charts');
     if (!el) return;
 
-    const history = user.history || [];
+    const history = _avHistory(user);
+    const months  = _avArchiveMonths(user);
     const qs      = user.questionStats || {};
     const prefixes = _avAllPrefixes();
     const sr = _avSR();
@@ -212,37 +319,44 @@ function _avRenderNutzerCharts(user) {
     const cols = `display:grid;grid-template-columns:1fr 1fr;gap:24px;`;
 
     el.innerHTML = [
+        _avArchiveNote(user),
         `<div style="${cols}">`,
-            _avVizCard('VIZ-N1', 'QuizKalender', _avVizQuizKalender(history)),
-            _avVizCard('VIZ-N2', 'Lernkurve', _avVizLernkurve(history)),
+            _avVizCard('VIZ-N1', 'QuizKalender', _avVizQuizKalender(history, _avArchive(user))),
+            _avVizCard('VIZ-N2', 'Lernkurve', _avVizLernkurve(history, months)),
         '</div>',
         `<div style="${cols}">`,
             _avVizCard('VIZ-N3', 'Gruppen-Kompass', _avVizGruppenKompass(qs, prefixes)),
             _avVizCard('VIZ-N4', 'Stärken-Balken', _avVizStaerkenBalken(qs, prefixes)),
         '</div>',
         `<div style="${cols}">`,
-            _avVizCard('VIZ-N5', 'XP-Treppe', _avVizXPTreppe(history)),
+            _avVizCard('VIZ-N5', 'XP-Treppe', _avVizXPTreppe(history, months)),
             _avVizCard('VIZ-N6', 'Fragen-Wolke', _avVizFragenWolke(qs, prefixes)),
         '</div>',
         _avVizCard('VIZ-N7', 'Schwächen-Monitor', _avVizSchwaechenMonitor(qs)),
         _avVizCard('VIZ-N8', 'Cooldown-Röntgen', _avVizCooldownRoentgen(qs, sr)),
-        _avVizCard('VIZ-N9', 'Rückkehr-Diagnose', _avVizRueckkehrDiagnose(qs, sr)),
+        _avVizCard('VIZ-N9', 'Rückkehr-Diagnose',
+            _avTrimmedNote(user, 'Beim Aufräumen wurde der Antwort-Verlauf je Frage gekürzt — ältere Cooldown-Verletzungen sind hier nicht mehr sichtbar.') +
+            _avVizRueckkehrDiagnose(qs, sr)),
     ].join('');
 }
 
 // VIZ-N1: QuizKalender ────────────────────────────────────────────────────────
 
-function _avVizQuizKalender(history) {
-    const counts = {};
+function _avVizQuizKalender(history, archive) {
+    const counts = {}, focusCounts = {};
     history.forEach(h => {
-        const d = h.date ? h.date.slice(0, 10) : null;
-        if (d) counts[d] = (counts[d] || 0) + 1;
+        const d = h.date.slice(0, 10);
+        counts[d] = (counts[d] || 0) + 1;
+        if (h.focus) focusCounts[d] = (focusCounts[d] || 0) + 1;
     });
+    // Archivierte Tage haben keine Tageswerte — nicht als „kein Quiz" darstellen
+    const until = archive && typeof archive.until === 'string' ? archive.until.slice(0, 10) : null;
+    let hasArchivedCell = false;
 
     const today = new Date();
-    // Start = Montag vor 52 Wochen
+    // Start = Montag vor 51 Wochen: 52 volle Wochen, die laufende als letzte
     const startDate = new Date(today);
-    startDate.setDate(startDate.getDate() - 363 - ((today.getDay() + 6) % 7));
+    startDate.setDate(startDate.getDate() - 357 - ((today.getDay() + 6) % 7));
 
     const cellSize = 13, gap = 2, labelW = 24;
     const weeks = 52, days = 7;
@@ -270,9 +384,17 @@ function _avVizQuizKalender(history) {
             else if (count === 2) fill = '#FF6B35aa';
             else fill = 'var(--primary)';
 
-            cells += `<rect x="${x}" y="${y}" width="${cellSize}" height="${cellSize}"
-                rx="3" fill="${fill}" opacity="${count === 0 ? 0.4 : 1}">
-                <title>${iso}: ${count} Quiz</title></rect>`;
+            const focusCount = focusCounts[iso] || 0;
+            if (count === 0 && until && iso <= until) {
+                hasArchivedCell = true;
+                cells += `<rect x="${x + 0.5}" y="${y + 0.5}" width="${cellSize - 1}" height="${cellSize - 1}"
+                    rx="3" fill="none" stroke="var(--overlay-20)" stroke-dasharray="2 2">
+                    <title>${iso}: archiviert, keine Tageswerte</title></rect>`;
+            } else {
+                cells += `<rect x="${x}" y="${y}" width="${cellSize}" height="${cellSize}"
+                    rx="3" fill="${fill}" opacity="${count === 0 ? 0.4 : 1}"${focusCount ? ` stroke="${AV_FOCUS_COLOR}" stroke-width="2"` : ''}>
+                    <title>${iso}: ${count} Quiz${focusCount ? `, davon ${focusCount} Fokus-Quiz` : ''}</title></rect>`;
+            }
 
             const m = d.getMonth();
             if (day === 0 && m !== prevMonth) {
@@ -296,6 +418,10 @@ function _avVizQuizKalender(history) {
             <div style="width:12px;height:12px;border-radius:3px;background:#FF6B35aa"></div>
             <div style="width:12px;height:12px;border-radius:3px;background:var(--primary)"></div>
             <span>Mehr</span>
+            ${Object.keys(focusCounts).length ? `<div style="width:12px;height:12px;border-radius:3px;margin-left:10px;
+                box-sizing:border-box;border:2px solid ${AV_FOCUS_COLOR}"></div><span>mit Fokus-Quiz</span>` : ''}
+            ${hasArchivedCell ? `<div style="width:12px;height:12px;border-radius:3px;margin-left:10px;
+                box-sizing:border-box;border:1px dashed var(--overlay-20)"></div><span>archiviert</span>` : ''}
         </div>`;
 
     return `<div style="overflow-x:auto">${_avSVG(w, h, monthLabels + dayLabelsSVG + cells)}</div>${legend}`;
@@ -303,14 +429,17 @@ function _avVizQuizKalender(history) {
 
 // VIZ-N2: Lernkurve ───────────────────────────────────────────────────────────
 
-function _avVizLernkurve(history) {
-    if (history.length < 2) return `<p class="text-muted">Zu wenig Daten (mind. 2 Quizze).</p>`;
+function _avVizLernkurve(history, months) {
+    // Vorlauf: ein Punkt je archiviertem Monat, danach ein Punkt je Quiz
+    const vorlauf = months.filter(m => m.score !== null);
+    const offset = vorlauf.length;
+    if (offset + history.length < 2) return `<p class="text-muted">Zu wenig Daten (mind. 2 Quizze).</p>`;
 
     const W = 420, H = 160, PL = 36, PR = 12, PT = 10, PB = 28;
     const iW = W - PL - PR, iH = H - PT - PB;
 
     const scores = history.map(h => h.score ?? 0);
-    const n = scores.length;
+    const n = offset + scores.length;
 
     const toX = i => PL + (i / (n - 1)) * iW;
     const toY = v => PT + (1 - v / 100) * iH;
@@ -321,8 +450,9 @@ function _avVizLernkurve(history) {
         return slice.reduce((a, b) => a + b, 0) / slice.length;
     });
 
-    const rawPts = scores.map((v, i) => [toX(i), toY(v)]);
-    const avgPts = avg.map((v, i) => [toX(i), toY(v)]);
+    const rawPts = scores.map((v, i) => [toX(offset + i), toY(v)]);
+    const avgPts = avg.map((v, i) => [toX(offset + i), toY(v)]);
+    const monthPts = vorlauf.map((m, i) => [toX(i), toY(m.score)]);
 
     const areaPath = _avAreaPath(avgPts, PT + iH);
     const linePath = _avLinePath(avgPts);
@@ -333,13 +463,33 @@ function _avVizLernkurve(history) {
             <text x="${PL - 4}" y="${y + 4}" font-size="9" fill="var(--text)" opacity="0.4" text-anchor="end">${v}</text>`;
     }).join('');
 
-    const dots = rawPts.map(([x, y], i) =>
-        `<circle cx="${x}" cy="${y}" r="3" fill="${_avScoreColor(scores[i])}" opacity="0.7">
-            <title>Quiz ${i + 1}: ${scores[i]}%</title></circle>`
-    ).join('');
+    // Fokus-Quizze zuletzt zeichnen, damit die größeren Rauten nicht verdeckt werden
+    const dotFor = ([x, y], i) => {
+        const h = history[i], day = h.date.slice(0, 10);
+        return h.focus
+            ? _avFocusMark(x, y, _avScoreColor(scores[i]), `Fokus-Quiz, ${day}: ${scores[i]}%`)
+            : `<circle cx="${x}" cy="${y}" r="3" fill="${_avScoreColor(scores[i])}" opacity="0.7">
+                <title>Quiz ${i + 1}, ${day}: ${scores[i]}%</title></circle>`;
+    };
+    const dots = rawPts.map((p, i) => history[i].focus ? '' : dotFor(p, i)).join('') +
+                 rawPts.map((p, i) => history[i].focus ? dotFor(p, i) : '').join('');
 
-    const lastDate = history[history.length - 1]?.date?.slice(0, 10) || '';
-    const firstDate = history[0]?.date?.slice(0, 10) || '';
+    // Vorlauf gestrichelt: Monats-Mittel, kein gleitender Ø einzelner Quizze
+    const vorlaufLine = offset
+        ? `<path d="${_avLinePath(avgPts.length ? monthPts.concat([avgPts[0]]) : monthPts)}" stroke="var(--primary)"
+            stroke-width="2" stroke-dasharray="4 3" fill="none" stroke-linejoin="round" opacity="0.7"/>`
+        : '';
+    const vorlaufMarks = vorlauf.map((m, i) => _avMonthMark(monthPts[i][0], monthPts[i][1],
+        `${m.month}: ${m.score}% (archiviert, ${m.quizzes} Quiz${m.quizzes === 1 ? '' : 'ze'})`)).join('');
+    const divider = offset && history.length ? _avArchiveDivider((toX(offset - 1) + toX(offset)) / 2, PT, PT + iH) : '';
+
+    const lastDate = history[history.length - 1]?.date?.slice(0, 10) || vorlauf[offset - 1]?.month || '';
+    const firstDate = vorlauf[0]?.month || history[0]?.date?.slice(0, 10) || '';
+
+    const legendItems = [];
+    if (history.some(h => !h.focus)) legendItems.push(['quiz', 'Quiz']);
+    if (history.some(h => h.focus)) legendItems.push(['focus', 'Fokus-Quiz']);
+    if (offset) legendItems.push(['month', 'Monats-Mittel (archiviert)']);
 
     return _avSVG(W, H, `
         <defs>
@@ -349,12 +499,15 @@ function _avVizLernkurve(history) {
             </linearGradient>
         </defs>
         ${gridLines}
+        ${divider}
         <path d="${areaPath}" fill="url(#avLK)"/>
+        ${vorlaufLine}
         <path d="${linePath}" stroke="var(--primary)" stroke-width="2.5" fill="none" stroke-linejoin="round"/>
+        ${vorlaufMarks}
         ${dots}
         <text x="${PL}" y="${H - 6}" font-size="9" fill="var(--text)" opacity="0.35">${firstDate}</text>
         <text x="${W - PR}" y="${H - 6}" font-size="9" fill="var(--text)" opacity="0.35" text-anchor="end">${lastDate}</text>
-    `);
+    `) + (legendItems.length > 1 ? _avMarkLegend(legendItems) : '');
 }
 
 // VIZ-N3: Gruppen-Kompass (Radar) ─────────────────────────────────────────────
@@ -446,15 +599,18 @@ function _avVizStaerkenBalken(qs, prefixes) {
 
 // VIZ-N5: XP-Treppe ───────────────────────────────────────────────────────────
 
-function _avVizXPTreppe(history) {
-    if (history.length < 2) return `<p class="text-muted">Zu wenig Daten.</p>`;
+function _avVizXPTreppe(history, months) {
+    // Vorlauf: eine Stufe je archiviertem Monat, danach eine Stufe je Quiz
+    const offset = months.length;
+    if (offset + history.length < 2) return `<p class="text-muted">Zu wenig Daten.</p>`;
 
     const W = 420, H = 160, PL = 50, PR = 12, PT = 10, PB = 28;
     const iW = W - PL - PR, iH = H - PT - PB;
 
     let cum = 0;
-    const data = history.map(h => { cum += (h.xp || 0); return cum; });
-    const maxXP = data[data.length - 1] || 1;
+    const data = months.map(m => { cum += m.xp; return cum; })
+        .concat(history.map(h => { cum += _avEntryXP(h); return cum; }));
+    const maxXP = Math.max(...data, 1);
     const n = data.length;
 
     const toX = i => PL + (i / (n - 1)) * iW;
@@ -474,6 +630,18 @@ function _avVizXPTreppe(history) {
             <text x="${PL - 4}" y="${y + 4}" font-size="9" fill="var(--text)" opacity="0.4" text-anchor="end">${(v/1000).toFixed(1)}k</text>`;
     }).join('');
 
+    const monthMarks = months.map((m, i) => _avMonthMark(toX(i), toY(data[i]),
+        `${m.month}: +${m.xp.toLocaleString()} XP (archiviert, ${m.quizzes} Quiz${m.quizzes === 1 ? '' : 'ze'})`)).join('');
+    const focusMarks = history.map((h, i) => h.focus
+        ? _avFocusMark(toX(offset + i), toY(data[offset + i]), 'var(--accent)',
+            `Fokus-Quiz, ${h.date.slice(0, 10)}: +${_avEntryXP(h).toLocaleString()} XP`)
+        : '').join('');
+    const divider = offset && history.length ? _avArchiveDivider((toX(offset - 1) + toX(offset)) / 2, PT, PT + iH) : '';
+
+    const legendItems = [];
+    if (focusMarks) legendItems.push(['focus', 'Fokus-Quiz']);
+    if (offset) legendItems.push(['month', 'Monats-Summe (archiviert)']);
+
     return _avSVG(W, H, `
         <defs>
             <linearGradient id="avXP" x1="0" y1="0" x2="0" y2="1">
@@ -482,11 +650,14 @@ function _avVizXPTreppe(history) {
             </linearGradient>
         </defs>
         ${gridY}
+        ${divider}
         <path d="${areaPath}" fill="url(#avXP)"/>
         <path d="${stepPath}" stroke="var(--accent)" stroke-width="2.5" fill="none"/>
+        ${monthMarks}
+        ${focusMarks}
         <text x="${W - PR}" y="${H - 6}" font-size="9" fill="var(--text)" opacity="0.4" text-anchor="end">
             ${data[n-1].toLocaleString()} XP gesamt</text>
-    `);
+    `) + (legendItems.length ? _avMarkLegend(legendItems) : '');
 }
 
 // VIZ-N6: Fragen-Wolke (Scatter) ──────────────────────────────────────────────
@@ -731,7 +902,9 @@ function _avFragenRefresh() {
             _avVizCard('VIZ-F3', 'Häufigkeits-Ranking', _avVizHaeufigkeitsRanking(entries)),
         '</div>',
         _avVizCard('VIZ-F4', 'Fortschritts-Ringe', _avVizFortschrittsRinge(entries)),
-        _avVizCard('VIZ-F6', 'Monats-Trend', _avVizMonatsTrend(entries)),
+        _avVizCard('VIZ-F6', 'Monats-Trend',
+            _avTrimmedNote(null, 'Beim Aufräumen wurden die Monatswerte je Frage gekürzt — dieser Trend und die Monatsangaben in der Tabelle zeigen nur die behaltenen Monate.') +
+            _avVizMonatsTrend(entries)),
         _avVizCard('VIZ-F5', `Fragen-Vergleichs-Tabelle ${newBadge}`, _avVizFragenTabelle(entries, agg)),
     ].join('');
 }
@@ -1028,7 +1201,9 @@ function _avRenderGruppen(el) {
             _avVizCard('VIZ-G4', 'Fortschritts-Ampeln', _avVizFortschrittsAmpeln(prefixes)),
         '</div>',
         _avVizCard('VIZ-G3', 'Nutzer × Gruppen — Heatmap', _avVizNutzerGruppenHeatmap(prefixes)),
-        _avVizCard('VIZ-G2', 'Gruppen-Trend (benötigt Quiz-Daten mit Gruppen-Info)', _avVizGruppenTrend(prefixes)),
+        _avVizCard('VIZ-G2', 'Gruppen-Trend (benötigt Quiz-Daten mit Gruppen-Info)',
+            _avTrimmedNote(null, 'Archivierte Monats-Summen enthalten keine Gruppen — dieser Trend zeigt nur die behaltene History.') +
+            _avVizGruppenTrend(prefixes)),
     ].join('');
 }
 
@@ -1078,8 +1253,8 @@ function _avVizGruppenTrend(prefixes) {
     // Sammle history-Einträge mit groups-Feld
     const timeline = [];
     users.forEach(u => {
-        (u.history || []).forEach(h => {
-            if (h.groups && h.date) timeline.push({ date: h.date.slice(0, 10), groups: h.groups });
+        _avHistory(u).forEach(h => {
+            if (h.groups) timeline.push({ date: h.date.slice(0, 10), groups: h.groups });
         });
     });
     timeline.sort((a, b) => a.date.localeCompare(b.date));
@@ -1095,7 +1270,10 @@ function _avVizGruppenTrend(prefixes) {
         const mon = new Date(d); mon.setDate(d.getDate() - ((d.getDay() + 6) % 7));
         const wKey = mon.toISOString().slice(0, 10);
         if (!weeks[wKey]) weeks[wKey] = {};
-        Object.entries(groups).forEach(([g, stat]) => {
+        // history[].groups nutzt Gruppennamen, die Ansicht arbeitet mit ID-Präfixen
+        Object.entries(groups).forEach(([groupName, stat]) => {
+            if (groupName === '__none__') return;
+            const g = getGroupPrefix(groupName);
             if (!weeks[wKey][g]) weeks[wKey][g] = { asked: 0, correct: 0 };
             weeks[wKey][g].asked   += stat.asked   || 0;
             weeks[wKey][g].correct += stat.correct || 0;
@@ -1229,4 +1407,153 @@ function _avVizFortschrittsAmpeln(prefixes) {
     }).join('');
 
     return `<div style="display:flex;gap:12px;flex-wrap:wrap">${cards}</div>`;
+}
+
+// ── Ansicht: Fokus-Quiz ───────────────────────────────────────────────────────
+// Quellen: user.focusQuiz (Serie, Bestwert, Prämien) und History-Einträge mit
+// focus: true. Abgebrochene Versuche stehen nicht in der History; archivierte
+// Monats-Summen unterscheiden keine Fokus-Quizze.
+
+// Spielerstand lesen, ohne ihn zu verändern (normalizeFocusState würde schreiben)
+function _avFocusState(user) {
+    const fq = user && user.focusQuiz && typeof user.focusQuiz === 'object' ? user.focusQuiz : {};
+    return {
+        streak:      Number(fq.streak)      || 0,
+        bestStreak:  Number(fq.bestStreak)  || 0,
+        completions: Number(fq.completions) || 0,
+        lastPlayed:  typeof fq.lastPlayed === 'string' ? fq.lastPlayed : null,
+        periodKey:   fq.periodKey || null,
+        rewardedPeriod: fq.rewardedPeriod || null,
+    };
+}
+
+// Gruppe eines Fokus-Quiz: die eine Gruppe mit beantworteten Fragen
+function _avFocusGroup(h) {
+    const entries = Object.entries(h.groups && typeof h.groups === 'object' ? h.groups : {})
+        .filter(([g]) => g !== '__none__');
+    const asked = entries.find(([, s]) => s && s.asked > 0);
+    return (asked || entries[0] || ['Unbekannt'])[0];
+}
+
+// Wie FocusQuizPlugin: übersprungene Fragen zählen als nicht richtig
+function _avFocusSuccess(h, successPct) {
+    const all = (Number(h.total) || 0) + (Number(h.skipped) || 0);
+    const pct = all > 0 ? Math.round((Number(h.correct) || 0) / all * 100) : 0;
+    return pct >= successPct;
+}
+
+function _avRenderFokus(el) {
+    const cfg = quizSettings.focusQuiz || {};
+    const successPct = Number(cfg.successPct) || 0;
+    const target = Math.max(1, Math.floor(Number(cfg.streakTarget)) || 5);
+    const active = getActiveFocusPeriod(cfg);
+
+    const rows = users.map(u => {
+        const quizzes = _avHistory(u).filter(h => h.focus);
+        return { name: u.name, st: _avFocusState(u), quizzes,
+                 wins: quizzes.filter(h => _avFocusSuccess(h, successPct)).length };
+    });
+    const totalQuizzes = rows.reduce((s, r) => s + r.quizzes.length, 0);
+    const played = rows.filter(r => r.quizzes.length > 0 || r.st.lastPlayed || r.st.bestStreak > 0 || r.st.completions > 0);
+
+    const current = active
+        ? `Aktueller Fokus: <strong>${_ffEsc(active.group)}</strong> bis ${_ffFmt(_ffLastDay(active))} ·
+           Schwelle ${successPct} % · Serienziel ${target}`
+        : 'Zurzeit ist kein Fokus-Zeitraum aktiv (Plan in Forge → Fokus-Quiz).';
+    const intro = `<p style="font-size:0.9rem;margin:0 0 20px">${current}</p>`;
+
+    if (!played.length) {
+        el.innerHTML = intro + `<p class="text-muted">Noch keine Fokus-Quizze gespielt.</p>`;
+        return;
+    }
+
+    const notes = _avTrimmedNote(null, 'Archivierte Monats-Summen unterscheiden keine Fokus-Quizze — Anzahl und Erfolgsquote beziehen sich auf die behaltene History. Serien und Prämien sind vollständig.');
+
+    el.innerHTML = [
+        intro,
+        notes,
+        _avVizCard('VIZ-K1', 'Überblick', _avVizFokusKennzahlen(played, totalQuizzes)),
+        _avVizCard('VIZ-K2', 'Spieler', _avVizFokusSpieler(played, active, target)),
+        _avVizCard('VIZ-K3', 'Erfolgsquote je Gruppe', _avVizFokusGruppen(rows, successPct)),
+        `<p class="text-muted" style="font-size:0.8rem;margin:0">Erfolg gemessen an der aktuellen Schwelle (${successPct} %),
+            übersprungene Fragen zählen als nicht richtig. Abgebrochene Versuche stehen nicht in der History und fehlen hier.</p>`,
+    ].join('');
+}
+
+// VIZ-K1: Überblick ───────────────────────────────────────────────────────────
+
+function _avVizFokusKennzahlen(rows, totalQuizzes) {
+    const wins = rows.reduce((s, r) => s + r.wins, 0);
+    const quote = _avPct(wins, totalQuizzes);
+    const tiles = [
+        { value: totalQuizzes, label: 'Fokus-Quizze' },
+        { value: quote === null ? '–' : quote + ' %', label: `Erfolgsquote (${wins} Erfolge)` },
+        { value: rows.reduce((s, r) => s + r.st.completions, 0), label: 'Prämien kassiert' },
+        { value: Math.max(...rows.map(r => r.st.bestStreak)), label: 'Beste Serie' },
+    ];
+    return `<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px">${tiles.map(t => `
+        <div style="background:var(--overlay-8);border:1px solid var(--overlay-10);border-radius:14px;padding:16px">
+            <div style="font-weight:700;font-size:1.4rem">${t.value}</div>
+            <div style="font-size:0.8rem;opacity:0.6">${t.label}</div>
+        </div>`).join('')}</div>`;
+}
+
+// VIZ-K2: Spieler ─────────────────────────────────────────────────────────────
+
+function _avVizFokusSpieler(rows, active, target) {
+    const body = rows.slice().sort((a, b) => b.wins - a.wins || a.name.localeCompare(b.name)).map(r => {
+        const samePeriod = active && r.st.periodKey === active.key;
+        const rewarded = active && r.st.rewardedPeriod === active.key;
+        const serie = !active ? '–' : rewarded ? `${samePeriod ? r.st.streak : 0}/${target} ✓ Prämie` : `${samePeriod ? r.st.streak : 0}/${target}`;
+        const pct = _avPct(r.wins, r.quizzes.length);
+        const last = r.st.lastPlayed || (r.quizzes.length ? r.quizzes[r.quizzes.length - 1].date : null);
+        return `<tr>
+            <td style="font-weight:600">${_ffEsc(r.name)}</td>
+            <td style="white-space:nowrap">${serie}</td>
+            <td style="text-align:right">${r.st.bestStreak}</td>
+            <td style="text-align:right">${r.st.completions}</td>
+            <td style="text-align:right">${r.quizzes.length}</td>
+            <td style="text-align:right">${r.wins}</td>
+            <td style="text-align:right;font-weight:700">${pct === null ? '–' : pct + ' %'}</td>
+            <td style="opacity:0.6;white-space:nowrap">${_avFmtDate(last)}</td>
+        </tr>`;
+    }).join('');
+    return `<table class="info-table" style="font-size:0.82rem;width:100%">
+        <thead><tr style="opacity:0.5;font-size:0.75rem;text-transform:uppercase;letter-spacing:1px">
+            <td>Spieler</td><td>Serie jetzt</td><td style="text-align:right">Bestwert</td>
+            <td style="text-align:right">Prämien</td><td style="text-align:right">Quizze</td>
+            <td style="text-align:right">Erfolge</td><td style="text-align:right">Quote</td><td>Zuletzt</td>
+        </tr></thead>
+        <tbody>${body}</tbody>
+    </table>`;
+}
+
+// VIZ-K3: Erfolgsquote je Gruppe ──────────────────────────────────────────────
+
+function _avVizFokusGruppen(rows, successPct) {
+    const groups = {};
+    rows.forEach(r => r.quizzes.forEach(h => {
+        const g = _avFocusGroup(h);
+        if (!groups[g]) groups[g] = { quizzes: 0, wins: 0, scoreSum: 0 };
+        groups[g].quizzes++;
+        groups[g].scoreSum += Number(h.score) || 0;
+        if (_avFocusSuccess(h, successPct)) groups[g].wins++;
+    }));
+    const sorted = Object.entries(groups)
+        .map(([g, s]) => ({ g, ...s, pct: _avPct(s.wins, s.quizzes) ?? 0 }))
+        .sort((a, b) => b.pct - a.pct || a.g.localeCompare(b.g));
+    if (!sorted.length) return `<p class="text-muted">Keine Fokus-Quizze in der behaltenen History.</p>`;
+
+    const bars = sorted.map(s => `
+        <div style="margin-bottom:10px">
+            <div style="display:flex;justify-content:space-between;gap:12px;font-size:0.82rem;margin-bottom:4px">
+                <span style="font-weight:600">${_ffEsc(s.g)}</span>
+                <span style="opacity:0.6;white-space:nowrap">${s.pct} % Erfolg · ${s.wins}/${s.quizzes} Quizze · Ø ${Math.round(s.scoreSum / s.quizzes)} % richtig</span>
+            </div>
+            <div style="background:var(--overlay-8);border-radius:6px;height:14px;overflow:hidden"
+                title="${_ffEsc(s.g)}: ${s.wins} von ${s.quizzes} Fokus-Quizzen erfolgreich">
+                <div style="height:100%;width:${s.pct}%;background:${_avScoreColor(s.pct)};border-radius:6px"></div>
+            </div>
+        </div>`).join('');
+    return `<div style="max-width:640px">${bars}</div>`;
 }

@@ -367,7 +367,7 @@ const BossFightPlugin = {
         const s = this._state;
         this._clearIntervals();
         this._resetColors();
-        const winXP = getMG().bossFight.winXP || 100;
+        const winXP = getMG().bossFight.winXP ?? 100;
         s.xpEarned += winXP;
         document.getElementById('bossQuestionCard').innerHTML = `<div style="text-align:center;padding:30px;"><div style="font-size:3rem;">🏆</div><h3 style="color:#2ecc71;">Boss besiegt!</h3><p>+${s.xpEarned} XP verdient!</p></div>`;
         document.getElementById('bossCloseBtn').style.display = '';

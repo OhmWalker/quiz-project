@@ -242,7 +242,7 @@ const ClassicQuizPlugin = {
         const pct = (idx / total) * 100;
         document.getElementById('progressFill').style.width = pct + '%';
         document.getElementById('questionNumber').textContent = `Frage ${idx} / ${total}`;
-        document.getElementById('quizXPCounter').textContent = `+${this._quizXP} XP`;
+        this._renderXPCounter();
         document.getElementById('currentUserName').textContent = currentUser ? currentUser.name : '';
         // Question ID info
         const qidInfo = document.getElementById('quizQuestionIdInfo');
@@ -376,6 +376,24 @@ const ClassicQuizPlugin = {
         this._processAnswer(isCorrect, { selectedIndices });
     },
 
+    // Tagesbonus für das laufende Quiz (1. Quiz des Tages / weitere Quizze).
+    // Fokus-Quiz: immer 100 % — es ist nie das erste Quiz des Tages und bekäme
+    // sonst stets den niedrigen Folgewert (Nutzer-Entscheidung 2026-11-06).
+    _xpDayFactor() {
+        if (focusQuizActive || !currentUser) return 1;
+        return getDailyXPMultiplier(currentUser);
+    },
+
+    // XP-Zähler im Quiz zeigt den Wert, der am Ende wirklich gutgeschrieben wird:
+    // Summe × Tagesbonus, genau wie in showResults.
+    _renderXPCounter() {
+        const el = document.getElementById('quizXPCounter');
+        if (!el) return;
+        const mult = this._xpDayFactor();
+        const xp = Math.round(this._quizXP * mult);
+        el.textContent = `${xp < 0 ? '' : '+'}${xp} XP`;
+    },
+
     _processAnswer(isCorrect, details) {
         // Second chance handling
         if (!isCorrect && secondChanceArmed && !this._secondChanceUsed) {
@@ -424,8 +442,8 @@ const ClassicQuizPlugin = {
         }
         // XP calculation
         const xpSettings = quizSettings.xpSystem || {};
-        const baseCorrectXP = xpSettings.correctAnswerXP || CONFIG.XP.CORRECT_ANSWER;
-        const baseWrongXP = xpSettings.wrongAnswerXP || CONFIG.XP.WRONG_ANSWER;
+        const baseCorrectXP = xpSettings.correctAnswerXP ?? CONFIG.XP.CORRECT_ANSWER;
+        const baseWrongXP = xpSettings.wrongAnswerXP ?? CONFIG.XP.WRONG_ANSWER;
         let xpGain = 0;
         if (isCorrect) {
             xpGain = baseCorrectXP;
@@ -442,7 +460,7 @@ const ClassicQuizPlugin = {
             else xpGain = baseWrongXP;
         }
         this._quizXP += xpGain;
-        document.getElementById('quizXPCounter').textContent = `+${this._quizXP} XP`;
+        this._renderXPCounter();
         // Record answer
         userAnswers.push({ questionId: q.questionId, correct: isCorrect, xp: xpGain, group: q._fileGroup || '__none__' });
         // Update user question stats
@@ -503,7 +521,7 @@ const ClassicQuizPlugin = {
         if (wasCorrect) {
             // XP-Bonus dem Absender gutschreiben
             const xpSettings  = quizSettings.xpSystem || {};
-            const baseCorrectXP = xpSettings.correctAnswerXP || CONFIG.XP.CORRECT_ANSWER;
+            const baseCorrectXP = xpSettings.correctAnswerXP ?? CONFIG.XP.CORRECT_ANSWER;
             const bonus = baseCorrectXP * 5;
             const sender = users.find(u => u.name === question._jokerFrom);
             if (sender) {
@@ -559,8 +577,11 @@ const ClassicQuizPlugin = {
         const correct   = answered.filter(a => a.correct).length;
         const incorrect = total - correct;
         const pct = total > 0 ? Math.round((correct / total) * 100) : 0;
+        // Fokus-Erfolg: übersprungene Fragen zählen als nicht richtig (Nutzer-Entscheidung 2026-11-06).
+        // Der Score der History bleibt wie bisher auf die beantworteten Fragen bezogen.
+        const focusPct = (total + skipped) > 0 ? Math.round((correct / (total + skipped)) * 100) : 0;
         // Apply daily XP multiplier
-        const multiplier = getDailyXPMultiplier(currentUser);
+        const multiplier = this._xpDayFactor();
         const finalXP = Math.round(this._quizXP * multiplier);
         // Update user stats
         if (currentUser) {
@@ -629,11 +650,11 @@ const ClassicQuizPlugin = {
         else msg.textContent = '💪 Nicht aufgeben!';
         // XP info
         const xpInfo = multiplier > 1 ? ` (${Math.round(multiplier*100)}% Bonus!)` : '';
-        msg.textContent += ` +${finalXP} XP${xpInfo}`;
+        msg.textContent += ` ${finalXP < 0 ? '' : '+'}${finalXP} XP${xpInfo}`;
         renderUserSelect();
         showScreen('resultsScreen');
         renderNextGoals(currentUser);
-        EventBus.emit(EventBus.EVENTS.QUIZ_COMPLETED, { user: currentUser?.name, correct, total, xp: finalXP, pct, focus: focusQuizActive });
+        EventBus.emit(EventBus.EVENTS.QUIZ_COMPLETED, { user: currentUser?.name, correct, total, xp: finalXP, pct, focus: focusQuizActive, focusPct, skipped });
         // Fokus-Flag gilt nur für das gerade beendete Quiz (Auswertung lief im Listener)
         focusQuizActive = false;
         // Mini-game cascade — Autofokus erst nach Abschluss aller Mini-Games
@@ -663,7 +684,7 @@ const ClassicQuizPlugin = {
             const quizCount = currentUser.quizzesTaken || 0;
             if (quizCount > 0 && quizCount % (mg.bossFight.threshold || 10) === 0) {
                 const boss = BossFightPlugin.BOSS_TYPES[Math.floor(Math.random() * BossFightPlugin.BOSS_TYPES.length)];
-                const winXP = mg.bossFight.winXP || 100;
+                const winXP = mg.bossFight.winXP ?? 100;
                 GameDialog.showConfirm(
                     boss.sprite,
                     'Boss-Fight verfügbar!',
@@ -719,6 +740,7 @@ const ClassicQuizPlugin = {
         if (!this._answered && currentQuestionIndex === 0 && userAnswers.length === 0) {
             // Noch nichts beantwortet → kein Versuch, kein Serienverlust
             focusQuizActive = false;
+            AbilityPlugin._restoreRedeemedTeamBonus();
             showScreen('startScreen');
             renderUserSelect();
             return;
@@ -730,7 +752,7 @@ const ClassicQuizPlugin = {
             const halfXP = Math.round(this._quizXP * 0.5);
             if (currentUser) delete currentUser.teamBonusActive;
             if (currentUser && halfXP > 0) {
-                const multiplier = getDailyXPMultiplier(currentUser);
+                const multiplier = this._xpDayFactor();
                 const finalXP = Math.round(halfXP * multiplier);
                 currentUser.totalXP = (currentUser.totalXP || 0) + finalXP;
                 const lvl = calculateLevel(currentUser.totalXP);
@@ -742,6 +764,9 @@ const ClassicQuizPlugin = {
             showScreen('startScreen');
             EventBus.emit(EventBus.EVENTS.QUIZ_ABANDONED, { xp: Math.round(this._quizXP * 0.5), focus: focusQuizActive });
             focusQuizActive = false;
+            // Wie am Quizende speichern: Lernstand, XP und ein Fokus-Fehlversuch
+            // dürfen nicht durch bloßes Neuladen der Seite verschwinden.
+            if (currentUser && typeof saveCurrentPlayer === 'function') saveCurrentPlayer();
         });
     }
 };

@@ -22,6 +22,7 @@ AdminShell.registerPanel('sicherung', 'Sicherung', '💾', container => {
             Bitte zuerst einen <strong>Ordner laden</strong> (Tab "Datei").</p></div>`;
         return;
     }
+    _fsPreview = null;   // Spieler können sich im Nutzer-Tab oder durch neues Laden geändert haben
     _fsRender(container);
 });
 
@@ -62,9 +63,17 @@ async function _fsBuildZip(files) {
     const dosDate = ((now.getFullYear() - 1980) << 9) | ((now.getMonth() + 1) << 5) | now.getDate();
     const parts = [], central = [];
     let offset = 0;
+    const usedNames = new Set();
 
     for (const f of files) {
-        const name = enc.encode(f.name);
+        // Gleiche Namen würden sich beim Entpacken überschreiben („Müller“ und „Möller“
+        // ergeben beide MLLER). Der Zusatz stört nicht: Spieler erkennt der Lader am
+        // JSON-Feld name, Fragen an Präfix und Inhalt. Klein geschrieben vergleichen,
+        // weil Windows Groß/Klein nicht unterscheidet.
+        let uniqueName = f.name;
+        for (let i = 2; usedNames.has(uniqueName.toLowerCase()); i++) uniqueName = f.name.replace(/\.json$/i, `_${i}.json`);
+        usedNames.add(uniqueName.toLowerCase());
+        const name = enc.encode(uniqueName);
         const data = enc.encode(f.text);
         const crc  = _fsCrc32(data);
         const comp = await _fsDeflateRaw(data);
@@ -193,12 +202,13 @@ function _fsCleanUser(user, opts, now) {
         // Monats-Summen für spätere Auswertungen (klein: ein Eintrag pro Monat)
         const months = Object.assign({}, old && old.months);
         archived.forEach(e => {
-            const mo = String(e.date || '').slice(0, 7) || '?';
+            const mo = /^\d{4}-\d{2}/.test(String(e.date)) ? String(e.date).slice(0, 7) : '?';
             const m = months[mo] || (months[mo] = { quizzes: 0, correct: 0, total: 0, xp: 0 });
             m.quizzes++;
             m.correct += Number(e.correct) || 0;
             m.total   += Number(e.total)   || 0;
-            m.xp      += Number(e.xp)      || 0;
+            // Forge normalisiert Spieler nicht — Altfeld xpEarned kann noch vorkommen
+            m.xp      += Number(e.xp ?? e.xpEarned) || 0;
         });
         arch.months = months;
         arch.until = archived[archived.length - 1].date;

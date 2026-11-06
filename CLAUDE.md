@@ -24,9 +24,19 @@
 - Gruppen-Dropdown hat „+ Neue Gruppe…"-Option (value `__new__`)
 - **Aktiv/Inaktiv:** Kästchen pro Frage, „alle an"/„alle aus" pro Gruppe, Kopfzeile zeigt `aktiv N/M`
   (ersetzt die früheren Präfix-Batch-Aktionen des Legacy-Editors). Dauerhaft erst nach „↓ Exportieren".
+  Kein Panel-Neuaufbau (`_fqShowActiveState`), sonst gingen Eingaben im offenen Formular verloren. Bei aktiver
+  Suche wirken die Gruppen-Knöpfe nur auf die Treffer („Treffer an/aus").
 - **Export-Dateinamen** (`_fqExportFiles`, auch von der Sicherung genutzt): eine Datei pro Gruppe, Core getrennt.
   Core erkennt der Lader am Namen `/^03_questions_CORE/i` — Core-Gruppen bekommen den Präfix `CORE_`,
   Nicht-Core-Gruppen, deren Name mit „core" beginnt, den Präfix `G_`.
+- **`isCore` bei neuen/verschobenen Fragen** (`_fqGroupIsCore`, genutzt von Formular, Import, Einreichungen):
+  Der Dateiname hängt an `q.isCore`, darum muss jede Stelle, die eine Frage in eine Gruppe bringt, es setzen.
+  Gruppe nur aus Core → Core; nur aus Nicht-Core → Nicht-Core; neue oder gemischte Gruppe → Name `/^core\b/i`.
+  Import aus einer `03_questions_CORE…`-Datei ist immer Core.
+- **Dieselbe `questionId` in mehreren Dateien** (`mergeLoadedQuestion` in `js/32-file-io.js`, Quiz und Forge):
+  die neuere Datei gewinnt, dazu ein Warn-Toast. Bewusst Ersetzen statt Dateien umsortieren — die Lade-Reihenfolge
+  bestimmt die IDs von Fragen ohne `questionId`, und eine neue Datei ohne IDs dürfte sonst vergebene IDs belegen.
+- **Sicherungs-ZIP:** gleiche Dateinamen bekommen `_2` (`_fsBuildZip`), z.B. „Müller"/„Möller" → beide `MLLER`.
 
 ## Fragen-ID-System
 
@@ -118,9 +128,14 @@ Nach jedem Master-JSON-Load werden die geladenen SR-Werte mit `SR_EXPECTED` verg
 `SETTINGS_DEFAULTS.spacedRepetition`, also nur eine Stelle ändern. Bei Abweichung erscheint nach 1,5 Sekunden ein Toast:
 > ⚠ SR-Einstellungen weichen ab: `streakThreshold=3 (erwartet: 2)`
 
-### Simulations-Ergebnisse (100 Runs, 380 Fragen, 80 Core, random=30 — noch mit den alten Werten 48 h / 7 / 3)
-- **261 von 300 Normal-Fragen** gestellt (87%), SR-Faktor: **7,1×**
-- Cluster-Indikator: **2,08** Ø gleiche Fragen in aufeinanderfolgenden Quizzen
+### Simulations-Ergebnisse (100 Quizze, 380 Fragen, 80 Core, random=30, Cooldown 96 h, Core 6/2 — Stand 2026-10-24)
+- **300 von 300 Normal-Fragen** gestellt (100 %), SR-Faktor: **5,0×** (schwächste 25 % Ø 5,9× gestellt, beste 25 % Ø 1,2×)
+- Core pro Quiz: 1. Quiz des Tages genau 6, Folge-Quizze genau 2 (Ø 3,2 Core / 6,8 Normal)
+- Cluster-Indikator: **2,03** Ø gleiche Fragen in aufeinanderfolgenden Quizzen (Skript warnt ab > 2)
+- Fresh-Slots zu 76 % mit neuen Fragen besetzt (Skript meldet „Fresh-Pool erschöpft")
+- Zum Vergleich mit den alten Werten 48 h / 7 / 3: 261 von 300 (87 %), SR-Faktor 7,1×, Cluster 2,08 —
+  der längere Cooldown verteilt breiter (volle Abdeckung), gewichtet schwache Fragen aber etwas weniger stark
+- Fester Zufalls-Startwert im Skript → Läufe sind reproduzierbar. `maxPerGroup` bildet das Skript nicht nach.
 - `python3 tools/simulate.py` / `python3 tools/simulate.py --szenarien`
 
 ## Scoring-System
@@ -181,10 +196,11 @@ Nach jedem Master-JSON-Load werden die geladenen SR-Werte mit `SR_EXPECTED` verg
 `id`, `name`, `totalXP`, `level`, `quizzesTaken`, `correctAnswers`, `totalAnswers`,
 `streak`, `history[]`, `badgeStats{}`, `questionStats{}`, `lastQuizDate`,
 `dailyQuizCount`, `abilities{}`, `chargesEarned{}`, `sentPhoneJokers[]`,
-`pendingPhoneJoker[]`, `pendingJokerBonus`, `pendingTeamBonusQuiz`, `sidebarPositions{}`
+`pendingPhoneJoker[]`, `pendingJokerBonus`, `pendingTeamBonusQuiz`, `sentTeamBonuses[]`, `receivedTeamBonuses[]`, `sidebarPositions{}`
 
 - `pendingJokerBonus`: XP-Gutschrift für Phone-Joker-Sender (wird bei nächstem USER_SELECTED via `checkPendingJokers()` ausgezahlt)
-- `pendingTeamBonusQuiz`: Anzahl Quizze mit 3× XP, die ein Mitspieler per Team-Bonus geschenkt hat. Einlösung in `_redeemPendingTeamBonus()` bei QUIZ_STARTED (nicht beim Auswählen des Spielers — sonst verfällt der Bonus ungenutzt). Ersetzt das alte Pauschal-Feld `pendingTeamBonus` (+50 XP).
+- `pendingTeamBonusQuiz`: Anzahl Quizze mit 3× XP, die ein Mitspieler per Team-Bonus geschenkt hat. Einlösung in `_redeemPendingTeamBonus()` bei QUIZ_STARTED (nicht beim Auswählen des Spielers — sonst verfällt der Bonus ungenutzt). Abbruch ohne Antwort gibt ihn zurück (`_restoreRedeemedTeamBonus`). Ersetzt das alte Pauschal-Feld `pendingTeamBonus` (+50 XP).
+- `sentTeamBonuses` / `receivedTeamBonuses`: Quittung `{ id, targetName, date }` beim Sender und zugestellte IDs beim Empfänger, siehe unten.
 - `focusQuiz`: Fokus-Quiz-Stand, siehe Abschnitt „Fokus-Quiz". Struktur:
   `{ streak, bestStreak, completions, playedToday, lastPlayed, lastDate, periodKey, rewardedPeriod }`
   — angelegt/koersiert in `normalizeFocusState()` (`js/30-globals.js`), aufgerufen aus `normalizeUser`
@@ -193,6 +209,15 @@ Nach jedem Master-JSON-Load werden die geladenen SR-Werte mit `SR_EXPECTED` verg
 Kritisch: Phase 2 (Quittungen aufräumen) muss **vor** Phase 3 (sentPhoneJokers bereinigen + pending neu erzeugen) laufen.
 - **Bug bei falscher Reihenfolge:** Phase 3 entfernt A's resolved sentEntry → Phase 2 findet B's Quittung nicht mehr → Phase 2 erstellt Joker neu → B muss Joker erneut beantworten
 - **Spieler-Dialog:** 2-Spalten-Grid (`grid-template-columns: 1fr 1fr`), `max-height: 300px`, scrollbar
+
+### Team-Bonus: Zustellung beim Folder-Load (`_syncTeamBonuses`, `js/32-file-io.js`, 2026-11)
+Nach dem Quiz wird nur die Datei des Senders gespeichert (Nutzer-Entscheidung: keine zweite Datei). Darum Quittung
+statt direkter Übergabe; die geladenen **Datei-Stände** entscheiden:
+- Empfänger-Datei nennt die ID nicht → zustellen (`pendingTeamBonusQuiz + 1`), Quittung **bleibt**, bis die Empfänger-Datei
+  die ID belegt — sonst ginge der Bonus verloren, wenn der Sender speichert, der Empfänger aber nicht.
+- Empfänger-Datei nennt die ID → Quittung entfernen. Die ID beim Empfänger bleibt, solange eine geladene Sender-Datei sie
+  noch nennt — sonst käme der Bonus aus einer noch nicht neu gespeicherten Sender-Datei doppelt.
+- Offene Quittungen verfallen nach `JOKER_EXPIRY_MONTHS`.
 
 ### abilities{}-Struktur (pro Key)
 `{ charges: number, unlocked: boolean }`
@@ -226,7 +251,21 @@ Kritisch: Phase 2 (Quittungen aufräumen) muss **vor** Phase 3 (sentPhoneJokers 
 | Badges | `42-admin-badges.js` | Badges aktivieren/deaktivieren, Icon anpassen; speichert in `quizSettings.badges` (Overrides auf `BadgePlugin.DEFAULT_BADGES`) |
 | *(Trennlinie)* | `45-admin-separator.js` | `AdminShell.registerSeparator()` |
 | Migrationen | `50-admin-migrationen.js` | Abgeschlossene Migrationen dokumentiert; neue Migrationen hier ergänzen |
+| Auswertung | `55-admin-auswertung.js` | Nutzer-Detail, Fragen, Gruppen, **Fokus-Quiz** (siehe unten) |
 | Einreichungen | `65-forge-einreichungen.js` | Herald-Einreichungen prüfen: annehmen (→ stabile ID + questions[]) oder ablehnen |
+
+### Auswertung (`js/admin/55-admin-auswertung.js`, Stand 2026-11)
+- **Rohdaten:** Forge normalisiert Spieler nicht. Immer über `_avHistory` (Kopie, chronologisch, nur gültige Daten),
+  `_avArchive`/`_avArchiveMonths` und `_avFocusState` lesen — sie vertragen fehlende Felder und verändern nichts.
+  `normalizeFocusState` hier **nicht** aufrufen, es schreibt auf den Spieler.
+- **Aufgeräumte Spieler:** Hinweis „History gekürzt bis TT.MM.JJJJ" oben in der Nutzer-Ansicht. Lernkurve und XP-Treppe
+  zeigen `historyArchive.months` als Vorlauf (Quadrate, Trennlinie; ein Punkt je Monat, also andere Zeitachse als rechts
+  davon). Der Kalender rahmt archivierte Tage gestrichelt, weil es keine Tageswerte gibt. Monats-Trend, Rückkehr-Diagnose
+  und Gruppen-Trend tragen nur einen Hinweis.
+- **Fokus-Quizze:** Raute in Lernkurve/XP-Treppe, blauer Rahmen im Kalender (nie Farbe allein). Ansicht „🎯 Fokus-Quiz":
+  Überblick, Spieler-Tabelle, Erfolgsquote je Gruppe. Erfolg rechnet wie das Plugin (übersprungen = nicht richtig), aber mit
+  der **aktuellen** `successPct`. Abgebrochene Versuche stehen nicht in der History, archivierte Monate kennen kein Fokus-Quiz.
+- **`history[].groups` nutzt Gruppennamen**, die Ansichten ID-Präfixe — im Gruppen-Trend über `getGroupPrefix` umrechnen.
 
 ### Fragen-Suchfunktion (`js/admin/25-forge-fragen.js`)
 - State: `_fqSearchTerm` — persistiert beim Tab-Wechsel
@@ -303,13 +342,21 @@ Fähigkeiten-Leiste). Unter 1600px Fensterbreite rückt der Kreis mittig über d
 - **`focusQuizActive`** (`js/40-init-and-functions.js`): flüchtige globale Variable, **nie** auf `currentUser`.
   Gesetzt in `startQuiz` (jeder normale Start setzt sie zurück), gelöscht nach `QUIZ_COMPLETED`/`QUIZ_ABANDONED`
   und beim Abbruch ohne Antwort.
-- **XP:** Multiplikator in `_processAnswer` nur auf richtige Antworten, danach greift wie immer
-  `getDailyXPMultiplier()` (Fokus-Quiz = Folge-Quiz des Tages). Vollendungs-Prämie über `applyMiniGameXP`.
+- **XP:** Multiplikator in `_processAnswer` nur auf richtige Antworten. Der Tagesbonus gilt im Fokus-Quiz
+  **immer mit 100 %** (`ClassicQuizPlugin._xpDayFactor()`, Nutzer-Entscheidung 2026-11-06) — sonst bekäme es als
+  Folge-Quiz stets den niedrigen „Weitere Quizze"-Wert (live 20 % → aus 3× wurde 0,6×). Vollendungs-Prämie über
+  `applyMiniGameXP`.
+- **XP-Zähler im Quiz** (`_renderXPCounter`) zeigt für alle Quizze den Endwert inkl. Tagesbonus — vorher die Summe
+  davor, was am Ende wie ein Verlust aussah.
 - **Statistik:** zählt voll — `questionStats`, `quizzesTaken`, `badgeStats.totalQuizzes`, Bestenliste,
   Mini-Game-Trigger. History-Eintrag mit `focus: true`.
 - **Serie (Nutzer-Entscheidung 2026-10-24):** zählt Versuche, nicht Tage. Gehört zu einem Zeitraum —
   Fokus-Wechsel setzt sie auf 0. Prämie **einmal pro Zeitraum** (`rewardedPeriod`); danach steht die Serie
   still bis zum Wechsel. Unter `successPct` oder Abbruch nach ≥ 1 Antwort → Serie 0 (Abbruch-Dialog warnt).
+- **Erfolgsquote (Nutzer-Entscheidung 2026-11-06):** übersprungene Fragen (Skip/Telefon) zählen als nicht richtig
+  (`focusPct` im QUIZ_COMPLETED-Event). Der `score` der History bleibt auf die beantworteten Fragen bezogen.
+- **Abbruch speichert:** Nach bestätigtem Abbruch wird die Spieler-Datei geschrieben, wie am Quizende — sonst machte
+  Neuladen einen Fehlversuch rückgängig. Abbruch ohne Antwort schreibt nichts.
 - **Bekannte Eigenschaft:** unbegrenzt spielbar + Serie = Versuche → Prämie durch Wiederholen erreichbar.
   Drosseln ohne Codeänderung über `maxPerDay`.
 
@@ -323,7 +370,7 @@ Ziel: Spieler-Datei verkleinern, ohne dass Erfolge verloren gehen. Gemessen (Sim
 | `badgeStats` (alle Zähler inkl. `abilitiesUsed`) | Badges, Fähigkeiten | unverändert |
 | `_badgeTiers` | Badges (Wasserstand erreichter Stufen) | unverändert |
 | `abilities`, `chargesEarned` | Fähigkeiten (Ladungen + Wasserstand) | unverändert |
-| `sentPhoneJokers`, `pendingPhoneJoker`, `pendingJokerBonus`, `pendingTeamBonusQuiz`, `focusQuiz`, `sidebarPositions` | Joker, Team, Fokus, UI | unverändert |
+| `sentPhoneJokers`, `pendingPhoneJoker`, `pendingJokerBonus`, `pendingTeamBonusQuiz`, `sentTeamBonuses`, `receivedTeamBonuses`, `focusQuiz`, `sidebarPositions` | Joker, Team, Fokus, UI | unverändert |
 | `questionStats[id].asked/correct/consecutiveCorrect/lastAsked/_q` | SR-Auswahl, Badges (Entdecker/Meister/Vielspieler), Auswertung | unverändert |
 | `questionStats[id].askLog` | nur Forge-Auswertung (Rückkehr-Diagnose) | letzte N Einträge (Std. 5) |
 | `questionStats[id].monthlyStats` | nur Forge-Auswertung (Monats-Trend) | letzte N Monate (Std. 6) |
@@ -342,7 +389,8 @@ Ziel: Spieler-Datei verkleinern, ohne dass Erfolge verloren gehen. Gemessen (Sim
   Sinkt der History-Wert, bekäme der Spieler lange keine neuen Ladungen. Badge-Stufen gingen nicht verloren
   (`_badgeTiers`), aber der Fortschritt zur nächsten Stufe fiele zurück.
 - Aufräumen arbeitet auf Kopien und lädt ein ZIP mit neuen `04_operator_*`-Dateien; beim Laden gewinnt die neueste
-  Datei pro Spieler. Forge-Auswertung zeigt danach nur die behaltene History (Altes steckt in der Sicherung).
+  Datei pro Spieler. Forge-Auswertung zeigt danach Einzelwerte nur für die behaltene History, davor Monats-Summen
+  (Details stecken in der Sicherung).
 - **`compactPlayerFiles`** (Master-Einstellung, Std. aus): Spieler-Dateien ohne Einrückung (~halbe Größe),
   gilt für `serializePlayer()` überall.
 - Serialisierung zentral in `js/32-file-io.js`: `playerFileName`, `serializePlayer`, `encodeDataFile`,

@@ -71,18 +71,24 @@ async function _adminLoadFolder(event) {
                         try { data = JSON.parse(raw); }
                         catch { data = JSON.parse(decodeURIComponent(escape(atob(raw.trim())))); }
                         resolve({ name: f.name, data, lastModified: f.lastModified });
-                    } catch { resolve(null); }
+                    } catch { resolve({ name: f.name, _readError: 'Ungültiges Format' }); }
                 };
-                reader.onerror = () => resolve(null);
+                reader.onerror = () => resolve({ name: f.name, _readError: 'Datei nicht lesbar' });
                 reader.readAsText(f);
             }))
     );
 
-    const valid = results.filter(Boolean);
+    const valid = results.filter(r => !r._readError);
+    // Sonst baut Forge eine neue Datei aus dem älteren Stand, die dann beim Laden gewinnt
+    warnUnreadableFiles(results.filter(r => r._readError).map(r => r.name + ' — ' + r._readError));
 
-    const masterFiles  = valid.filter(r => /^02_(quiz-master|QUIZ-MASTER)/i.test(r.name));
-    const playerFiles  = valid.filter(r => /^04_(operator|Operator)_/i.test(r.name));
-    const questionFiles = valid.filter(r => /^03_(questions|Questions)_/i.test(r.name));
+    // Dieselben Dateien wie das Quiz erkennen (32-file-io) — sonst fehlen sie in der Sicherung
+    const isMaster = r => /^02_quiz-master/i.test(r.name) || r.name === 'quiz-master.json';
+    const isPlayer = r => /^04_operator_/i.test(r.name) || r.name.startsWith('spieler-');
+    const masterFiles  = valid.filter(isMaster);
+    const playerFiles  = valid.filter(isPlayer);
+    const questionFiles = valid.filter(r => !isMaster(r) && !isPlayer(r) &&
+        (/^03_questions_/i.test(r.name) || (r.data && Array.isArray(r.data.questions))));
 
     // Settings aus neuester Master-Datei
     if (masterFiles.length) {
@@ -96,6 +102,8 @@ async function _adminLoadFolder(event) {
     // Fragen laden
     questions = [];
     loadedQuestionFiles = [];
+    const seenQuestions = new Map();
+    let duplicateCount = 0;
     questionFiles.forEach(qf => {
         const fileTheme = qf.data.theme || '';
         const qList = qf.data.questions || [];
@@ -106,16 +114,16 @@ async function _adminLoadFolder(event) {
             try {
                 q._fileGroup = q._fileGroup || fileTheme || 'Manuell';
                 const n = normalizeQuestion(q);
-                const isDupe = n.questionId && questions.some(eq => eq.questionId === n.questionId);
-                if (isDupe) return;
                 n.sourceFile = qf.name;
                 n.isCore = isCore;
-                questions.push(n);
-                loaded++;
+                const merged = mergeLoadedQuestion(n, qf.lastModified, seenQuestions);
+                if (merged !== 'added') duplicateCount++;
+                if (merged !== 'duplicate') loaded++;
             } catch { /* fehlerhafte Frage überspringen */ }
         });
         loadedQuestionFiles.push({ name: qf.name, theme: fileTheme || 'Unbekannt', count: loaded });
     });
+    warnDuplicateQuestions(duplicateCount);
 
     // Spieler laden (neueste Version pro Name)
     users = [];
@@ -139,6 +147,8 @@ async function _adminLoadFolder(event) {
 
     dataLoaded = true;
     syncToAppState();
+    // Sicherungs-Stand gilt nur für den Ordner, aus dem er stammt
+    _fsLastBackup = null;
 
     event.target.value = '';
 

@@ -71,6 +71,11 @@ const GameDialog = {
     },
     
     
+    isOpen() {
+        return !!this._overlay && this._overlay.style.display !== 'none';
+    },
+
+
     showConfirm(icon, title, message, onAccept, onDecline) {
         const overlay = this._ensureOverlay();
         overlay.innerHTML = `

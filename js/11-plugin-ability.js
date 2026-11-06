@@ -186,13 +186,27 @@ const AbilityPlugin = {
     // Wird beim Quizstart eingelöst, damit er nicht beim bloßen Auswählen
     // des Spielers verfällt.
     _redeemPendingTeamBonus() {
+        this._teamBonusRedeemed = false;
         if (!currentUser) return;
         const pending = currentUser.pendingTeamBonusQuiz || 0;
         if (pending <= 0) return;
         currentUser.teamBonusActive = true;
         currentUser.pendingTeamBonusQuiz = pending - 1;
         if (currentUser.pendingTeamBonusQuiz <= 0) delete currentUser.pendingTeamBonusQuiz;
+        this._teamBonusRedeemed = true;
         Toast.show('👥 Team-Bonus eingelöst: 3× XP für dieses Quiz!', 'success');
+    },
+
+    // Quiz wurde ohne Antwort verlassen: eingelösten Bonus zurückgeben.
+    // teamBonusActive darf nicht stehen bleiben — normalizeUser verwirft es beim
+    // nächsten Laden, der Bonus wäre dann verloren.
+    _restoreRedeemedTeamBonus() {
+        if (!currentUser) return;
+        if (this._teamBonusRedeemed) {
+            currentUser.pendingTeamBonusQuiz = (currentUser.pendingTeamBonusQuiz || 0) + 1;
+            this._teamBonusRedeemed = false;
+        }
+        delete currentUser.teamBonusActive;
     },
 
     // Zusatz-Hinweis zur Reichweite, verschwindet nach 4 Sekunden von selbst.
@@ -331,7 +345,16 @@ const AbilityPlugin = {
         shuffleArray(available);
         currentQuizQuestions[currentQuestionIndex] = available[0];
         Toast.show('🎲 Frage getauscht!', 'info');
+        // displayQuestion setzt Doppel-XP zurück — nach einem Tausch gilt die
+        // bereits bezahlte Ladung für die neue Frage weiter.
+        const keepDoubleXP = doubleXPActive;
         ClassicQuizPlugin.displayQuestion();
+        if (keepDoubleXP) {
+            doubleXPActive = true;
+            AppState.abilities.doubleXPActive = true;
+            abilityUsedThisQuestion.doubleXP = true;
+            AppState.abilities.usedThisQuestion.doubleXP = true;
+        }
     },
 
     _useTeamBonus() {
@@ -368,7 +391,14 @@ const AbilityPlugin = {
                 GameDialog._close();
                 // 3× XP für aktuellen Spieler — Rest dieses Quiz
                 currentUser.teamBonusActive = true;
-                // Mitspieler bekommt 3× XP in seinem nächsten Quiz
+                // Mitspieler bekommt 3× XP in seinem nächsten Quiz. Gespeichert wird nur
+                // die eigene Datei — darum Quittung beim Sender, die der Lader beim
+                // nächsten Laden zustellt (32-file-io: _syncTeamBonuses).
+                const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+                if (!Array.isArray(currentUser.sentTeamBonuses)) currentUser.sentTeamBonuses = [];
+                currentUser.sentTeamBonuses.push({ id, targetName: target.name, date: new Date().toISOString() });
+                if (!Array.isArray(target.receivedTeamBonuses)) target.receivedTeamBonuses = [];
+                target.receivedTeamBonuses.push(id);
                 target.pendingTeamBonusQuiz = (target.pendingTeamBonusQuiz || 0) + 1;
                 Toast.show(`👥 Team-Bonus aktiviert!\n3× XP für dich, 3× XP für ${target.name} im nächsten Quiz!`, 'success');
                 self._showScopeHint('teamBonus');

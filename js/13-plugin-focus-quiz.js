@@ -29,7 +29,7 @@ const FocusQuizPlugin = {
             if (!focusQuizActive) this._run = null;
         }, 'FocusQuizPlugin');
         EventBus.on(EventBus.EVENTS.QUIZ_COMPLETED, (d) => {
-            if (d && d.focus) this._finish(d.pct, false);
+            if (d && d.focus) this._finish(d.focusPct, false, d.skipped);
         }, 'FocusQuizPlugin');
         EventBus.on(EventBus.EVENTS.QUIZ_ABANDONED, (d) => {
             if (d && d.focus) this._finish(0, true);
@@ -99,8 +99,8 @@ const FocusQuizPlugin = {
         const c = s.cfg;
         const lines = [
             `Fokus bis ${this._fmtDate(this._lastDay(s.period))}: nur Fragen aus „${s.period.group}" (${s.count} Fragen).`,
-            `Richtige Antworten bringen ${c.xpMultiplier}× XP.`,
-            `Erfolgreich ab ${c.successPct} % richtig.`,
+            `Richtige Antworten bringen ${c.xpMultiplier}× XP — ohne Abzug durch den Tagesbonus für weitere Quizze.`,
+            `Erfolgreich ab ${c.successPct} % richtig. Übersprungene Fragen zählen als nicht richtig.`,
             s.rewarded
                 ? `Vollendungs-Prämie für diesen Zeitraum bereits kassiert — die Serie ruht bis zum nächsten Fokus-Wechsel.`
                 : `${s.target} Erfolge in Folge → +${c.completionXP} XP Vollendungs-Prämie (einmal pro Fokus-Zeitraum).`,
@@ -166,7 +166,8 @@ const FocusQuizPlugin = {
     },
 
     // Auswertung am Ende eines Fokus-Quiz (auch bei Abbruch).
-    _finish(pct, abandoned) {
+    // pct zählt übersprungene Fragen als nicht richtig (ClassicQuizPlugin.showResults).
+    _finish(pct, abandoned, skipped) {
         const run = this._run;
         this._run = null;
         if (!run || !currentUser) return;
@@ -212,11 +213,13 @@ const FocusQuizPlugin = {
         } else {
             const lost = st.streak;
             st.streak = 0;
+            // Bei übersprungenen Fragen kann die Anzeige 100 % zeigen — darum den Grund nennen
+            const skipNote = skipped > 0 ? ', übersprungene Fragen zählen als nicht richtig' : '';
             if (lost > 0) {
-                const why = abandoned ? 'Fokus-Quiz abgebrochen' : `unter ${cfg.successPct} % richtig`;
+                const why = abandoned ? 'Fokus-Quiz abgebrochen' : `unter ${cfg.successPct} % richtig${skipNote}`;
                 Toast.show(`🎯 Fokus-Serie bei ${lost}/${target} zurückgesetzt (${why}). Dein Bestwert bleibt ${st.bestStreak}. Der nächste erfolgreiche Versuch zählt wieder ab 1.`, 'info');
             }
-            appendMsg(`🎯 Fokus-Serie 0/${target} (Ziel: ${cfg.successPct} %)`);
+            appendMsg(`🎯 Fokus-Serie 0/${target} (Ziel: ${cfg.successPct} %${skipNote})`);
         }
         this.renderButton();
     }

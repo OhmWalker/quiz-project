@@ -215,6 +215,11 @@ function _adminNutzerReset(i) {
             u.correctAnswers = 0;
             u.totalAnswers = 0;
             u.quizzesTaken = 0;
+            // Wasserstand mitnehmen: sonst gäbe es erst wieder Ladungen, wenn der neue
+            // Zähler den alten Stand erreicht hat (floor(stat/earnPer) > chargesEarned).
+            _ADMIN_ABILITY_DEFS.filter(d => d.earnStat === 'totalAnswers').forEach(d => {
+                if (u.chargesEarned) delete u.chargesEarned[d.key];
+            });
             _adminNutzerDownload(i);
             _adminNutzerRerender();
         }, null);

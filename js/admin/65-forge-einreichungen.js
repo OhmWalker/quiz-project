@@ -341,6 +341,7 @@ function _eiAccept(idx) {
     const newId = assignStableId(group, questions);
     q.questionId = newId;
     q.active     = true;
+    q.isCore     = _fqGroupIsCore(group);
 
     q._createdAt = new Date().toISOString();
     delete q._pending;

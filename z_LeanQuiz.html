@@ -2905,6 +2905,11 @@
             },
     
     
+            isOpen() {
+                return !!this._overlay && this._overlay.style.display !== 'none';
+            },
+
+
             showConfirm(icon, title, message, onAccept, onDecline) {
                 const overlay = this._ensureOverlay();
                 overlay.innerHTML = `
@@ -3746,7 +3751,7 @@
                 const pct = (idx / total) * 100;
                 document.getElementById('progressFill').style.width = pct + '%';
                 document.getElementById('questionNumber').textContent = `Frage ${idx} / ${total}`;
-                document.getElementById('quizXPCounter').textContent = `+${this._quizXP} XP`;
+                this._renderXPCounter();
                 document.getElementById('currentUserName').textContent = currentUser ? currentUser.name : '';
                 // Question ID info
                 const qidInfo = document.getElementById('quizQuestionIdInfo');
@@ -3880,6 +3885,24 @@
                 this._processAnswer(isCorrect, { selectedIndices });
             },
 
+            // Tagesbonus für das laufende Quiz (1. Quiz des Tages / weitere Quizze).
+            // Fokus-Quiz: immer 100 % — es ist nie das erste Quiz des Tages und bekäme
+            // sonst stets den niedrigen Folgewert (Nutzer-Entscheidung 2026-11-06).
+            _xpDayFactor() {
+                if (focusQuizActive || !currentUser) return 1;
+                return getDailyXPMultiplier(currentUser);
+            },
+
+            // XP-Zähler im Quiz zeigt den Wert, der am Ende wirklich gutgeschrieben wird:
+            // Summe × Tagesbonus, genau wie in showResults.
+            _renderXPCounter() {
+                const el = document.getElementById('quizXPCounter');
+                if (!el) return;
+                const mult = this._xpDayFactor();
+                const xp = Math.round(this._quizXP * mult);
+                el.textContent = `${xp < 0 ? '' : '+'}${xp} XP`;
+            },
+
             _processAnswer(isCorrect, details) {
                 // Second chance handling
                 if (!isCorrect && secondChanceArmed && !this._secondChanceUsed) {
@@ -3928,8 +3951,8 @@
                 }
                 // XP calculation
                 const xpSettings = quizSettings.xpSystem || {};
-                const baseCorrectXP = xpSettings.correctAnswerXP || CONFIG.XP.CORRECT_ANSWER;
-                const baseWrongXP = xpSettings.wrongAnswerXP || CONFIG.XP.WRONG_ANSWER;
+                const baseCorrectXP = xpSettings.correctAnswerXP ?? CONFIG.XP.CORRECT_ANSWER;
+                const baseWrongXP = xpSettings.wrongAnswerXP ?? CONFIG.XP.WRONG_ANSWER;
                 let xpGain = 0;
                 if (isCorrect) {
                     xpGain = baseCorrectXP;
@@ -3946,7 +3969,7 @@
                     else xpGain = baseWrongXP;
                 }
                 this._quizXP += xpGain;
-                document.getElementById('quizXPCounter').textContent = `+${this._quizXP} XP`;
+                this._renderXPCounter();
                 // Record answer
                 userAnswers.push({ questionId: q.questionId, correct: isCorrect, xp: xpGain, group: q._fileGroup || '__none__' });
                 // Update user question stats
@@ -4007,7 +4030,7 @@
                 if (wasCorrect) {
                     // XP-Bonus dem Absender gutschreiben
                     const xpSettings  = quizSettings.xpSystem || {};
-                    const baseCorrectXP = xpSettings.correctAnswerXP || CONFIG.XP.CORRECT_ANSWER;
+                    const baseCorrectXP = xpSettings.correctAnswerXP ?? CONFIG.XP.CORRECT_ANSWER;
                     const bonus = baseCorrectXP * 5;
                     const sender = users.find(u => u.name === question._jokerFrom);
                     if (sender) {
@@ -4063,8 +4086,11 @@
                 const correct   = answered.filter(a => a.correct).length;
                 const incorrect = total - correct;
                 const pct = total > 0 ? Math.round((correct / total) * 100) : 0;
+                // Fokus-Erfolg: übersprungene Fragen zählen als nicht richtig (Nutzer-Entscheidung 2026-11-06).
+                // Der Score der History bleibt wie bisher auf die beantworteten Fragen bezogen.
+                const focusPct = (total + skipped) > 0 ? Math.round((correct / (total + skipped)) * 100) : 0;
                 // Apply daily XP multiplier
-                const multiplier = getDailyXPMultiplier(currentUser);
+                const multiplier = this._xpDayFactor();
                 const finalXP = Math.round(this._quizXP * multiplier);
                 // Update user stats
                 if (currentUser) {
@@ -4133,11 +4159,11 @@
                 else msg.textContent = '💪 Nicht aufgeben!';
                 // XP info
                 const xpInfo = multiplier > 1 ? ` (${Math.round(multiplier*100)}% Bonus!)` : '';
-                msg.textContent += ` +${finalXP} XP${xpInfo}`;
+                msg.textContent += ` ${finalXP < 0 ? '' : '+'}${finalXP} XP${xpInfo}`;
                 renderUserSelect();
                 showScreen('resultsScreen');
                 renderNextGoals(currentUser);
-                EventBus.emit(EventBus.EVENTS.QUIZ_COMPLETED, { user: currentUser?.name, correct, total, xp: finalXP, pct, focus: focusQuizActive });
+                EventBus.emit(EventBus.EVENTS.QUIZ_COMPLETED, { user: currentUser?.name, correct, total, xp: finalXP, pct, focus: focusQuizActive, focusPct, skipped });
                 // Fokus-Flag gilt nur für das gerade beendete Quiz (Auswertung lief im Listener)
                 focusQuizActive = false;
                 // Mini-game cascade — Autofokus erst nach Abschluss aller Mini-Games
@@ -4167,7 +4193,7 @@
                     const quizCount = currentUser.quizzesTaken || 0;
                     if (quizCount > 0 && quizCount % (mg.bossFight.threshold || 10) === 0) {
                         const boss = BossFightPlugin.BOSS_TYPES[Math.floor(Math.random() * BossFightPlugin.BOSS_TYPES.length)];
-                        const winXP = mg.bossFight.winXP || 100;
+                        const winXP = mg.bossFight.winXP ?? 100;
                         GameDialog.showConfirm(
                             boss.sprite,
                             'Boss-Fight verfügbar!',
@@ -4223,6 +4249,7 @@
                 if (!this._answered && currentQuestionIndex === 0 && userAnswers.length === 0) {
                     // Noch nichts beantwortet → kein Versuch, kein Serienverlust
                     focusQuizActive = false;
+                    AbilityPlugin._restoreRedeemedTeamBonus();
                     showScreen('startScreen');
                     renderUserSelect();
                     return;
@@ -4234,7 +4261,7 @@
                     const halfXP = Math.round(this._quizXP * 0.5);
                     if (currentUser) delete currentUser.teamBonusActive;
                     if (currentUser && halfXP > 0) {
-                        const multiplier = getDailyXPMultiplier(currentUser);
+                        const multiplier = this._xpDayFactor();
                         const finalXP = Math.round(halfXP * multiplier);
                         currentUser.totalXP = (currentUser.totalXP || 0) + finalXP;
                         const lvl = calculateLevel(currentUser.totalXP);
@@ -4246,6 +4273,9 @@
                     showScreen('startScreen');
                     EventBus.emit(EventBus.EVENTS.QUIZ_ABANDONED, { xp: Math.round(this._quizXP * 0.5), focus: focusQuizActive });
                     focusQuizActive = false;
+                    // Wie am Quizende speichern: Lernstand, XP und ein Fokus-Fehlversuch
+                    // dürfen nicht durch bloßes Neuladen der Seite verschwinden.
+                    if (currentUser && typeof saveCurrentPlayer === 'function') saveCurrentPlayer();
                 });
             }
         };
@@ -4442,13 +4472,27 @@
             // Wird beim Quizstart eingelöst, damit er nicht beim bloßen Auswählen
             // des Spielers verfällt.
             _redeemPendingTeamBonus() {
+                this._teamBonusRedeemed = false;
                 if (!currentUser) return;
                 const pending = currentUser.pendingTeamBonusQuiz || 0;
                 if (pending <= 0) return;
                 currentUser.teamBonusActive = true;
                 currentUser.pendingTeamBonusQuiz = pending - 1;
                 if (currentUser.pendingTeamBonusQuiz <= 0) delete currentUser.pendingTeamBonusQuiz;
+                this._teamBonusRedeemed = true;
                 Toast.show('👥 Team-Bonus eingelöst: 3× XP für dieses Quiz!', 'success');
+            },
+
+            // Quiz wurde ohne Antwort verlassen: eingelösten Bonus zurückgeben.
+            // teamBonusActive darf nicht stehen bleiben — normalizeUser verwirft es beim
+            // nächsten Laden, der Bonus wäre dann verloren.
+            _restoreRedeemedTeamBonus() {
+                if (!currentUser) return;
+                if (this._teamBonusRedeemed) {
+                    currentUser.pendingTeamBonusQuiz = (currentUser.pendingTeamBonusQuiz || 0) + 1;
+                    this._teamBonusRedeemed = false;
+                }
+                delete currentUser.teamBonusActive;
             },
 
             // Zusatz-Hinweis zur Reichweite, verschwindet nach 4 Sekunden von selbst.
@@ -4587,7 +4631,16 @@
                 shuffleArray(available);
                 currentQuizQuestions[currentQuestionIndex] = available[0];
                 Toast.show('🎲 Frage getauscht!', 'info');
+                // displayQuestion setzt Doppel-XP zurück — nach einem Tausch gilt die
+                // bereits bezahlte Ladung für die neue Frage weiter.
+                const keepDoubleXP = doubleXPActive;
                 ClassicQuizPlugin.displayQuestion();
+                if (keepDoubleXP) {
+                    doubleXPActive = true;
+                    AppState.abilities.doubleXPActive = true;
+                    abilityUsedThisQuestion.doubleXP = true;
+                    AppState.abilities.usedThisQuestion.doubleXP = true;
+                }
             },
 
             _useTeamBonus() {
@@ -4624,7 +4677,14 @@
                         GameDialog._close();
                         // 3× XP für aktuellen Spieler — Rest dieses Quiz
                         currentUser.teamBonusActive = true;
-                        // Mitspieler bekommt 3× XP in seinem nächsten Quiz
+                        // Mitspieler bekommt 3× XP in seinem nächsten Quiz. Gespeichert wird nur
+                        // die eigene Datei — darum Quittung beim Sender, die der Lader beim
+                        // nächsten Laden zustellt (32-file-io: _syncTeamBonuses).
+                        const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+                        if (!Array.isArray(currentUser.sentTeamBonuses)) currentUser.sentTeamBonuses = [];
+                        currentUser.sentTeamBonuses.push({ id, targetName: target.name, date: new Date().toISOString() });
+                        if (!Array.isArray(target.receivedTeamBonuses)) target.receivedTeamBonuses = [];
+                        target.receivedTeamBonuses.push(id);
                         target.pendingTeamBonusQuiz = (target.pendingTeamBonusQuiz || 0) + 1;
                         Toast.show(`👥 Team-Bonus aktiviert!\n3× XP für dich, 3× XP für ${target.name} im nächsten Quiz!`, 'success');
                         self._showScopeHint('teamBonus');
@@ -4752,7 +4812,7 @@
                 s.spinning = false;
                 s.result = null;
                 const mg = getMG();
-                const maxXP = mg.spinner.maxXP || 50;
+                const maxXP = mg.spinner.maxXP ?? 50;
                 const jDefs = AbilityPlugin.DEFS;
                 s.segments = [
                     { type: 'joker', jokerType: 'fiftyFifty', label: `${jDefs.fiftyFifty.icon} ${jDefs.fiftyFifty.name}`, color: '#16a085' },
@@ -4864,7 +4924,7 @@
                             // Badge-Stats für XP
                             if (currentUser && currentUser.badgeStats) {
                                 currentUser.badgeStats.spinnerPlays = (currentUser.badgeStats.spinnerPlays || 0) + 1;
-                                if (segment.xp >= (getMG().spinner.maxXP || 50)) {
+                                if (segment.xp > 0 && segment.xp >= (getMG().spinner.maxXP ?? 50)) {
                                     currentUser.badgeStats.jackpots = (currentUser.badgeStats.jackpots || 0) + 1;
                                 }
                             }
@@ -4959,7 +5019,7 @@
                     if (!focusQuizActive) this._run = null;
                 }, 'FocusQuizPlugin');
                 EventBus.on(EventBus.EVENTS.QUIZ_COMPLETED, (d) => {
-                    if (d && d.focus) this._finish(d.pct, false);
+                    if (d && d.focus) this._finish(d.focusPct, false, d.skipped);
                 }, 'FocusQuizPlugin');
                 EventBus.on(EventBus.EVENTS.QUIZ_ABANDONED, (d) => {
                     if (d && d.focus) this._finish(0, true);
@@ -5029,8 +5089,8 @@
                 const c = s.cfg;
                 const lines = [
                     `Fokus bis ${this._fmtDate(this._lastDay(s.period))}: nur Fragen aus „${s.period.group}" (${s.count} Fragen).`,
-                    `Richtige Antworten bringen ${c.xpMultiplier}× XP.`,
-                    `Erfolgreich ab ${c.successPct} % richtig.`,
+                    `Richtige Antworten bringen ${c.xpMultiplier}× XP — ohne Abzug durch den Tagesbonus für weitere Quizze.`,
+                    `Erfolgreich ab ${c.successPct} % richtig. Übersprungene Fragen zählen als nicht richtig.`,
                     s.rewarded
                         ? `Vollendungs-Prämie für diesen Zeitraum bereits kassiert — die Serie ruht bis zum nächsten Fokus-Wechsel.`
                         : `${s.target} Erfolge in Folge → +${c.completionXP} XP Vollendungs-Prämie (einmal pro Fokus-Zeitraum).`,
@@ -5096,7 +5156,8 @@
             },
 
             // Auswertung am Ende eines Fokus-Quiz (auch bei Abbruch).
-            _finish(pct, abandoned) {
+            // pct zählt übersprungene Fragen als nicht richtig (ClassicQuizPlugin.showResults).
+            _finish(pct, abandoned, skipped) {
                 const run = this._run;
                 this._run = null;
                 if (!run || !currentUser) return;
@@ -5142,11 +5203,13 @@
                 } else {
                     const lost = st.streak;
                     st.streak = 0;
+                    // Bei übersprungenen Fragen kann die Anzeige 100 % zeigen — darum den Grund nennen
+                    const skipNote = skipped > 0 ? ', übersprungene Fragen zählen als nicht richtig' : '';
                     if (lost > 0) {
-                        const why = abandoned ? 'Fokus-Quiz abgebrochen' : `unter ${cfg.successPct} % richtig`;
+                        const why = abandoned ? 'Fokus-Quiz abgebrochen' : `unter ${cfg.successPct} % richtig${skipNote}`;
                         Toast.show(`🎯 Fokus-Serie bei ${lost}/${target} zurückgesetzt (${why}). Dein Bestwert bleibt ${st.bestStreak}. Der nächste erfolgreiche Versuch zählt wieder ab 1.`, 'info');
                     }
-                    appendMsg(`🎯 Fokus-Serie 0/${target} (Ziel: ${cfg.successPct} %)`);
+                    appendMsg(`🎯 Fokus-Serie 0/${target} (Ziel: ${cfg.successPct} %${skipNote})`);
                 }
                 this.renderButton();
             }
@@ -5523,7 +5586,7 @@
                 const s = this._state;
                 this._clearIntervals();
                 this._resetColors();
-                const winXP = getMG().bossFight.winXP || 100;
+                const winXP = getMG().bossFight.winXP ?? 100;
                 s.xpEarned += winXP;
                 document.getElementById('bossQuestionCard').innerHTML = `<div style="text-align:center;padding:30px;"><div style="font-size:3rem;">🏆</div><h3 style="color:#2ecc71;">Boss besiegt!</h3><p>+${s.xpEarned} XP verdient!</p></div>`;
                 document.getElementById('bossCloseBtn').style.display = '';
@@ -6916,13 +6979,7 @@
             }
 
             // Warnung bei unlesbaren Dateien — sonst fehlt der Spieler lautlos
-            if (unreadableFiles.length > 0) {
-                console.warn('Unlesbare Dateien:', unreadableFiles.join(', '));
-                let errMsg = '⛔ ' + unreadableFiles.length + ' Datei(en) konnten NICHT gelesen werden und fehlen:\n\n';
-                unreadableFiles.forEach(function(f) { errMsg += '• ' + f + '\n'; });
-                errMsg += '\nNicht weiterarbeiten, bevor das geklärt ist — sonst werden diese Daten beim nächsten Export überschrieben!';
-                Toast.show(errMsg, 'error');
-            }
+            warnUnreadableFiles(unreadableFiles);
             console.log('Ordner-Laden: ' + results.filter(Boolean).length + ' JSON-Dateien, ' + masterFiles.length + ' Master, ' + questionFiles.length + ' Fragen-Dateien, ' + playerFiles.length + ' Spieler, ' + skippedFiles.length + ' übersprungen');
             if (playerFiles.length > 0) console.log('Spieler-Dateien:', playerFiles.map(function(p){ return p.name; }).join(', '));
             if (questionFiles.length > 0) console.log('Fragen-Dateien:', questionFiles.map(function(p){ return p.name; }).join(', '));
@@ -6984,6 +7041,8 @@
             questions = [];
             loadedQuestionFiles = [];
             let noGroupCount = 0;
+            const seenQuestions = new Map();
+            let duplicateCount = 0;
             if (questionFiles.length > 0) {
                 questionFiles.forEach(qf => {
                     const qData = qf.data;
@@ -6996,16 +7055,14 @@
                             if (!q._fileGroup) noGroupCount++;
                             q._fileGroup = q._fileGroup || qData.theme || 'Manuell';
                             const normalized = normalizeQuestion(q);
-                            // Duplikat-Check nur über questionId, nicht _contentHash —
-                            // gleicher Text in zwei Gruppen ist kein Duplikat.
-                            const isDupe = normalized.questionId && questions.some(function(eq) {
-                                return eq.questionId === normalized.questionId;
-                            });
-                            if (isDupe) { qErrors++; return; }
                             normalized.sourceFile = qf.name;
                             normalized.theme = q.theme || theme;
                             normalized.isCore = isCore;
-                            questions.push(normalized);
+                            // Duplikat-Check nur über questionId, nicht _contentHash —
+                            // gleicher Text in zwei Gruppen ist kein Duplikat.
+                            const merged = mergeLoadedQuestion(normalized, qf.lastModified, seenQuestions);
+                            if (merged !== 'added') duplicateCount++;
+                            if (merged === 'duplicate') qErrors++;
                         } catch(qErr) {
                             qErrors++;
                             console.warn('Frage ' + qi + ' in ' + qf.name + ' übersprungen:', qErr.message);
@@ -7020,6 +7077,7 @@
                     if (qErrors > 0) console.warn(qf.name + ': ' + qErrors + ' Fragen übersprungen (Fehler)');
                 });
             }
+            warnDuplicateQuestions(duplicateCount);
             if (noGroupCount > 0)
                 setTimeout(() => Toast.show(`⚠ ${noGroupCount} Frage(n) ohne Gruppe geladen — ID-Präfix wird auf "manu" gesetzt.\nFragen prüfen und _fileGroup / theme vergeben.`, 'warning'), 800);
 
@@ -7097,7 +7155,7 @@
                     // Bonus nur einmal anwenden (bonusApplied verhindert Doppel-Bonus)
                     if (!entry.bonusApplied && entry.correct) {
                         var xpSettings = quizSettings.xpSystem || {};
-                        var bonusXP = (xpSettings.correctAnswerXP || 10) * 5;
+                        var bonusXP = (xpSettings.correctAnswerXP ?? 10) * 5;
                         if (!sender.pendingJokerBonus) sender.pendingJokerBonus = 0;
                         sender.pendingJokerBonus += bonusXP;
                     }
@@ -7151,6 +7209,8 @@
                     }
                 });
             });
+
+            _syncTeamBonuses(jokerExpiryThreshold);
 
             // Modus setzen
             multiPlayerMode = true;
@@ -7236,6 +7296,80 @@
                 '📄 ' + totalFiles + ' Spieler-Dateien gefunden<br>' +
                 '👥 ' + uniquePlayers + ' aktive Spieler<br>' +
                 qInfo;
+        }
+
+
+        // ── Laden (gemeinsam für Quiz und Forge) ─────────────────────────────────────
+
+        // Warnung bei unlesbaren Dateien — sonst fehlen die Daten lautlos.
+        function warnUnreadableFiles(list) {
+            if (!list.length) return;
+            console.warn('Unlesbare Dateien:', list.join(', '));
+            let errMsg = '⛔ ' + list.length + ' Datei(en) konnten NICHT gelesen werden und fehlen:\n\n';
+            list.forEach(function(f) { errMsg += '• ' + f + '\n'; });
+            errMsg += '\nNicht weiterarbeiten, bevor das geklärt ist — sonst werden diese Daten beim nächsten Export überschrieben!';
+            Toast.show(errMsg, 'error');
+        }
+
+        // Frage in `questions` übernehmen. Dieselbe questionId in mehreren Dateien (z.B.
+        // alte Datei liegt nach einem Export noch im Ordner): die neuere Datei gewinnt.
+        // Bewusst Ersetzen statt Dateien umsortieren — die Lade-Reihenfolge bestimmt die
+        // IDs von Fragen ohne questionId (normalizeQuestion) und muss gleich bleiben.
+        // Rückgabe: 'added' | 'replaced' | 'duplicate'
+        function mergeLoadedQuestion(q, fileTime, seen) {
+            const prev = q.questionId ? seen.get(q.questionId) : null;
+            if (!prev) {
+                if (q.questionId) seen.set(q.questionId, { idx: questions.length, time: fileTime });
+                questions.push(q);
+                return 'added';
+            }
+            if (fileTime > prev.time) {
+                questions[prev.idx] = q;
+                prev.time = fileTime;
+                return 'replaced';
+            }
+            return 'duplicate';
+        }
+
+        function warnDuplicateQuestions(count) {
+            if (count <= 0) return;
+            setTimeout(() => Toast.show(`⚠ ${count} Frage(n) stehen in mehreren Dateien — die Fassung aus der neuesten Datei wurde geladen.\nAlte Fragen-Dateien aus dem Ordner entfernen.`, 'warning'), 1000);
+        }
+
+        // Team-Bonus für Mitspieler zustellen. Nach dem Quiz wird nur die Datei des Senders
+        // gespeichert, darum steht dort die Quittung (sentTeamBonuses) und beim Empfänger die
+        // Liste zugestellter IDs (receivedTeamBonuses). Reihenfolge ist wichtig:
+        // - Quittung erst entfernen, wenn die GELADENE Datei des Empfängers die ID kennt —
+        //   sonst ginge der Bonus verloren, falls der Empfänger nie speichert.
+        // - ID beim Empfänger erst entfernen, wenn keine GELADENE Sender-Datei sie mehr nennt —
+        //   sonst würde der Bonus aus einer noch nicht neu gespeicherten Sender-Datei doppelt zugestellt.
+        function _syncTeamBonuses(expiryThreshold) {
+            const sentIds = new Set();
+            users.forEach(function(u) {
+                if (!Array.isArray(u.sentTeamBonuses)) return;
+                u.sentTeamBonuses.forEach(function(e) { sentIds.add(e.id); });
+            });
+            users.forEach(function(sender) {
+                if (!Array.isArray(sender.sentTeamBonuses)) return;
+                sender.sentTeamBonuses = sender.sentTeamBonuses.filter(function(e) {
+                    const target = users.find(function(u) { return u.name === e.targetName; });
+                    const received = target && Array.isArray(target.receivedTeamBonuses) ? target.receivedTeamBonuses : null;
+                    if (received && received.includes(e.id)) return false;   // Empfänger-Datei belegt die Zustellung
+                    if (e.date && new Date(e.date).getTime() < expiryThreshold) return false;
+                    if (target) {
+                        target.pendingTeamBonusQuiz = (target.pendingTeamBonusQuiz || 0) + 1;
+                        if (!received) target.receivedTeamBonuses = [];
+                        target.receivedTeamBonuses.push(e.id);
+                    }
+                    return true;
+                });
+                if (sender.sentTeamBonuses.length === 0) delete sender.sentTeamBonuses;
+            });
+            users.forEach(function(u) {
+                if (!Array.isArray(u.receivedTeamBonuses)) return;
+                u.receivedTeamBonuses = u.receivedTeamBonuses.filter(function(id) { return sentIds.has(id); });
+                if (u.receivedTeamBonuses.length === 0) delete u.receivedTeamBonuses;
+            });
         }
 
 
@@ -8299,6 +8433,9 @@
         // Keyboard controls for quiz
 
         document.addEventListener('keydown', function(e) {
+            // Offener Dialog: Tasten dürfen nicht das Quiz dahinter steuern — sonst wertet
+            // Enter z.B. hinter dem Abbruch-Dialog die Frage oder beendet sogar das Quiz.
+            if (GameDialog.isOpen()) return;
             // Start Screen: Enter startet Quiz wenn Nutzer ausgewählt
             const startScreen = document.getElementById('startScreen');
             if (startScreen && startScreen.classList.contains('active')) {

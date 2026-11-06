@@ -781,6 +781,9 @@ function createNewDataFile() {
 // Keyboard controls for quiz
 
 document.addEventListener('keydown', function(e) {
+    // Offener Dialog: Tasten dürfen nicht das Quiz dahinter steuern — sonst wertet
+    // Enter z.B. hinter dem Abbruch-Dialog die Frage oder beendet sogar das Quiz.
+    if (GameDialog.isOpen()) return;
     // Start Screen: Enter startet Quiz wenn Nutzer ausgewählt
     const startScreen = document.getElementById('startScreen');
     if (startScreen && startScreen.classList.contains('active')) {

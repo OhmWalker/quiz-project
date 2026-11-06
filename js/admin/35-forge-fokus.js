@@ -75,8 +75,8 @@ function _ffRender(container) {
                 <input type="checkbox" id="ff_enabled" ${c.enabled !== false ? 'checked' : ''} onchange="_ffChanged()"> anbieten
             </label>`)}
         ${_row('Fragen pro Fokus-Quiz', '', num('ff_count', c.questionCount, 1, 100))}
-        ${_row('Erfolgsschwelle', '% richtig', num('ff_pct', c.successPct, 1, 100))}
-        ${_row('XP-Multiplikator', '× für richtige Antworten', num('ff_mult', c.xpMultiplier, 1, 20))}
+        ${_row('Erfolgsschwelle', '% richtig (übersprungene Fragen zählen als nicht richtig)', num('ff_pct', c.successPct, 1, 100))}
+        ${_row('XP-Multiplikator', '× für richtige Antworten (Tagesbonus gilt hier immer mit 100 %)', num('ff_mult', c.xpMultiplier, 1, 20))}
         ${_row('Serienziel', 'Erfolge in Folge für die Prämie', num('ff_target', c.streakTarget, 1, 50))}
         ${_row('Vollendungs-Prämie', 'XP, einmal pro Fokus-Zeitraum', num('ff_bonus', c.completionXP, 0, 100000, 110))}
         ${_row('Max. pro Tag', '0 = unbegrenzt', num('ff_maxDay', c.maxPerDay, 0, 50))}

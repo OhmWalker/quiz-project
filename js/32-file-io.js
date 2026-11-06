@@ -100,13 +100,7 @@ async function loadFromFolderInput(event) {
     }
 
     // Warnung bei unlesbaren Dateien — sonst fehlt der Spieler lautlos
-    if (unreadableFiles.length > 0) {
-        console.warn('Unlesbare Dateien:', unreadableFiles.join(', '));
-        let errMsg = '⛔ ' + unreadableFiles.length + ' Datei(en) konnten NICHT gelesen werden und fehlen:\n\n';
-        unreadableFiles.forEach(function(f) { errMsg += '• ' + f + '\n'; });
-        errMsg += '\nNicht weiterarbeiten, bevor das geklärt ist — sonst werden diese Daten beim nächsten Export überschrieben!';
-        Toast.show(errMsg, 'error');
-    }
+    warnUnreadableFiles(unreadableFiles);
     console.log('Ordner-Laden: ' + results.filter(Boolean).length + ' JSON-Dateien, ' + masterFiles.length + ' Master, ' + questionFiles.length + ' Fragen-Dateien, ' + playerFiles.length + ' Spieler, ' + skippedFiles.length + ' übersprungen');
     if (playerFiles.length > 0) console.log('Spieler-Dateien:', playerFiles.map(function(p){ return p.name; }).join(', '));
     if (questionFiles.length > 0) console.log('Fragen-Dateien:', questionFiles.map(function(p){ return p.name; }).join(', '));
@@ -168,6 +162,8 @@ async function loadFromFolderInput(event) {
     questions = [];
     loadedQuestionFiles = [];
     let noGroupCount = 0;
+    const seenQuestions = new Map();
+    let duplicateCount = 0;
     if (questionFiles.length > 0) {
         questionFiles.forEach(qf => {
             const qData = qf.data;
@@ -180,16 +176,14 @@ async function loadFromFolderInput(event) {
                     if (!q._fileGroup) noGroupCount++;
                     q._fileGroup = q._fileGroup || qData.theme || 'Manuell';
                     const normalized = normalizeQuestion(q);
-                    // Duplikat-Check nur über questionId, nicht _contentHash —
-                    // gleicher Text in zwei Gruppen ist kein Duplikat.
-                    const isDupe = normalized.questionId && questions.some(function(eq) {
-                        return eq.questionId === normalized.questionId;
-                    });
-                    if (isDupe) { qErrors++; return; }
                     normalized.sourceFile = qf.name;
                     normalized.theme = q.theme || theme;
                     normalized.isCore = isCore;
-                    questions.push(normalized);
+                    // Duplikat-Check nur über questionId, nicht _contentHash —
+                    // gleicher Text in zwei Gruppen ist kein Duplikat.
+                    const merged = mergeLoadedQuestion(normalized, qf.lastModified, seenQuestions);
+                    if (merged !== 'added') duplicateCount++;
+                    if (merged === 'duplicate') qErrors++;
                 } catch(qErr) {
                     qErrors++;
                     console.warn('Frage ' + qi + ' in ' + qf.name + ' übersprungen:', qErr.message);
@@ -204,6 +198,7 @@ async function loadFromFolderInput(event) {
             if (qErrors > 0) console.warn(qf.name + ': ' + qErrors + ' Fragen übersprungen (Fehler)');
         });
     }
+    warnDuplicateQuestions(duplicateCount);
     if (noGroupCount > 0)
         setTimeout(() => Toast.show(`⚠ ${noGroupCount} Frage(n) ohne Gruppe geladen — ID-Präfix wird auf "manu" gesetzt.\nFragen prüfen und _fileGroup / theme vergeben.`, 'warning'), 800);
 
@@ -281,7 +276,7 @@ async function loadFromFolderInput(event) {
             // Bonus nur einmal anwenden (bonusApplied verhindert Doppel-Bonus)
             if (!entry.bonusApplied && entry.correct) {
                 var xpSettings = quizSettings.xpSystem || {};
-                var bonusXP = (xpSettings.correctAnswerXP || 10) * 5;
+                var bonusXP = (xpSettings.correctAnswerXP ?? 10) * 5;
                 if (!sender.pendingJokerBonus) sender.pendingJokerBonus = 0;
                 sender.pendingJokerBonus += bonusXP;
             }
@@ -335,6 +330,8 @@ async function loadFromFolderInput(event) {
             }
         });
     });
+
+    _syncTeamBonuses(jokerExpiryThreshold);
 
     // Modus setzen
     multiPlayerMode = true;
@@ -420,6 +417,80 @@ function updateFolderStatus(totalFiles, uniquePlayers, qFiles) {
         '📄 ' + totalFiles + ' Spieler-Dateien gefunden<br>' +
         '👥 ' + uniquePlayers + ' aktive Spieler<br>' +
         qInfo;
+}
+
+
+// ── Laden (gemeinsam für Quiz und Forge) ─────────────────────────────────────
+
+// Warnung bei unlesbaren Dateien — sonst fehlen die Daten lautlos.
+function warnUnreadableFiles(list) {
+    if (!list.length) return;
+    console.warn('Unlesbare Dateien:', list.join(', '));
+    let errMsg = '⛔ ' + list.length + ' Datei(en) konnten NICHT gelesen werden und fehlen:\n\n';
+    list.forEach(function(f) { errMsg += '• ' + f + '\n'; });
+    errMsg += '\nNicht weiterarbeiten, bevor das geklärt ist — sonst werden diese Daten beim nächsten Export überschrieben!';
+    Toast.show(errMsg, 'error');
+}
+
+// Frage in `questions` übernehmen. Dieselbe questionId in mehreren Dateien (z.B.
+// alte Datei liegt nach einem Export noch im Ordner): die neuere Datei gewinnt.
+// Bewusst Ersetzen statt Dateien umsortieren — die Lade-Reihenfolge bestimmt die
+// IDs von Fragen ohne questionId (normalizeQuestion) und muss gleich bleiben.
+// Rückgabe: 'added' | 'replaced' | 'duplicate'
+function mergeLoadedQuestion(q, fileTime, seen) {
+    const prev = q.questionId ? seen.get(q.questionId) : null;
+    if (!prev) {
+        if (q.questionId) seen.set(q.questionId, { idx: questions.length, time: fileTime });
+        questions.push(q);
+        return 'added';
+    }
+    if (fileTime > prev.time) {
+        questions[prev.idx] = q;
+        prev.time = fileTime;
+        return 'replaced';
+    }
+    return 'duplicate';
+}
+
+function warnDuplicateQuestions(count) {
+    if (count <= 0) return;
+    setTimeout(() => Toast.show(`⚠ ${count} Frage(n) stehen in mehreren Dateien — die Fassung aus der neuesten Datei wurde geladen.\nAlte Fragen-Dateien aus dem Ordner entfernen.`, 'warning'), 1000);
+}
+
+// Team-Bonus für Mitspieler zustellen. Nach dem Quiz wird nur die Datei des Senders
+// gespeichert, darum steht dort die Quittung (sentTeamBonuses) und beim Empfänger die
+// Liste zugestellter IDs (receivedTeamBonuses). Reihenfolge ist wichtig:
+// - Quittung erst entfernen, wenn die GELADENE Datei des Empfängers die ID kennt —
+//   sonst ginge der Bonus verloren, falls der Empfänger nie speichert.
+// - ID beim Empfänger erst entfernen, wenn keine GELADENE Sender-Datei sie mehr nennt —
+//   sonst würde der Bonus aus einer noch nicht neu gespeicherten Sender-Datei doppelt zugestellt.
+function _syncTeamBonuses(expiryThreshold) {
+    const sentIds = new Set();
+    users.forEach(function(u) {
+        if (!Array.isArray(u.sentTeamBonuses)) return;
+        u.sentTeamBonuses.forEach(function(e) { sentIds.add(e.id); });
+    });
+    users.forEach(function(sender) {
+        if (!Array.isArray(sender.sentTeamBonuses)) return;
+        sender.sentTeamBonuses = sender.sentTeamBonuses.filter(function(e) {
+            const target = users.find(function(u) { return u.name === e.targetName; });
+            const received = target && Array.isArray(target.receivedTeamBonuses) ? target.receivedTeamBonuses : null;
+            if (received && received.includes(e.id)) return false;   // Empfänger-Datei belegt die Zustellung
+            if (e.date && new Date(e.date).getTime() < expiryThreshold) return false;
+            if (target) {
+                target.pendingTeamBonusQuiz = (target.pendingTeamBonusQuiz || 0) + 1;
+                if (!received) target.receivedTeamBonuses = [];
+                target.receivedTeamBonuses.push(e.id);
+            }
+            return true;
+        });
+        if (sender.sentTeamBonuses.length === 0) delete sender.sentTeamBonuses;
+    });
+    users.forEach(function(u) {
+        if (!Array.isArray(u.receivedTeamBonuses)) return;
+        u.receivedTeamBonuses = u.receivedTeamBonuses.filter(function(id) { return sentIds.has(id); });
+        if (u.receivedTeamBonuses.length === 0) delete u.receivedTeamBonuses;
+    });
 }
 
 

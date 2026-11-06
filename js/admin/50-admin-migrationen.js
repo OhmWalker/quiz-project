@@ -4,6 +4,16 @@
 
 const MIGRATION_HISTORY = [
     {
+        date:  '2026-11',
+        title: 'Team-Bonus: Quittung sentTeamBonuses / receivedTeamBonuses',
+        detail: `Neue optionale Spieler-Felder. Der Sender schreibt eine Quittung
+                 (<code>sentTeamBonuses: [{ id, targetName, date }]</code>), beim Empfänger steht die ID in
+                 <code>receivedTeamBonuses</code>. Beim Ordner-Laden stellt <code>_syncTeamBonuses</code>
+                 (<code>js/32-file-io.js</code>) offene Boni zu — vorher ging der Bonus beim Neuladen verloren,
+                 weil nach dem Quiz nur die Datei des Senders gespeichert wird. Offene Quittungen verfallen
+                 wie Telefon-Joker nach 3 Monaten. Altdateien brauchen keine Umschreibung.`,
+    },
+    {
         date:  '2026-10',
         title: 'Legacy-Admin entfernt, Super-Admin gestrichen',
         detail: `Der Komplett-Build <code>z_quiz-system-built.html</code> mit eingebettetem Admin

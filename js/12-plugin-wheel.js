@@ -15,7 +15,7 @@ const WheelPlugin = {
         s.spinning = false;
         s.result = null;
         const mg = getMG();
-        const maxXP = mg.spinner.maxXP || 50;
+        const maxXP = mg.spinner.maxXP ?? 50;
         const jDefs = AbilityPlugin.DEFS;
         s.segments = [
             { type: 'joker', jokerType: 'fiftyFifty', label: `${jDefs.fiftyFifty.icon} ${jDefs.fiftyFifty.name}`, color: '#16a085' },
@@ -127,7 +127,7 @@ const WheelPlugin = {
                     // Badge-Stats für XP
                     if (currentUser && currentUser.badgeStats) {
                         currentUser.badgeStats.spinnerPlays = (currentUser.badgeStats.spinnerPlays || 0) + 1;
-                        if (segment.xp >= (getMG().spinner.maxXP || 50)) {
+                        if (segment.xp > 0 && segment.xp >= (getMG().spinner.maxXP ?? 50)) {
                             currentUser.badgeStats.jackpots = (currentUser.badgeStats.jackpots || 0) + 1;
                         }
                     }

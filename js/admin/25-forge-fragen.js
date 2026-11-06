@@ -85,12 +85,14 @@ function _fqRenderList(container) {
         const arrow  = isOpen ? '▼' : '▶';
         const escapedG = _fqEsc(g);
 
-        const activeCount = allGroupQs.filter(({ q }) => q.active !== false).length;
         const countLabel = isSearch
             ? `<span style="opacity:0.45;font-size:0.8rem;margin-left:8px">${groupQs.length} / ${allGroupQs.length}</span>`
             : `<span style="opacity:0.45;font-size:0.8rem;margin-left:8px">(${allGroupQs.length})</span>`;
-        const activeLabel = `<span style="font-size:0.78rem;margin-left:10px;${activeCount < allGroupQs.length ? 'color:var(--accent-warning,#f39c12)' : 'opacity:0.45'}">aktiv ${activeCount}/${allGroupQs.length}</span>`;
+        const activeLabel = _fqActiveLabel(g, gi);
         const grpBtn = 'padding:2px 8px;margin:0 0 0 6px;font-size:0.72rem;text-transform:none;letter-spacing:0';
+        // Bei aktiver Suche wirken die Knöpfe nur auf die sichtbaren Treffer
+        const grpScope = isSearch ? 'Treffer' : 'alle';
+        const grpWhat  = isSearch ? 'Alle Treffer dieser Gruppe' : 'Alle Fragen der Gruppe';
 
         const header = `
         <tr style="background:var(--overlay-8);cursor:pointer;user-select:none"
@@ -101,10 +103,10 @@ function _fqRenderList(container) {
                 ${countLabel}
                 ${activeLabel}
                 <span style="float:right">
-                    <button class="btn btn-small btn-secondary" style="${grpBtn}" title="Alle Fragen der Gruppe aktivieren"
-                        onclick="event.stopPropagation();_fqSetGroupActive(${gi}, true)">✅ alle an</button>
-                    <button class="btn btn-small btn-secondary" style="${grpBtn}" title="Alle Fragen der Gruppe deaktivieren"
-                        onclick="event.stopPropagation();_fqSetGroupActive(${gi}, false)">⛔ alle aus</button>
+                    <button class="btn btn-small btn-secondary" style="${grpBtn}" title="${grpWhat} aktivieren"
+                        onclick="event.stopPropagation();_fqSetGroupActive(${gi}, true)">✅ ${grpScope} an</button>
+                    <button class="btn btn-small btn-secondary" style="${grpBtn}" title="${grpWhat} deaktivieren"
+                        onclick="event.stopPropagation();_fqSetGroupActive(${gi}, false)">⛔ ${grpScope} aus</button>
                 </span>
             </td>
         </tr>`;
@@ -117,7 +119,7 @@ function _fqRenderList(container) {
             const rowArrow = expanded ? '▼' : '▶';
             const inactive = q.active === false;
             const mainRow  = `
-        <tr style="${rowBg}cursor:pointer;user-select:none;${inactive ? 'opacity:0.45;' : ''}" onclick="_fqOpenEdit(${idx})">
+        <tr data-fq-row="${idx}" style="${rowBg}cursor:pointer;user-select:none;${inactive ? 'opacity:0.45;' : ''}" onclick="_fqOpenEdit(${idx})">
             <td style="width:28px;text-align:center" title="${inactive ? 'inaktiv — wird im Quiz nicht gestellt' : 'aktiv'}"
                 onclick="event.stopPropagation()">
                 <input type="checkbox" ${inactive ? '' : 'checked'} style="width:16px;height:16px;margin:0;cursor:pointer;accent-color:var(--accent)"
@@ -194,24 +196,65 @@ function _fqActiveHint() {
     Toast.show('Aktiv/Inaktiv-Änderungen werden mit „↓ Exportieren" dauerhaft gespeichert.', 'info', 4000);
 }
 
+function _fqActiveLabel(group, gi) {
+    const qs = questions.filter(q => (q._fileGroup || 'Manuell') === group);
+    const active = qs.filter(q => q.active !== false).length;
+    return `<span id="fqActiveLabel_${gi}" style="font-size:0.78rem;margin-left:10px;${active < qs.length ? 'color:var(--accent-warning,#f39c12)' : 'opacity:0.45'}">aktiv ${active}/${qs.length}</span>`;
+}
+
+// Zeile direkt aktualisieren statt das Panel neu aufzubauen — sonst gingen
+// ungespeicherte Eingaben in einem offenen Bearbeiten-Formular verloren.
+function _fqShowActiveState(idx) {
+    const row = document.querySelector(`tr[data-fq-row="${idx}"]`);
+    if (!row) return;
+    const inactive = questions[idx].active === false;
+    row.style.opacity = inactive ? '0.45' : '';
+    row.children[0].title = inactive ? 'inaktiv — wird im Quiz nicht gestellt' : 'aktiv';
+    row.querySelector('input[type="checkbox"]').checked = !inactive;
+}
+
+function _fqRefreshActiveLabel(group) {
+    const gi = _fqGroupList.indexOf(group);
+    const el = document.getElementById('fqActiveLabel_' + gi);
+    if (el) el.outerHTML = _fqActiveLabel(group, gi);
+}
+
 function _fqSetActive(idx, active) {
     const q = questions[idx];
     if (!q) return;
     q.active = !!active;
     _fqActiveHint();
-    AdminShell.showPanel('fragen');
+    _fqShowActiveState(idx);
+    _fqRefreshActiveLabel(q._fileGroup || 'Manuell');
 }
 
 function _fqSetGroupActive(gi, active) {
     const g = _fqGroupList[gi];
     if (g === undefined) return;
+    const term = _fqSearchTerm;
     let n = 0;
-    questions.forEach(q => {
-        if ((q._fileGroup || 'Manuell') === g && (q.active !== false) !== active) { q.active = active; n++; }
+    questions.forEach((q, idx) => {
+        if ((q._fileGroup || 'Manuell') !== g || (q.active !== false) === active) return;
+        if (term && !_fqMatchesSearch(q, term)) return;
+        q.active = active;
+        n++;
+        _fqShowActiveState(idx);
     });
-    Toast.show(`${active ? '✅' : '⛔'} ${g}: ${n} Frage(n) ${active ? 'aktiviert' : 'deaktiviert'}.`, 'success', 4000);
+    _fqRefreshActiveLabel(g);
+    Toast.show(`${active ? '✅' : '⛔'} ${g}: ${n} ${term ? 'Treffer' : 'Frage(n)'} ${active ? 'aktiviert' : 'deaktiviert'}.`, 'success', 4000);
     _fqActiveHint();
-    AdminShell.showPanel('fragen');
+}
+
+// Core-Kennzeichen für eine Frage, die neu in `group` kommt. Der Lader erkennt Core
+// am Dateinamen, und _fqExportFiles wählt den Namen nach q.isCore — ohne das
+// Kennzeichen landet eine neue Core-Frage in einer Nicht-Core-Datei (G_Core).
+// Eindeutige Gruppe → deren Stand; neue oder gemischte Gruppe → Gruppenname.
+function _fqGroupIsCore(group, self) {
+    const others = questions.filter(q => q !== self && (q._fileGroup || 'Manuell') === group);
+    const coreCount = others.filter(q => q.isCore).length;
+    if (others.length && coreCount === others.length) return true;
+    if (others.length && coreCount === 0) return false;
+    return /^core\b/i.test(group);
 }
 
 function _fqToggleGroup(groupName) {
@@ -662,6 +705,7 @@ function _fqSave() {
     if (_fqEditIdx >= 0) {
         // ── Bestehende Frage aktualisieren ──────────────────────────────────
         const q        = questions[_fqEditIdx];
+        if ((q._fileGroup || 'Manuell') !== group) q.isCore = _fqGroupIsCore(group, q);
         q.questionId       = enteredId;
         q.text             = text;
         q.type             = _fqFormType;
@@ -690,6 +734,7 @@ function _fqSave() {
             type:            _fqFormType,
             active:          true,
             _fileGroup:      group,
+            isCore:          _fqGroupIsCore(group),
             media:           resolvedMedia,
             explanation:     explText  || null,
             explanationMedia:explMedia ? { type: 'image', path: explMedia } : null,
@@ -767,6 +812,7 @@ function _fqBuildExportQ(q) {
         out.targets = q.targets;
     } else {
         out.answers = q.answers;
+        if (q.correctMode === 'any') out.correctMode = 'any';
     }
     return out;
 }
@@ -1096,10 +1142,14 @@ function _fqHandleImport(event) {
                     const data = JSON.parse(raw);
                     const importedQuestions = data.questions || data.fragen || [];
                     const importTheme = data.theme || file.name.replace('.json', '');
+                    const fileIsCore = /^03_questions_CORE/i.test(file.name);
                     let added = 0, dupes = 0;
                     importedQuestions.forEach(function(iq) {
+                        // _fileGroup muss VOR normalizeQuestion stehen (ID-Präfix)
+                        iq._fileGroup = iq._fileGroup || importTheme;
                         const normalized = typeof normalizeQuestion === 'function' ? normalizeQuestion(iq) : iq;
-                        normalized._fileGroup = iq._fileGroup || importTheme;
+                        normalized._fileGroup = iq._fileGroup;
+                        normalized.isCore = fileIsCore || _fqGroupIsCore(iq._fileGroup);
                         const isDupe = normalized.questionId && questions.some(function(eq) {
                             return eq.questionId === normalized.questionId;
                         });
